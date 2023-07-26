@@ -49,39 +49,24 @@ namespace erl::search_planning::amra_star {
         std::vector<uint64_t> iteration_closed;
         double g_value = std::numeric_limits<double>::max();
         std::vector<double> h_values;
-        const uint8_t resolution_level = 0;  // resolution level where the state is created
-        std::shared_ptr<State> parent = nullptr;
-        std::size_t parent_action_id = -1;
+        const std::vector<uint8_t> in_resolution_levels;  // resolution levels where the state exists
+        std::shared_ptr<State> parent = nullptr;          // parent state
+        std::size_t parent_action_id = -1;                // action id that generates this state from its parent
+        uint8_t action_resolution_level = -1;             // resolution level which the action belongs to
 
         State(
             uint32_t plan_itr_in,
             std::shared_ptr<env::EnvironmentState> env_state_in,
-            uint8_t resolution_level_in,
             uint8_t num_resolution_levels,
-            std::vector<double> h_vals,
-            uint64_t iter_opened)
+            std::vector<uint8_t> in_resolution_levels,
+            std::vector<double> h_vals)
             : plan_itr(plan_itr_in),
               env_state(std::move(env_state_in)),
               iteration_opened(h_vals.size(), 0),
               open_queue_keys(h_vals.size()),
               iteration_closed(num_resolution_levels + 1, 0),
               h_values(std::move(h_vals)),
-              resolution_level(resolution_level_in) {
-            ERL_ASSERTM(
-                resolution_level <= num_resolution_levels,
-                "resolution level %d is out of range [0, %d].",
-                int(resolution_level),
-                int(num_resolution_levels));
-            iteration_opened[resolution_level] = iter_opened;
-        }
-
-        State(
-            uint32_t plan_itr_in,
-            const PlanningInterfaceMultiResolutions::Successor& successor,
-            uint8_t num_resolution_levels,
-            std::vector<double> h_vals,
-            uint64_t iter_opened)
-            : State(plan_itr_in, successor.env_state, successor.resolution_level, num_resolution_levels, std::move(h_vals), iter_opened) {}
+              in_resolution_levels(std::move(in_resolution_levels)) {}
 
         [[nodiscard]] inline bool
         InOpened(uint8_t open_set_id, uint8_t close_set_id) const {
@@ -108,9 +93,16 @@ namespace erl::search_planning::amra_star {
         }
 
         inline void
+        SetParent(std::shared_ptr<State> parent_in, std::size_t action_id, uint8_t action_resolution_level_in) {
+            parent = std::move(parent_in);
+            parent_action_id = action_id;
+            action_resolution_level = action_resolution_level_in;
+        }
+
+        inline void
         Reset() {
-            iteration_opened.setZero();
-            iteration_closed.setZero();
+            iteration_opened.resize(iteration_opened.size(), 0);
+            iteration_closed.resize(iteration_closed.size(), 0);
             g_value = std::numeric_limits<double>::max();
             parent = nullptr;
             parent_action_id = -1;
@@ -118,11 +110,11 @@ namespace erl::search_planning::amra_star {
     };
 
     struct Output {
-        std::map<uint8_t, std::map<uint8_t, Eigen::MatrixXd>> paths;                      // goal_id -> resolution_level -> path
-        std::map<uint8_t, std::map<uint8_t, Eigen::VectorXi>> actions;                    // goal_id -> resolution_level -> actions
-        std::map<uint8_t, std::map<uint8_t, double>> costs;                               // goal_id -> resolution_level -> cost
+        std::map<uint8_t, std::map<uint8_t, Eigen::MatrixXd>> paths;                      // goal_id -> action_resolution_level -> path
+        std::map<uint8_t, std::map<uint8_t, Eigen::VectorXi>> actions;                    // goal_id -> action_resolution_level -> actions
+        std::map<uint8_t, std::map<uint8_t, double>> costs;                               // goal_id -> action_resolution_level -> cost
         std::map<uint64_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> opened_states;  // plan_itr -> heuristic_id -> list of states
-        std::map<uint64_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> closed_states;  // plan_itr -> resolution_level -> list of states
+        std::map<uint64_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> closed_states;  // plan_itr -> action_resolution_level -> list of states
         std::map<uint64_t, std::list<Eigen::VectorXi>> inconsistent_states;               // plan_itr -> list of states
     };
 
@@ -160,7 +152,7 @@ namespace erl::search_planning::amra_star {
         // struct HeuristicInfo {
         //     std::shared_ptr<HeuristicBase> heuristic = nullptr;
         //     PriorityQueue open_queue;
-        //     uint8_t resolution_level = -1;
+        //     uint8_t action_resolution_level = -1;
         // };
 
         // std::vector<HeuristicInfo> m_heuristics_;
@@ -262,9 +254,8 @@ namespace erl::search_planning::amra_star {
         }
 
         inline void
-        InsertOrUpdate(const std::shared_ptr<State>& state, std::size_t heuristic_id) {
+        InsertOrUpdate(const std::shared_ptr<State>& state, std::size_t heuristic_id, double f_value) {
             uint8_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
-            double f_value = GetKeyValue(state, heuristic_id);
             if (state->InOpened(heuristic_id, resolution_level)) {
                 // state is already in open, update its f-value
                 (*state->open_queue_keys[heuristic_id])->f_value = f_value;

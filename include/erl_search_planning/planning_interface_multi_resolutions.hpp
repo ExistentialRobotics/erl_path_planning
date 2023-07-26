@@ -31,21 +31,21 @@ namespace erl::search_planning {
 
     public:
         struct Successor : env::Successor {
-            uint8_t resolution_level = 0;
+            uint8_t action_resolution_level = 0;
 
             Successor() = default;
 
             Successor(std::shared_ptr<env::EnvironmentState> state, double cost, std::size_t action_id, uint8_t resolution_level)
                 : env::Successor(std::move(state), cost, action_id),
-                  resolution_level(resolution_level) {}
+                  action_resolution_level(resolution_level) {}
 
             Successor(Eigen::VectorXd env_metric_state, Eigen::VectorXi env_grid_state, double cost, std::size_t action_id, uint8_t resolution_level)
                 : env::Successor(std::move(env_metric_state), std::move(env_grid_state), cost, action_id),
-                  resolution_level(resolution_level) {}
+                  action_resolution_level(resolution_level) {}
 
-            Successor(env::Successor successor, uint8_t resolution_level)
+            Successor(env::Successor successor, uint8_t creation_resolution_level)
                 : env::Successor(std::move(successor)),
-                  resolution_level(resolution_level) {}
+                  action_resolution_level(creation_resolution_level) {}
         };
 
         /**
@@ -154,6 +154,15 @@ namespace erl::search_planning {
             return m_heuristic_ids_by_resolution_level_[resolution_level];
         }
 
+        [[nodiscard]] inline std::vector<uint8_t>
+        GetContainedResolutionLevels(const std::shared_ptr<env::EnvironmentState> &state) const {
+            std::vector<uint8_t> contained_resolution_levels;
+            for (std::size_t i = 1; i < m_envs_.size(); ++i) {
+                if (m_envs_[i]->InStateSpace(state)) { contained_resolution_levels.push_back(i); }
+            }
+            return contained_resolution_levels;
+        }
+
         [[nodiscard]] std::vector<Successor>
         GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, uint8_t env_resolution_level) const {
 
@@ -163,31 +172,25 @@ namespace erl::search_planning {
                     std::vector<env::Successor> env_successors = (*it)->GetSuccessors(state);
                     if (env_successors.empty()) { continue; }
                     std::size_t resolution_level = std::distance(m_envs_.begin(), it);
-                    for (auto &successor: env_successors) {
-                        successor.action_id += m_max_num_actions_ * resolution_level;
-                        successors.emplace_back(successor, resolution_level);
-                    }
+                    for (auto &successor: env_successors) { successors.emplace_back(successor, resolution_level); }
                 }
                 return successors;
             }
 
             std::vector<Successor> successors;
             std::vector<env::Successor> env_successors = m_envs_[env_resolution_level]->GetSuccessors(state);
-            for (auto &successor: env_successors) {
-                successor.action_id += m_max_num_actions_ * env_resolution_level;
-                successors.emplace_back(successor, env_resolution_level);
-            }
+            for (auto &successor: env_successors) { successors.emplace_back(successor, env_resolution_level); }
             return successors;
         }
 
-        void
+        inline void
         GetHeuristicValues(const std::shared_ptr<env::EnvironmentState> &state, std::vector<double> &heuristic_values) const {
             std::size_t num_heuristics = GetNumHeuristics();
             heuristic_values.resize(num_heuristics);
             for (std::size_t i = 0; i < num_heuristics; ++i) { heuristic_values[i] = (*m_heuristics_[i].first)(*state); }
         }
 
-        std::vector<double>
+        [[nodiscard]] inline std::vector<double>
         GetHeuristicValues(const std::shared_ptr<env::EnvironmentState> &state) const {
             std::vector<double> heuristic_values;
             GetHeuristicValues(state, heuristic_values);
