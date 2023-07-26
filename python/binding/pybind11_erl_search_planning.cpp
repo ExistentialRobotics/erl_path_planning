@@ -52,8 +52,8 @@ using namespace erl::env;
 //     }
 //
 //     [[nodiscard]] inline Eigen::VectorXd
-//     GetGoal(long index) const {
-//         PYBIND11_OVERLOAD_NAME(Eigen::VectorXd, PlanningInterfaceBase, "get_goal", GetGoal, index);
+//     GetMetricGoal(long index) const {
+//         PYBIND11_OVERLOAD_NAME(Eigen::VectorXd, PlanningInterfaceBase, "get_goal", GetMetricGoal, index);
 //     }
 //
 //     [[nodiscard]] inline Eigen::VectorXd
@@ -159,7 +159,7 @@ BindPlanningInterfaces(py::module &m) {
         .def_property_readonly("init_start", &PlanningInterface::GetInitStart)
         .def_property_readonly("metric_start", &PlanningInterface::GetMetricStart)
         .def_property_readonly("grid_start", &PlanningInterface::GetGridStart)
-        .def("get_goal", &PlanningInterface::GetGoal, py::arg("index"))
+        .def("get_goal", &PlanningInterface::GetMetricGoal, py::arg("index"))
         .def("get_goal_tolerance", &PlanningInterface::GetGoalTolerance, py::arg("index"))
         .def_property_readonly("num_goals", &PlanningInterface::GetNumGoals)
         .def("get_terminal_cost", &PlanningInterface::GetTerminalCost, py::arg("goal_index"))

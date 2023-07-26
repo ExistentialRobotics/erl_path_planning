@@ -12,7 +12,7 @@ namespace erl::search_planning::astar {
         bool reopen_inconsistent,
         bool log)
         : m_planning_interface_(planning_interface),
-          m_hash_map_(true, planning_interface->GetGridSpaceSize()),
+          m_states_hash_map_(true, planning_interface->GetGridSpaceSize()),
           m_eps_(eps),
           m_reopen_inconsistent_(reopen_inconsistent),
           m_log_(log),
@@ -26,7 +26,7 @@ namespace erl::search_planning::astar {
         auto env_state = std::make_shared<env::EnvironmentState>(m_planning_interface_->GetMetricStart(), m_planning_interface_->GetGridStart());
         constexpr double kG = 0;
         double h = m_planning_interface_->GetHeuristic(env_state);
-        auto &start = m_hash_map_[m_planning_interface_->StateHashing(env_state->grid)];
+        auto &start = m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
         start.reset(new State(std::move(env_state), kG, h, m_iterations_));
         m_current_ = start;
     }
@@ -97,7 +97,7 @@ namespace erl::search_planning::astar {
         // process successors
         for (auto &successor: successors) {
             // get child node
-            auto &child = m_hash_map_[m_planning_interface_->StateHashing(successor.env_state->grid)];
+            auto &child = m_states_hash_map_[m_planning_interface_->StateHashing(successor.env_state)];
             if (!child) {  // new node
                 child.reset(new State(successor.env_state, m_planning_interface_->GetHeuristic(successor.env_state)));
             }
@@ -157,7 +157,7 @@ namespace erl::search_planning::astar {
             std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
             long num_path_states = 0;
             // Eigen::VectorXi state = m_grid_start_state_;
-            auto state = m_hash_map_[m_planning_interface_->StateHashing(m_planning_interface_->GetGridStart())]->env_state;
+            auto state = m_states_hash_map_[m_planning_interface_->StateHashing(m_planning_interface_->GetStartState())]->env_state;
             for (auto &action_id: action_ids) {
                 auto path_segment = m_planning_interface_->GetPath(state, action_id);
                 if (path_segment.empty()) { continue; }
@@ -173,7 +173,7 @@ namespace erl::search_planning::astar {
                 auto num_states = long(path_segment.size());
                 for (long i = 0; i < num_states; ++i) { path.col(index++) = path_segment[i]->metric; }
             }
-            path.col(index) = m_planning_interface_->GetGoal(reach_goal_index);
+            path.col(index) = m_planning_interface_->GetMetricGoal(reach_goal_index);
             m_output_->paths[reach_goal_index] = std::move(path);
             m_output_->action_ids[reach_goal_index] = std::move(action_ids);
         }
@@ -187,9 +187,9 @@ namespace erl::search_planning::astar {
     AStar::LogStates() const {
         if (!m_log_) { return; }
 
-        if (m_hash_map_.UseVector()) {
-            auto begin = m_hash_map_.VectorBegin();
-            auto end = m_hash_map_.VectorEnd();
+        if (m_states_hash_map_.UseVector()) {
+            auto begin = m_states_hash_map_.VectorBegin();
+            auto end = m_states_hash_map_.VectorEnd();
             for (auto it = begin; it != end; ++it) {
                 auto &kAstarState = *it;
                 if (kAstarState == nullptr) { continue; }
@@ -200,8 +200,8 @@ namespace erl::search_planning::astar {
                 }
             }
         } else {
-            auto begin = m_hash_map_.MapBegin();
-            auto end = m_hash_map_.MapEnd();
+            auto begin = m_states_hash_map_.MapBegin();
+            auto end = m_states_hash_map_.MapEnd();
             for (auto it = begin; it != end; ++it) {
                 const auto &kAstarState = it->second;
                 if (kAstarState->IsOpened()) {
@@ -212,11 +212,11 @@ namespace erl::search_planning::astar {
             }
         }
 
-        // for (auto &[state_hashing, astar_state]: m_hash_map_) {
+        // for (auto &[state_hashing, astar_state]: m_states_hash_map_) {
         //     if (astar_state->IsOpened()) {
-        //         m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_grid_state);
+        //         m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->metric);
         //     } else if (astar_state->IsClosed()) {
-        //         m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_grid_state;
+        //         m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->metric;
         //     }
         // }
     }

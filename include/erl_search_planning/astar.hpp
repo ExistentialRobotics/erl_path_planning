@@ -34,7 +34,7 @@ namespace erl::search_planning::astar {
         }
     };
 
-    // using HashMap = std::unordered_map<std::size_t, std::shared_ptr<State>>;
+    using HashMap = std::unordered_map<std::size_t, std::shared_ptr<State>>;
 
     // min-heap because we use GreaterAStarStateWithFvalue as a comparer instead
     using PriorityQueue = boost::heap::
@@ -98,8 +98,8 @@ namespace erl::search_planning::astar {
         std::shared_ptr<State> m_current_;
         std::shared_ptr<PlanningInterface> m_planning_interface_;
         PriorityQueue m_priority_queue_;
-        common::HashMap<std::size_t, std::shared_ptr<State>> m_hash_map_;
-        // HashMap m_hash_map_;
+        common::HashMap<std::size_t, std::shared_ptr<State>> m_states_hash_map_;
+        // HashMap m_states_hash_map_;  // slower than common::HashMap
         double m_eps_ = 1.;
         std::size_t m_iterations_ = 0;
         bool m_reopen_inconsistent_ = false;
