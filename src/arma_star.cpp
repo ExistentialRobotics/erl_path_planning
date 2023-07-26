@@ -4,21 +4,31 @@ namespace erl::search_planning::amra_star {
     void
     AMRAStar::Replan() {}
 
-    void
-    AMRAStar::ReinitState(erl::search_planning::amra_star::State &state) {}
+    bool
+    AMRAStar::ImprovePath(const std::chrono::system_clock::time_point &start_time, std::chrono::nanoseconds &elapsed_time) {
+        std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
+        while (!m_open_queues_[0].empty() && (m_open_queues_[0].top()->f_value < std::numeric_limits<double>::max())) {  // L25
+            elapsed_time = std::chrono::system_clock::now() - start_time;
+            if (elapsed_time + m_search_time_ > m_setting_->time_limit) { return false; }
 
-    void
-    AMRAStar::ImprovePath() {}
+            for (std::size_t heuristic_id = 1; heuristic_id < num_heuristics; ++heuristic_id) {  // L26
+                if (m_open_queues_[0].empty()) { return false; }
+                double f_check = m_w2_ * m_open_queues_[0].top()->f_value;
+
+            }
+        }
+    }
 
     void
     AMRAStar::Expand(const std::shared_ptr<State> &parent, std::size_t heuristic_id) {
-        uint8_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
-        if (heuristic_id == 0) {  // anchor level, consistent heuristic
+        uint8_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);  // L4
+        if (heuristic_id == 0) {
             ERL_DEBUG_ASSERT(!parent->InClosed(0), "parent is already in anchor-level closed set.");
-            parent->SetClosed(0, m_expand_itr_);
-        } else {
+            parent->SetClosed(0, m_expand_itr_);  // anchor level, consistent heuristic
+        } else {                                  // L5
             ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in closed set of resolution level %d.", int(resolution_level));
             ERL_DEBUG_ASSERT(parent->InOpened(heuristic_id, resolution_level), "parent is not in opened set of heuristic %d.", int(heuristic_id));
+            // L6 to L8
             parent->SetClosed(resolution_level, m_expand_itr_);  // parent is also removed from other opened sets assigned to the same resolution level
         }
 
@@ -26,7 +36,7 @@ namespace erl::search_planning::amra_star {
         std::vector<PlanningInterfaceMultiResolutions::Successor> successors = m_planning_interface_->GetSuccessors(parent->env_state, resolution_level);
         std::size_t num_resolution_levels = m_planning_interface_->GetNumResolutionLevels();
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
-        for (auto &successor: successors) {
+        for (auto &successor: successors) {  // L9
             std::shared_ptr<State> &child = GetState(successor.env_state);
             if (!child) {
                 child.reset(new State(

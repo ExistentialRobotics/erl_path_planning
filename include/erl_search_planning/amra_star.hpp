@@ -11,6 +11,8 @@
 #include "heuristic.hpp"
 #include "planning_interface_multi_resolutions.hpp"
 
+using namespace std::chrono_literals;
+
 namespace erl::search_planning::amra_star {
 
     struct State;
@@ -122,7 +124,7 @@ namespace erl::search_planning::amra_star {
 
     public:
         struct Setting : public common::Yamlable<Setting> {
-            double time_limit = 0;
+            std::chrono::nanoseconds time_limit = std::chrono::duration_cast<std::chrono::nanoseconds>(1s);
             double w1_init = 0;
             double w2_init = 0;
             bool record = false;
@@ -142,7 +144,7 @@ namespace erl::search_planning::amra_star {
         static constexpr double sk_W1Final_ = 1;
         static constexpr double sk_W2Final_ = 1;
 
-        double m_search_time_ = 0;
+        std::chrono::nanoseconds m_search_time_ = 0ns;
 
         std::vector<PriorityQueue> m_open_queues_;
         std::unordered_map<std::size_t, std::shared_ptr<State>> m_states_hash_map_;
@@ -159,19 +161,6 @@ namespace erl::search_planning::amra_star {
         // std::vector<std::vector<uint8_t>> m_resolution_level_to_heuristic_ids_;
 
     public:
-        /**
-         * @brief Reinitialize the state:
-         * 1. update plan_itr
-         * 2. reset g-value
-         * 3. update resolution level
-         * 4. reset back-pointer to nullptr
-         * 5. reset h-value and f-value for each heuristic
-         * 6. reset closed flags
-         * @param state
-         *
-         */
-        void
-        ReinitState(State& state);
 
         /**
          * @brief Re-plan the path:
@@ -224,8 +213,8 @@ namespace erl::search_planning::amra_star {
          *                 c.) increase the counter of expands for the heuristic
          *             4.) else, expand the state of minimum f-value in the open set of the anchor level with the anchor heuristic
          */
-        void
-        ImprovePath();
+        bool
+        ImprovePath(const std::chrono::system_clock::time_point& start_time, std::chrono::nanoseconds& elapsed_time);
 
         void
         Expand(const std::shared_ptr<State>& parent, std::size_t heuristic_id);
@@ -236,6 +225,17 @@ namespace erl::search_planning::amra_star {
             return m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
         }
 
+        /**
+         * @brief Reinitialize the state:
+         * 1. update plan_itr
+         * 2. reset g-value
+         * 3. update resolution level
+         * 4. reset back-pointer to nullptr
+         * 5. reset h-value and f-value for each heuristic
+         * 6. reset closed flags
+         * @param state
+         *
+         */
         void
         ReinitState(std::shared_ptr<State>& state) {
             if (state->plan_itr == m_plan_itr_) { return; }
