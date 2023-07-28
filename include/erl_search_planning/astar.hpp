@@ -4,9 +4,11 @@
 #include <limits>
 #include <map>
 #include <utility>
+#include <memory>
 
 #include "planning_interface.hpp"
 #include "erl_common/hash_map.hpp"
+#include "erl_common/yaml.hpp"
 
 namespace erl::search_planning::astar {
 
@@ -35,7 +37,7 @@ namespace erl::search_planning::astar {
         }
     };
 
-    using HashMap = std::unordered_map<std::size_t, std::shared_ptr<State>>;
+     using HashMap = std::unordered_map<long, std::shared_ptr<State>>;
 
     // min-heap because we use Greater as a comparer instead
     using PriorityQueue = boost::heap::
@@ -52,10 +54,6 @@ namespace erl::search_planning::astar {
 
         std::size_t iteration_opened = 0;
         std::size_t iteration_closed = 0;
-
-        // TODO: DEBUG
-        // std::vector<std::size_t> parent_history;
-        // std::vector<double> g_value_history;
 
         State(std::shared_ptr<env::EnvironmentState> env_state_in, double g, double h, std::size_t iter_opened)
             : env_state(std::move(env_state_in)),
@@ -85,7 +83,7 @@ namespace erl::search_planning::astar {
     struct Output {
         int goal_index = -1;
         Eigen::MatrixXd path = {};
-        std::list<std::size_t> action_ids{};
+        std::list<int> action_ids{};
         double cost = std::numeric_limits<double>::max();
 
         // logging
@@ -96,36 +94,36 @@ namespace erl::search_planning::astar {
 
     class AStar {
 
-        // Eigen::VectorXi m_grid_start_state_;
-        std::shared_ptr<State> m_start_state_;
-        std::shared_ptr<State> m_current_;
-        std::shared_ptr<PlanningInterface> m_planning_interface_;
+    public:
+        struct Setting : public common::Yamlable<Setting> {
+            double eps = 1.;
+            long max_num_iterations = -1;
+            bool log = false;
+            bool reopen_inconsistent = false;
+        };
+
+    private:
+        std::shared_ptr<Setting> m_setting_ = nullptr;
+        std::shared_ptr<State> m_start_state_ = nullptr;
+        std::shared_ptr<State> m_current_ = nullptr;
+        std::shared_ptr<PlanningInterface> m_planning_interface_ = nullptr;
         PriorityQueue m_priority_queue_;
-        common::HashMap<std::size_t, std::shared_ptr<State>> m_states_hash_map_;
-        // HashMap m_states_hash_map_;  // slower than common::HashMap
-        double m_eps_ = 1.;
+        HashMap m_states_hash_map_;  // faster than std::unordered_map
         std::size_t m_iterations_ = 0;
-        bool m_reopen_inconsistent_ = false;
-        bool m_log_ = false;
         bool m_planned_ = false;
-        long m_max_num_iterations_ = -1;  // -1 means no limit
-        std::shared_ptr<Output> m_output_;
+        std::shared_ptr<Output> m_output_ = nullptr;
 
     public:
-        explicit AStar(
-            const std::shared_ptr<PlanningInterface>& planning_interface,
-            double eps = 1.,
-            long max_num_iterations = -1,    // -1 means no limit
-            bool reopen_inconsistent = false,
-            bool log = false);
+        explicit AStar(const std::shared_ptr<PlanningInterface>& planning_interface, std::shared_ptr<Setting> setting = nullptr);
 
         [[nodiscard]] std::shared_ptr<Output>
         Plan();
 
     private:
-        inline std::shared_ptr<State>&
+         std::shared_ptr<State>&
         GetState(const std::shared_ptr<env::EnvironmentState>& env_state) {
-            return m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
+            long hashing = m_planning_interface_->StateHashing(env_state);
+            return m_states_hash_map_[hashing];
         }
 
         void
@@ -138,3 +136,39 @@ namespace erl::search_planning::astar {
         LogStates() const;
     };
 }  // namespace erl::search_planning::astar
+
+namespace YAML {
+    template<>
+    struct convert<erl::search_planning::astar::AStar::Setting> {
+        static Node
+        encode(const erl::search_planning::astar::AStar::Setting& rhs) {
+            Node node;
+            node["eps"] = rhs.eps;
+            node["max_num_iterations"] = rhs.max_num_iterations;
+            node["log"] = rhs.log;
+            node["reopen_inconsistent"] = rhs.reopen_inconsistent;
+            return node;
+        }
+
+        static bool
+        decode(const Node& node, erl::search_planning::astar::AStar::Setting& rhs) {
+            rhs.eps = node["eps"].as<double>();
+            rhs.max_num_iterations = node["max_num_iterations"].as<long>();
+            rhs.log = node["log"].as<bool>();
+            rhs.reopen_inconsistent = node["reopen_inconsistent"].as<bool>();
+            return true;
+        }
+    };
+
+    inline Emitter&
+    operator<<(Emitter& out, const erl::search_planning::astar::AStar::Setting& rhs) {
+        out << YAML::Flow;
+        out << YAML::BeginMap;
+        out << YAML::Key << "eps" << YAML::Value << rhs.eps;
+        out << YAML::Key << "max_num_iterations" << YAML::Value << rhs.max_num_iterations;
+        out << YAML::Key << "log" << YAML::Value << rhs.log;
+        out << YAML::Key << "reopen_inconsistent" << YAML::Value << rhs.reopen_inconsistent;
+        out << YAML::EndMap;
+        return out;
+    }
+}  // namespace YAML

@@ -7,7 +7,8 @@ namespace erl::search_planning::amra_star {
 
     std::shared_ptr<Output>
     AMRAStar::Plan() {
-        if (int goal_index = m_planning_interface_->IsGoal(m_start_state_->env_state) >= 0) {
+        int goal_index = m_planning_interface_->IsGoal(m_start_state_->env_state);
+        if (goal_index >= 0) {
             RecoverPath(goal_index);
             return m_output_;
         }
@@ -56,7 +57,7 @@ namespace erl::search_planning::amra_star {
 
             // improve path
             std::chrono::nanoseconds elapsed_time;
-            int goal_index = ImprovePath(start_time, elapsed_time);                    // L59
+            goal_index = ImprovePath(start_time, elapsed_time);                    // L59
             m_search_time_ += elapsed_time;
             if (goal_index < 0 || m_search_time_ > m_setting_->time_limit) { break; }  // fail to find a solution or time out
             RecoverPath(goal_index);                                                   // L60
@@ -93,13 +94,15 @@ namespace erl::search_planning::amra_star {
 
                 if (!m_open_queues_[heuristic_id].empty() && m_open_queues_[heuristic_id].top()->f_value <= f_check) {
                     std::shared_ptr<State> state = m_open_queues_[heuristic_id].top()->state;
-                    if (int goal_index = m_planning_interface_->IsGoal(state->env_state) >= 0) { return goal_index; }
+                    int goal_index = m_planning_interface_->IsGoal(state->env_state);
+                    if (goal_index >= 0) { return goal_index; }
                     Expand(state, heuristic_id);
                     m_expand_itr_[long(heuristic_id)]++;
                     m_total_expand_itr_++;
                 } else {
                     std::shared_ptr<State> state = m_open_queues_[0].top()->state;
-                    if (int goal_index = m_planning_interface_->IsGoal(state->env_state) >= 0) { return goal_index; }
+                    int goal_index = m_planning_interface_->IsGoal(state->env_state);
+                    if (goal_index >= 0) { return goal_index; }
                     Expand(state, 0);
                     m_expand_itr_[0]++;
                     m_total_expand_itr_++;

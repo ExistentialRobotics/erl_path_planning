@@ -141,10 +141,11 @@ namespace erl::search_planning {
 
         double
         operator()(const env::EnvironmentState &state) const override {
-            if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
+            if (state.grid[0] == env::VirtualStateValue::kGoal) {
+                return 0.0; }  // virtual goal
             double min_h = std::numeric_limits<double>::max();
-            std::size_t num_goals = goal_heuristics.size();
-            for (std::size_t i = 0; i < num_goals; ++i) {
+            auto num_goals = int(goal_heuristics.size());
+            for (int i = 0; i < num_goals; ++i) {
                 double h = (*goal_heuristics[i])(state) + min_cost_to_virtual_goal[i];
                 if (h < min_h) { min_h = h; }
             }

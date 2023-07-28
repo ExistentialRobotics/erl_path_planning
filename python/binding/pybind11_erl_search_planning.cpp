@@ -3,9 +3,9 @@
 #include "erl_common/pybind11.hpp"
 #include "erl_search_planning/astar.hpp"
 #include "erl_search_planning/planning_interface.hpp"
-#include "erl_search_planning/planning_2d.hpp"
-#include "erl_search_planning/planning_se2.hpp"
-#include "erl_search_planning/planning_grid_se2.hpp"
+//#include "erl_search_planning/planning_2d.hpp"
+//#include "erl_search_planning/planning_se2.hpp"
+//#include "erl_search_planning/planning_grid_se2.hpp"
 
 using namespace erl::common;
 using namespace erl::search_planning;
@@ -157,14 +157,13 @@ BindPlanningInterfaces(py::module &m) {
         .def("get_heuristic", &PlanningInterface::GetHeuristic, py::arg("state"))
         .def("get_successors", &PlanningInterface::GetSuccessors, py::arg("state"))
         .def_property_readonly("init_start", &PlanningInterface::GetInitStart)
-        .def_property_readonly("metric_start", &PlanningInterface::GetMetricStart)
-        .def_property_readonly("grid_start", &PlanningInterface::GetGridStart)
-        .def("get_goal", &PlanningInterface::GetMetricGoal, py::arg("index"))
+        .def_property_readonly("start_state", &PlanningInterface::GetStartState)
+        .def("get_goal_state", &PlanningInterface::GetGoalState, py::arg("index"))
         .def("get_goal_tolerance", &PlanningInterface::GetGoalTolerance, py::arg("index"))
         .def_property_readonly("num_goals", &PlanningInterface::GetNumGoals)
         .def("get_terminal_cost", &PlanningInterface::GetTerminalCost, py::arg("goal_index"))
         .def("grid_space_size", &PlanningInterface::GetGridSpaceSize)
-        .def("is_goal", &PlanningInterface::IsMetricGoal, py::arg("state"), py::arg("ignore_reached") = false)
+        .def("is_metric_goal", &PlanningInterface::IsMetricGoal, py::arg("env_state"))
         .def("place_robot", &PlanningInterface::PlaceRobot)
         .def("state_hashing", &PlanningInterface::StateHashing, py::arg("state"))
         .def("get_path", &PlanningInterface::GetPath, py::arg("state"), py::arg("action_index"))
@@ -369,9 +368,9 @@ BindAStar(py::module &m) {
     auto astar = m.def_submodule("astar");
     // Output
     py::class_<astar::Output, std::shared_ptr<astar::Output>>(astar, "Output")
-        .def_readwrite("paths", &astar::Output::paths)
+        .def_readwrite("path", &astar::Output::path)
         .def_readwrite("action_ids", &astar::Output::action_ids)
-        .def_readwrite("path_costs", &astar::Output::path_costs)
+        .def_readwrite("path_cost", &astar::Output::cost)
         .def_readwrite("opened_list", &astar::Output::opened_list)
         .def_readwrite("closed_list", &astar::Output::closed_list)
         .def_readwrite("inconsistent_list", &astar::Output::inconsistent_list);
@@ -383,12 +382,10 @@ BindAStar(py::module &m) {
                 const std::shared_ptr<erl::search_planning::PlanningInterface> &,
                 double,
                 long,
-                long,
                 bool,
                 bool>(),
             py::arg("planning_interface"),
             py::arg("eps") = 1.0,
-            py::arg("max_num_reached_goals") = 1,
             py::arg("max_num_iterations") = -1,
             py::arg("reopen_inconsistent") = false,
             py::arg("log") = false)

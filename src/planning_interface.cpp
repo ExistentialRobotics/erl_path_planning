@@ -89,6 +89,7 @@ namespace erl::search_planning {
                 }
 
                 auto &successor = m_virtual_goal_successors_[i];
+                successor.env_state = std::make_shared<env::EnvironmentState>();
                 successor.env_state->grid.resize(2);
                 successor.env_state->grid[0] = env::VirtualStateValue::kGoal;
                 successor.cost = m_terminal_costs_[i];
@@ -99,16 +100,16 @@ namespace erl::search_planning {
     }
 
     int
-    PlanningInterface::IsMetricGoal(const std::shared_ptr<env::EnvironmentState> &state) const {
+    PlanningInterface::IsMetricGoal(const std::shared_ptr<env::EnvironmentState> &env_state) const {
         int num_goals = GetNumGoals();
-        long dim = state->metric.size();
+        long dim = env_state->metric.size();
         for (int i = 0; i < num_goals; ++i) {
 
             if (m_terminal_cost_set_ && (m_terminal_costs_[i] >= std::numeric_limits<double>::max())) { continue; }
 
             bool goal_reached = true;
             for (long j = 0; j < dim; ++j) {
-                double err = std::abs(state->metric[j] - m_goals_[i]->metric[j]);
+                double err = std::abs(env_state->metric[j] - m_goals_[i]->metric[j]);
                 if (err > m_goals_tolerances_[i][j]) {
                     goal_reached = false;
                     break;

@@ -42,10 +42,8 @@ TEST(AStar2DTest, PlanWithSingleGoal) {
     std::shared_ptr<CostBase> cost_func = nullptr;  // use EuclideanDistanceCost as default
     auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, cost_func, grid_map);
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal, metric_goal_tolerance);
-    double eps = 1;
-    long max_num_reached_goals = 1;
-    long max_num_iterations = -1;
-    auto result = astar::AStar(planning_interface, eps, max_num_reached_goals, max_num_iterations).Plan();
+    std::shared_ptr<erl::search_planning::astar::Output> result;
+    ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithSingleGoal", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path cost: " << result->cost << std::endl << "Path: " << std::endl;
     auto &path = result->path;
     long num_points = path.cols();
@@ -97,14 +95,12 @@ TEST(AStar2DTest, PlanWithFourGoals) {
     auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, cost_func, grid_map);
     Eigen::Vector2d metric_start_coords = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goals, metric_goals_tolerance, terminal_cost);
-    double eps = 1;
-    long max_num_reached_goals = 4;
-    long max_num_iterations = -1;
     std::shared_ptr<erl::search_planning::astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithFourGoals", 0, true, [&]() {
-        result = astar::AStar(planning_interface, eps, max_num_reached_goals, max_num_iterations).Plan();
-    });
+    ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithFourGoals", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << std::endl;
+
+    cv::Mat img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}});
+    cv::imwrite("AStar2DTest-PlanWithFourGoals.png", img);
 
     EXPECT_NEAR(result->cost, 1015.485281374, 1e-6);
     // EXPECT_NEAR(result->path_costs[1], 1021.899494937, 1e-6);
