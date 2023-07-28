@@ -70,6 +70,11 @@ namespace erl::search_planning::amra_star {
               h_values(std::move(h_vals)),
               in_resolution_levels(std::move(in_resolution_levels)) {}
 
+        [[nodiscard]] bool
+        InResolutionLevel(uint8_t resolution_level) const {
+            return std::find(in_resolution_levels.begin(), in_resolution_levels.end(), resolution_level) != in_resolution_levels.end();
+        }
+
         [[nodiscard]] inline bool
         InOpened(uint8_t open_set_id, uint8_t close_set_id) const {
             // 1. if state is just moved into OPEN_i, then iteration_opened[i] > 0 and for other heuristics assigned to the same resolution,
@@ -95,10 +100,25 @@ namespace erl::search_planning::amra_star {
         }
 
         inline void
+        RemoveFromClosed(uint8_t close_set_id) {
+            iteration_closed[close_set_id] = 0;
+        }
+
+        inline void
+        RemoveFromAllClosed() {
+            std::fill(iteration_closed.begin(), iteration_closed.end(), 0);
+        }
+
+        inline void
         SetParent(std::shared_ptr<State> parent_in, std::size_t action_id, uint8_t action_resolution_level_in) {
             parent = std::move(parent_in);
             parent_action_id = action_id;
             action_resolution_level = action_resolution_level_in;
+        }
+
+        inline bool
+        Reached() const {
+            return parent != nullptr;
         }
 
         inline void
@@ -127,6 +147,10 @@ namespace erl::search_planning::amra_star {
             std::chrono::nanoseconds time_limit = std::chrono::duration_cast<std::chrono::nanoseconds>(1s);
             double w1_init = 0;
             double w2_init = 0;
+            double w1_final = 1;
+            double w2_final = 1;
+            double w1_decay_factor = 0.5;
+            double w2_decay_factor = 0.5;
             bool record = false;
             bool paths_of_all_resolutions = false;
         };
@@ -135,33 +159,25 @@ namespace erl::search_planning::amra_star {
         std::shared_ptr<Setting> m_setting_ = nullptr;
         std::shared_ptr<PlanningInterfaceMultiResolutions> m_planning_interface_ = nullptr;
         uint32_t m_plan_itr_ = 0;
-        uint64_t m_expand_itr_ = 0;
+        uint64_t m_total_expand_itr_ = 0;
+        Eigen::VectorX<uint64_t> m_expand_itr_;
 
         double m_w1_ = 0;
         double m_w2_ = 0;
         double m_w1_solve_ = 0;
         double m_w2_solve_ = 0;
-        static constexpr double sk_W1Final_ = 1;
-        static constexpr double sk_W2Final_ = 1;
 
         std::chrono::nanoseconds m_search_time_ = 0ns;
 
-        std::vector<PriorityQueue> m_open_queues_;
-        std::unordered_map<std::size_t, std::shared_ptr<State>> m_states_hash_map_;
-        std::unordered_set<std::shared_ptr<State>>
-            m_inconsistent_states_;  // TODO: original AMRA* uses a list, we use a set here, need to check if it is correct
-
-        // struct HeuristicInfo {
-        //     std::shared_ptr<HeuristicBase> heuristic = nullptr;
-        //     PriorityQueue open_queue;
-        //     uint8_t action_resolution_level = -1;
-        // };
-
-        // std::vector<HeuristicInfo> m_heuristics_;
-        // std::vector<std::vector<uint8_t>> m_resolution_level_to_heuristic_ids_;
+        std::vector<PriorityQueue> m_open_queues_ = {};
+        std::unordered_map<std::size_t, std::shared_ptr<State>> m_states_hash_map_ = {};
+        // TODO: original AMRA* uses a list, we use a set here, need to check if it is correct
+        std::unordered_set<std::shared_ptr<State>> m_inconsistent_states_ = {};
+        std::shared_ptr<State> m_start_state_ = nullptr;
+        std::vector<std::shared_ptr<State>> m_goal_states_ = {};
+        std::shared_ptr<Output> m_output_ = nullptr;
 
     public:
-
         /**
          * @brief Re-plan the path:
          * 1. check if any goal is reached
@@ -197,8 +213,8 @@ namespace erl::search_planning::amra_star {
          *      i. if w1 == 1 and w2 == 1, done
          *      j. update w1 and w2
          */
-        void
-        Replan();
+        std::shared_ptr<Output>
+        Plan();
 
         /**
          * while open set of the anchor level is not empty and the minimum f-value in this open set is not infinite:
@@ -213,7 +229,7 @@ namespace erl::search_planning::amra_star {
          *                 c.) increase the counter of expands for the heuristic
          *             4.) else, expand the state of minimum f-value in the open set of the anchor level with the anchor heuristic
          */
-        bool
+        int
         ImprovePath(const std::chrono::system_clock::time_point& start_time, std::chrono::nanoseconds& elapsed_time);
 
         void
@@ -263,8 +279,22 @@ namespace erl::search_planning::amra_star {
             } else {
                 // state is not in open, insert it into open
                 state->open_queue_keys[heuristic_id] = m_open_queues_[heuristic_id].push(std::make_shared<PriorityQueueItem>(f_value, state));
-                state->SetOpened(heuristic_id, m_expand_itr_);
+                state->SetOpened(heuristic_id, m_total_expand_itr_);
             }
         }
+
+        inline void
+        RebuildOpenQueue(std::size_t heuristic_id) {
+            auto& open_queue = m_open_queues_[heuristic_id];
+            PriorityQueue new_open_queue;
+            for (auto& queue_item: open_queue) {
+                queue_item->f_value = GetKeyValue(queue_item->state, heuristic_id);
+                queue_item->state->open_queue_keys[heuristic_id] = new_open_queue.push(queue_item);
+            }
+            open_queue.swap(new_open_queue);
+        }
+
+        void
+        RecoverPath(int goal_index);
     };
 }  // namespace erl::search_planning::amra_star

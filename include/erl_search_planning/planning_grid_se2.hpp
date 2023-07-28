@@ -31,7 +31,7 @@
 //              env::EnvironmentGridSe2(step_size, grid_map, num_orientations, inflate_scale, shape_metric_vertices) {}  // the robot is a polygon
 //
 //        [[nodiscard]] inline int
-//        IsGoal(const Eigen::Ref<const Eigen::VectorXd> &metric_state) override {
+//        IsMetricGoal(const Eigen::Ref<const Eigen::VectorXd> &metric_state) override {
 //            int num_goals = GetNumGoals();
 //
 //            for (int i = 0; i < num_goals; ++i) {
@@ -148,7 +148,7 @@
 ////                   shape_metric_vertices) {}  // the robot is a polygon
 ////
 ////         [[nodiscard]] inline int
-////         IsGoal(const Eigen::Ref<const Eigen::VectorXd> &metric_state) override {
+////         IsMetricGoal(const Eigen::Ref<const Eigen::VectorXd> &metric_state) override {
 ////             int num_goals = GetNumGoals();
 ////
 ////             for (int i = 0; i < num_goals; ++i) {

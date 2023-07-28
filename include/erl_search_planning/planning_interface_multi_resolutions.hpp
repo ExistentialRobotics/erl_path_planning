@@ -1,6 +1,7 @@
 #pragma once
 
 #include "erl_env/environment_base.hpp"
+#include "environment_anchor.hpp"
 #include "heuristic.hpp"
 
 #include <map>
@@ -22,10 +23,10 @@ namespace erl::search_planning {
         Eigen::VectorXd m_init_start_;                     // used to store the initial start position
         Eigen::VectorXi m_grid_start_;                     // used to store the start position in grid space
         Eigen::VectorXd m_metric_start_;                   // used to store the start position in metric space
-        std::vector<Eigen::VectorXd> m_goals_;             // used to store the goals in ComputeHeuristic and IsGoal
-        std::vector<Eigen::VectorXd> m_goals_tolerances_;  // used to store the goals tolerance in ComputeHeuristic and IsGoal
+        std::vector<Eigen::VectorXd> m_goals_;             // used to store the goals in ComputeHeuristic and IsMetricGoal
+        std::vector<Eigen::VectorXd> m_goals_tolerances_;  // used to store the goals tolerance in ComputeHeuristic and IsMetricGoal
         Eigen::VectorXd m_terminal_costs_;                 // used to store the terminal costs in ComputeHeuristic
-        Eigen::VectorXb m_goals_reached_;                  // used to store the goals reached in IsGoal
+        Eigen::VectorXb m_goals_reached_;                  // used to store the goals reached in IsMetricGoal
         bool m_terminal_cost_set_ = false;
         std::size_t m_max_num_actions_ = 0;
 

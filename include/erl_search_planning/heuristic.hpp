@@ -113,24 +113,24 @@ namespace erl::search_planning {
          *
          * @param goals
          * @param goal_tolerances
-         * @param goal_distance_cost_matrix the cost of moving from goal i to goal j is goal_distance_cost_matrix(i, j), where i and j are indices of goals.
-         * The terminal cost of goal i is goal_distance_cost_matrix(i, i).
+         * @param goal_cost_matrix the cost of moving from goal i to goal j is goal_cost_matrix(i, j), where i and j are indices of goals.
+         * The terminal cost of goal i is goal_cost_matrix(i, i).
          */
         explicit MultiGoalsWithCostHeuristic(
             const std::vector<Eigen::VectorXd> &goals,
             const std::vector<Eigen::VectorXd> &goal_tolerances,
-            const Eigen::Ref<const Eigen::MatrixXd> &goal_distance_cost_matrix) {
+            const Eigen::Ref<const Eigen::MatrixXd> &goal_cost_matrix) {
 
             ERL_ASSERTM(!goals.empty(), "goals is empty.");
             ERL_ASSERTM(goals.size() == goal_tolerances.size(), "goals and goal tolerances have different sizes.");
             auto num_goals = long(goals.size());
-            ERL_ASSERTM(goal_distance_cost_matrix.rows() == num_goals, "goal distance matrix should have %ld rows.", num_goals);
-            ERL_ASSERTM(goal_distance_cost_matrix.cols() == num_goals, "goal distance matrix should have %ld columns.", num_goals);
-            ERL_ASSERTM((goal_distance_cost_matrix.array() >= 0.0).all(), "goal distance matrix should be non-negative.");
-            ERL_ASSERTM(goal_distance_cost_matrix.transpose() == goal_distance_cost_matrix, "goal distance matrix should be symmetric.");
+            ERL_ASSERTM(goal_cost_matrix.rows() == num_goals, "goal distance matrix should have %ld rows.", num_goals);
+            ERL_ASSERTM(goal_cost_matrix.cols() == num_goals, "goal distance matrix should have %ld columns.", num_goals);
+            ERL_ASSERTM((goal_cost_matrix.array() >= 0.0).all(), "goal distance matrix should be non-negative.");
+            ERL_ASSERTM(goal_cost_matrix.transpose() == goal_cost_matrix, "goal distance matrix should be symmetric.");
 
-            Eigen::MatrixXd cost_to_virtual_goal = goal_distance_cost_matrix;
-            Eigen::VectorXd terminal_cost = goal_distance_cost_matrix.diagonal();
+            Eigen::MatrixXd cost_to_virtual_goal = goal_cost_matrix;
+            Eigen::VectorXd terminal_cost = goal_cost_matrix.diagonal();
             for (long i = 0; i < num_goals; ++i) {
                 cost_to_virtual_goal(i, i) = 0.0;
                 for (long j = 0; j < num_goals; ++j) { cost_to_virtual_goal(j, i) += terminal_cost[j]; }  // per column

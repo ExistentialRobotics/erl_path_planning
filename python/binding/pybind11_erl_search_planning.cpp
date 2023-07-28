@@ -77,8 +77,8 @@ using namespace erl::env;
 //     }
 //
 //     [[nodiscard]] int
-//     IsGoal(const std::shared_ptr<EnvironmentState> &state, bool ignore_reached = false) {
-//         PYBIND11_OVERLOAD_NAME(int, PlanningInterfaceBase, "is_goal", IsGoal, state, ignore_reached);
+//     IsMetricGoal(const std::shared_ptr<EnvironmentState> &state, bool ignore_reached = false) {
+//         PYBIND11_OVERLOAD_NAME(int, PlanningInterfaceBase, "is_goal", IsMetricGoal, state, ignore_reached);
 //     }
 //
 //     void
@@ -136,7 +136,7 @@ BindPlanningInterfaces(py::module &m) {
     //     .def("compute_heuristic", &PlanningInterface::ComputeHeuristic, py::arg("metric_state"))
     //     .def_property_readonly("num_goals", &PlanningInterface::GetNumGoals)
     //     .def("get_terminal_cost", &PlanningInterface::GetTerminalCost, py::arg("goal_index"))
-    //     .def("is_goal", &PlanningInterface::IsGoal, py::arg("metric_state"));
+    //     .def("is_goal", &PlanningInterface::IsMetricGoal, py::arg("metric_state"));
 
     py::class_<PlanningInterface, std::shared_ptr<PlanningInterface>>(m, ERL_AS_STRING(PlanningInterface))
         .def(
@@ -164,7 +164,7 @@ BindPlanningInterfaces(py::module &m) {
         .def_property_readonly("num_goals", &PlanningInterface::GetNumGoals)
         .def("get_terminal_cost", &PlanningInterface::GetTerminalCost, py::arg("goal_index"))
         .def("grid_space_size", &PlanningInterface::GetGridSpaceSize)
-        .def("is_goal", &PlanningInterface::IsGoal, py::arg("state"), py::arg("ignore_reached") = false)
+        .def("is_goal", &PlanningInterface::IsMetricGoal, py::arg("state"), py::arg("ignore_reached") = false)
         .def("place_robot", &PlanningInterface::PlaceRobot)
         .def("state_hashing", &PlanningInterface::StateHashing, py::arg("state"))
         .def("get_path", &PlanningInterface::GetPath, py::arg("state"), py::arg("action_index"))

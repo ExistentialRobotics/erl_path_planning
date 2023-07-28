@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 #include <typeinfo>
+#include <vector>
 
 namespace erl::search_planning {
 
@@ -14,24 +15,23 @@ namespace erl::search_planning {
      * PlanningInterface provides the minimum functionality for a typical planning algorithm that needs obtaining successors, computing heuristics, checking
      * a goal state and hashing a state as an index.
      */
-    class PlanningInterface {                                    // virtual inheritance to avoid diamond problem
+    class PlanningInterface {  // virtual inheritance to avoid diamond problem
     protected:
-        std::shared_ptr<env::EnvironmentBase> m_env_ = nullptr;  // used to store the environment in GetSuccessors and ComputeHeuristic
-        std::shared_ptr<HeuristicBase> m_heuristic_ = nullptr;   // allow custom heuristic function to be used as callback in ComputeHeuristic
-        Eigen::VectorXd m_init_start_;                           // used to store the initial start position
-        Eigen::VectorXi m_grid_start_;                           // used to store the start position in grid space
-        Eigen::VectorXd m_metric_start_;                         // used to store the start position in metric space
-        std::vector<Eigen::VectorXd> m_goals_;                   // used to store the goals in ComputeHeuristic and IsGoal
-        std::vector<Eigen::VectorXd> m_goals_tolerances_;        // used to store the goals tolerance in ComputeHeuristic and IsGoal
-        Eigen::VectorXd m_terminal_costs_;                       // used to store the terminal costs in ComputeHeuristic
-        Eigen::VectorXb m_goals_reached_;                        // used to store the goals reached in IsGoal
+        std::shared_ptr<env::EnvironmentBase> m_env_ = nullptr;        // used to store the environment in GetSuccessors and ComputeHeuristic
+        std::shared_ptr<HeuristicBase> m_heuristic_ = nullptr;         // allow custom heuristic function to be used as callback in ComputeHeuristic
+        Eigen::VectorXd m_init_start_;                                 // used to store the initial start position
+        std::shared_ptr<env::EnvironmentState> m_start_;               // used to store the start position in metric & grid space
+        std::vector<std::shared_ptr<env::EnvironmentState>> m_goals_;  // used to store the goals in ComputeHeuristic and IsMetricGoal
+        std::vector<Eigen::VectorXd> m_goals_tolerances_;              // used to store the goals tolerance in ComputeHeuristic and IsMetricGoal
+        Eigen::VectorXd m_terminal_costs_;                             // used to store the terminal costs in ComputeHeuristic
         bool m_terminal_cost_set_ = false;
+        std::vector<env::Successor> m_virtual_goal_successors_ = {};
 
     public:
         PlanningInterface(
             std::shared_ptr<env::EnvironmentBase> env,
             Eigen::VectorXd metric_start_coords,
-            std::vector<Eigen::VectorXd> metric_goals_coords,
+            const std::vector<Eigen::VectorXd> &metric_goals_coords,
             std::vector<Eigen::VectorXd> metric_goals_tolerances);
 
         PlanningInterface(
@@ -48,7 +48,7 @@ namespace erl::search_planning {
         PlanningInterface(
             std::shared_ptr<env::EnvironmentBase> env,
             Eigen::VectorXd metric_start_coords,
-            std::vector<Eigen::VectorXd> metric_goals_coords,
+            const std::vector<Eigen::VectorXd> &metric_goals_coords,
             std::vector<Eigen::VectorXd> metric_goals_tolerance,
             Eigen::VectorXd terminal_costs);
 
@@ -69,7 +69,12 @@ namespace erl::search_planning {
 
         [[nodiscard]] inline std::vector<env::Successor>
         GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state) const {
-            return m_env_->GetSuccessors(state);
+            std::vector<env::Successor> successors = m_env_->GetSuccessors(state);
+            if (m_goals_.size() == 1 || !m_terminal_cost_set_) { return successors; }
+
+            // virtual goal is used only when terminal cost is set
+            if (int goal_index = IsMetricGoal(state) >= 0) { successors.push_back(m_virtual_goal_successors_[goal_index]); }
+            return successors;
         }
 
         [[nodiscard]] inline Eigen::VectorXd
@@ -77,34 +82,14 @@ namespace erl::search_planning {
             return m_init_start_;
         }
 
-        [[nodiscard]] inline Eigen::VectorXd
-        GetMetricStart() const {
-            return m_metric_start_;
-        }
-
-        [[nodiscard]] inline Eigen::VectorXi
-        GetGridStart() const {
-            return m_grid_start_;
-        }
-
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentState>
         GetStartState() const {
-            return std::make_shared<env::EnvironmentState>(m_metric_start_, m_grid_start_);
-        }
-
-        [[nodiscard]] inline Eigen::VectorXd
-        GetMetricGoal(long index) const {
-            return m_goals_[index];
-        }
-
-        [[nodiscard]] inline Eigen::VectorXi
-        GetGridGoal(long index) const {
-            return m_env_->MetricToGrid(m_goals_[index]);
+            return m_start_;
         }
 
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentState>
         GetGoalState(long index) const {
-            return std::make_shared<env::EnvironmentState>(m_goals_[index], m_env_->MetricToGrid(m_goals_[index]));
+            return m_goals_[index];
         }
 
         [[nodiscard]] inline Eigen::VectorXd
@@ -114,7 +99,9 @@ namespace erl::search_planning {
 
         [[nodiscard]] inline int
         GetNumGoals() const {
-            return int(m_goals_.size());
+            auto num_goals = int(m_goals_.size());
+            if (num_goals == 1 || !m_terminal_cost_set_) { return num_goals; }
+            return num_goals + 1;
         }
 
         [[nodiscard]] inline double
@@ -128,34 +115,76 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] int  // return the index of the goal that is reached, -1 if none is reached
-        IsGoal(const std::shared_ptr<env::EnvironmentState> &state, bool ignore_reached = false);
+        IsMetricGoal(const std::shared_ptr<env::EnvironmentState> &state) const;
+
+        [[nodiscard]] inline int
+        ReachGoal(const std::shared_ptr<env::EnvironmentState> &state) const {
+            auto num_goals = int(m_goals_.size());
+            if (num_goals == 1 || !m_terminal_cost_set_) { return IsMetricGoal(state); }
+            // When terminal cost is set, the virtual goal is used to check if the goal is reached, we should not return other goal indices.
+            return state->grid[0] == env::VirtualStateValue::kGoal ? num_goals - 1 : -1;
+        }
 
         inline void
         PlaceRobot() {
-            m_env_->PlaceRobot(m_metric_start_);
+            m_env_->PlaceRobot(m_start_->metric);
         }
 
-        [[nodiscard]] inline std::size_t
+        [[nodiscard]] inline long
         StateHashing(const std::shared_ptr<env::EnvironmentState> &state) const {
-            return m_env_->StateHashing(state);
+            if (state->grid[0] == env::VirtualStateValue::kGoal) { return env::VirtualStateValue::kGoal; }  // virtual goal state
+            return long(m_env_->StateHashing(state));
         }
 
         [[nodiscard]] inline std::vector<std::shared_ptr<env::EnvironmentState>>
-        GetPath(const std::shared_ptr<const env::EnvironmentState> &state, std::size_t action_index) const {
+        GetPath(const std::shared_ptr<const env::EnvironmentState> &state, int action_index) const {
+            auto num_goals = int(m_goals_.size());
+            if (num_goals == 1 || !m_terminal_cost_set_) { return m_env_->ForwardAction(state, action_index); }
+            if (state->grid[0] == env::VirtualStateValue::kGoal) {
+                ERL_DEBUG_ASSERT(action_index < 0, "virtual goal state can only be reached with action_index = -goal_index - 1.");
+                return {m_goals_[-(action_index + 1)]};
+            }
             return m_env_->ForwardAction(state, action_index);
         }
 
         inline void
         Reset() {
-            m_goals_reached_.setConstant(false);
             if (m_env_ != nullptr) { m_env_->Reset(); }
         }
 
     private:
         inline void
         SetStart() {
-            m_grid_start_ = m_env_->MetricToGrid(m_init_start_);
-            m_metric_start_ = m_env_->GridToMetric(m_grid_start_);
+            m_start_ = std::make_shared<env::EnvironmentState>();
+            m_start_->grid = m_env_->MetricToGrid(m_init_start_);
+            m_start_->metric = m_env_->GridToMetric(m_start_->grid);
+        }
+
+        inline void
+        SetGoals(const std::vector<Eigen::VectorXd> &metric_goals_coords) {
+            auto num_goals = int(metric_goals_coords.size());
+            if (m_terminal_cost_set_) {
+                m_goals_.reserve(num_goals + 1);
+                for (const auto &metric_goal_coords: metric_goals_coords) {
+                    auto goal = std::make_shared<env::EnvironmentState>();
+                    goal->metric = metric_goal_coords;
+                    goal->grid = m_env_->MetricToGrid(metric_goal_coords);
+                    m_goals_.push_back(goal);
+                }
+                // virtual goal
+                auto goal = std::make_shared<env::EnvironmentState>();
+                goal->grid.resize(2);
+                goal->grid[0] = env::VirtualStateValue::kGoal;
+                m_goals_.push_back(goal);
+            } else {
+                m_goals_.reserve(num_goals);
+                for (const auto &metric_goal_coords: metric_goals_coords) {
+                    auto goal = std::make_shared<env::EnvironmentState>();
+                    goal->metric = metric_goal_coords;
+                    goal->grid = m_env_->MetricToGrid(metric_goal_coords);
+                    m_goals_.push_back(goal);
+                }
+            }
         }
     };
 

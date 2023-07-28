@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/heap/d_ary_heap.hpp>
+#include <limits>
 #include <map>
 #include <utility>
 
@@ -36,7 +37,7 @@ namespace erl::search_planning::astar {
 
     using HashMap = std::unordered_map<std::size_t, std::shared_ptr<State>>;
 
-    // min-heap because we use GreaterAStarStateWithFvalue as a comparer instead
+    // min-heap because we use Greater as a comparer instead
     using PriorityQueue = boost::heap::
         d_ary_heap<std::shared_ptr<PriorityQueueItem>, boost::heap::mutable_<true>, boost::heap::arity<8>, boost::heap::compare<Greater<PriorityQueueItem>>>;
 
@@ -82,19 +83,21 @@ namespace erl::search_planning::astar {
     };
 
     struct Output {
-        std::map<int, Eigen::MatrixXd> paths{};
-        std::map<int, std::list<std::size_t>> action_ids{};
-        std::map<int, double> path_costs{};
+        int goal_index = -1;
+        Eigen::MatrixXd path = {};
+        std::list<std::size_t> action_ids{};
+        double cost = std::numeric_limits<double>::max();
 
         // logging
-        std::map<std::size_t, std::list<Eigen::VectorXd>> opened_list{};
-        std::map<std::size_t, Eigen::VectorXd> closed_list{};
-        std::map<std::size_t, std::list<Eigen::VectorXd>> inconsistent_list{};
+        std::map<std::size_t, std::list<Eigen::VectorXd>> opened_list = {};
+        std::map<std::size_t, Eigen::VectorXd> closed_list = {};
+        std::map<std::size_t, std::list<Eigen::VectorXd>> inconsistent_list = {};
     };
 
     class AStar {
 
         // Eigen::VectorXi m_grid_start_state_;
+        std::shared_ptr<State> m_start_state_;
         std::shared_ptr<State> m_current_;
         std::shared_ptr<PlanningInterface> m_planning_interface_;
         PriorityQueue m_priority_queue_;
@@ -105,8 +108,6 @@ namespace erl::search_planning::astar {
         bool m_reopen_inconsistent_ = false;
         bool m_log_ = false;
         bool m_planned_ = false;
-        std::map<int, std::shared_ptr<State>> m_reached_goal_states_;
-        std::size_t m_max_num_reached_goals_ = 1;
         long m_max_num_iterations_ = -1;  // -1 means no limit
         std::shared_ptr<Output> m_output_;
 
@@ -114,7 +115,6 @@ namespace erl::search_planning::astar {
         explicit AStar(
             const std::shared_ptr<PlanningInterface>& planning_interface,
             double eps = 1.,
-            long max_num_reached_goals = 1,  // -1 means no limit
             long max_num_iterations = -1,    // -1 means no limit
             bool reopen_inconsistent = false,
             bool log = false);
@@ -123,14 +123,16 @@ namespace erl::search_planning::astar {
         Plan();
 
     private:
+        inline std::shared_ptr<State>&
+        GetState(const std::shared_ptr<env::EnvironmentState>& env_state) {
+            return m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
+        }
+
         void
         Expand();
 
         void
-        RebuildPriorityQueue();
-
-        void
-        RecoverPath();
+        RecoverPath(int goal_index);
 
         void
         LogStates() const;

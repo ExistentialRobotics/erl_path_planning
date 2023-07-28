@@ -1,4 +1,5 @@
 #include "erl_search_planning/astar.hpp"
+#include <Eigen/src/Core/Matrix.h>
 
 #include <memory>
 
@@ -7,7 +8,6 @@ namespace erl::search_planning::astar {
     AStar::AStar(
         const std::shared_ptr<PlanningInterface> &planning_interface,
         double eps,
-        long max_num_reached_goals,
         long max_num_iterations,
         bool reopen_inconsistent,
         bool log)
@@ -16,9 +16,6 @@ namespace erl::search_planning::astar {
           m_eps_(eps),
           m_reopen_inconsistent_(reopen_inconsistent),
           m_log_(log),
-          m_max_num_reached_goals_(
-              max_num_reached_goals < 0 ? m_planning_interface_->GetNumGoals()
-                                        : std::min(std::size_t(m_planning_interface_->GetNumGoals()), std::size_t(max_num_reached_goals))),
           m_max_num_iterations_(max_num_iterations),
           m_output_(std::make_shared<Output>()) {
 
@@ -26,9 +23,10 @@ namespace erl::search_planning::astar {
         auto env_state = std::make_shared<env::EnvironmentState>(m_planning_interface_->GetMetricStart(), m_planning_interface_->GetGridStart());
         constexpr double kG = 0;
         double h = m_planning_interface_->GetHeuristic(env_state);
-        auto &start = m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
+        auto &start = GetState(env_state);
         start.reset(new State(std::move(env_state), kG, h, m_iterations_));
         m_current_ = start;
+        m_start_state_ = start;
     }
 
     std::shared_ptr<Output>
@@ -37,28 +35,23 @@ namespace erl::search_planning::astar {
         m_planning_interface_->Reset();       // reset the environment
         m_planning_interface_->PlaceRobot();  // place the robot at the start state
 
-        while (m_max_num_iterations_ < 0 || long(m_iterations_) < m_max_num_iterations_) {
+        while ((m_max_num_iterations_ < 0 || long(m_iterations_) < m_max_num_iterations_) && !m_priority_queue_.empty()) {
             // check if done
-            auto reached_goal_index = m_planning_interface_->IsGoal(m_current_->env_state, true);  // ignore reached goals
-            if (reached_goal_index >= 0 && m_reached_goal_states_.find(reached_goal_index) == m_reached_goal_states_.end()) {
-                m_reached_goal_states_[reached_goal_index] = m_current_;
+            auto reached_goal_index = m_planning_interface_->IsMetricGoal(m_current_->env_state);  // ignore reached goals
+            if (reached_goal_index >= 0) {
                 ERL_DEBUG(
-                    "Reach goal[%lu/%lu] (metric: %s, grid: %s) from metric start %s at iteration %lu.",
-                    m_reached_goal_states_.size(),
-                    m_max_num_reached_goals_,
+                    "Reach goal[%d/%d] (metric: %s, grid: %s) from metric start %s at iteration %lu.",
+                    reached_goal_index,
+                    m_planning_interface_->GetNumGoals(),
                     common::EigenToNumPyFmtString(m_current_->env_state->metric.transpose()).c_str(),
                     common::EigenToNumPyFmtString(m_current_->env_state->grid.transpose()).c_str(),
                     common::EigenToNumPyFmtString(m_planning_interface_->GetMetricStart().transpose()).c_str(),
                     m_iterations_);
 
-                if (m_reached_goal_states_.size() >= m_max_num_reached_goals_) {
-                    RecoverPath();
-                    LogStates();
-                    m_planned_ = true;
-                    return m_output_;
-                }
-
-                RebuildPriorityQueue();  // update the heuristic values for the remaining goals
+                RecoverPath(reached_goal_index);
+                LogStates();
+                m_planned_ = true;
+                return m_output_;
             }
 
             // increase the number of iterations
@@ -70,20 +63,13 @@ namespace erl::search_planning::astar {
             // perform the expansion of current iteration
             Expand();
 
-            if (m_priority_queue_.empty()) {
-                if (!m_reached_goal_states_.empty()) { RecoverPath(); }
-                LogStates();
-                m_planned_ = true;
-                return m_output_;  // infeasible problem
-            }
-
             // Remove the node with the smallest cost
             m_current_ = m_priority_queue_.top()->state;
             m_priority_queue_.pop();
         }
 
-        std::cout << "Reached maximum number of iterations" << std::endl;
-        if (!m_reached_goal_states_.empty()) { RecoverPath(); }
+        // infeasible problem
+        ERL_INFO("Reached maximum number of iterations.");
         LogStates();
         m_planned_ = true;
         return m_output_;
@@ -97,7 +83,7 @@ namespace erl::search_planning::astar {
         // process successors
         for (auto &successor: successors) {
             // get child node
-            auto &child = m_states_hash_map_[m_planning_interface_->StateHashing(successor.env_state)];
+            auto &child = GetState(successor.env_state);
             if (!child) {  // new node
                 child.reset(new State(successor.env_state, m_planning_interface_->GetHeuristic(successor.env_state)));
             }
@@ -133,53 +119,37 @@ namespace erl::search_planning::astar {
     }
 
     void
-    AStar::RebuildPriorityQueue() {
-        PriorityQueue new_priority_queue;
-        for (auto &item: m_priority_queue_) {
-            item->state->h_value = m_planning_interface_->GetHeuristic(item->state->env_state);
-            item->f_value = item->state->g_value + m_eps_ * item->state->h_value;
-            item->state->heap_key = new_priority_queue.push(item);
+    AStar::RecoverPath(int goal_index) {
+        m_output_->goal_index = goal_index;
+        std::shared_ptr<State> goal_state = GetState(m_planning_interface_->GetGoalState(goal_index));
+        m_output_->cost = goal_state->g_value + m_planning_interface_->GetTerminalCost(goal_index);
+        m_output_->action_ids.clear();
+        auto node = goal_state;
+        while (node->parent != nullptr) {
+            m_output_->action_ids.push_front(node->parent_action_id);
+            node = node->parent;
         }
-        m_priority_queue_ = std::move(new_priority_queue);
-    }
-
-    void
-    AStar::RecoverPath() {
-        for (auto &[reach_goal_index, reached_goal_state]: m_reached_goal_states_) {
-            m_output_->path_costs[reach_goal_index] = reached_goal_state->g_value + m_planning_interface_->GetTerminalCost(reach_goal_index);
-            std::list<std::size_t> action_ids;
-
-            auto node = reached_goal_state;
-            while (node->parent) {
-                action_ids.push_front(node->parent_action_id);
-                node = node->parent;
-            }
-            std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
-            long num_path_states = 0;
-            // Eigen::VectorXi state = m_grid_start_state_;
-            auto state = m_states_hash_map_[m_planning_interface_->StateHashing(m_planning_interface_->GetStartState())]->env_state;
-            for (auto &action_id: action_ids) {
-                auto path_segment = m_planning_interface_->GetPath(state, action_id);
-                if (path_segment.empty()) { continue; }
-                path_segments.push_back(path_segment);
-                num_path_states += long(path_segment.size());
-                state = path_segment.back();
-            }
-
-            Eigen::MatrixXd path(state->metric.size(), num_path_states + 2);
-            path.col(0) = m_planning_interface_->GetMetricStart();
-            long index = 1;
-            for (auto &path_segment: path_segments) {
-                auto num_states = long(path_segment.size());
-                for (long i = 0; i < num_states; ++i) { path.col(index++) = path_segment[i]->metric; }
-            }
-            path.col(index) = m_planning_interface_->GetMetricGoal(reach_goal_index);
-            m_output_->paths[reach_goal_index] = std::move(path);
-            m_output_->action_ids[reach_goal_index] = std::move(action_ids);
+        std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
+        long num_path_states = 0;
+        auto state = GetState(m_start_state_->env_state)->env_state;
+        for (auto &action_id: m_output_->action_ids) {
+            auto path_segment = m_planning_interface_->GetPath(state, action_id);
+            if (path_segment.empty()) { continue; }
+            path_segments.push_back(path_segment);
+            num_path_states += long(path_segment.size());
+            state = path_segment.back();
         }
+        m_output_->path.resize(state->metric.size(), num_path_states + 2);
+        m_output_->path.col(0) = m_planning_interface_->GetMetricStart();
+        long index = 1;
+        for (auto &path_segment: path_segments) {
+            auto num_states = long(path_segment.size());
+            for (long i = 0; i < num_states; ++i) { m_output_->path.col(index++) = path_segment[i]->metric; }
+        }
+        m_output_->path.col(index) = m_planning_interface_->GetMetricGoal(goal_index);
 
 #ifndef NDEBUG
-         m_planning_interface_->GetEnvironment()->ShowPaths(m_output_->paths);  // DEBUG
+        m_planning_interface_->GetEnvironment()->ShowPaths({{goal_index, m_output_->path}});  // DEBUG
 #endif
     }
 

@@ -46,12 +46,12 @@ TEST(AStar2DTest, PlanWithSingleGoal) {
     long max_num_reached_goals = 1;
     long max_num_iterations = -1;
     auto result = astar::AStar(planning_interface, eps, max_num_reached_goals, max_num_iterations).Plan();
-    std::cout << "Path cost: " << result->path_costs[0] << std::endl << "Path: " << std::endl;
-    auto &path = result->paths[0];
+    std::cout << "Path cost: " << result->cost << std::endl << "Path: " << std::endl;
+    auto &path = result->path;
     long num_points = path.cols();
     for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
 
-    EXPECT_NEAR(result->path_costs[0], 15.485281374238571, 1e-6);
+    EXPECT_NEAR(result->cost, 15.485281374238571, 1e-6);
 }
 
 TEST(AStar2DTest, PlanWithFourGoals) {
@@ -104,9 +104,9 @@ TEST(AStar2DTest, PlanWithFourGoals) {
     ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithFourGoals", 0, true, [&]() {
         result = astar::AStar(planning_interface, eps, max_num_reached_goals, max_num_iterations).Plan();
     });
-    for (auto &[i, cost]: result->path_costs) { std::cout << "Path " << i << " cost: " << cost << std::endl; }
+    std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << std::endl;
 
-    EXPECT_NEAR(result->path_costs[0], 1015.485281374, 1e-6);
-    EXPECT_NEAR(result->path_costs[1], 1021.899494937, 1e-6);
-    EXPECT_NEAR(result->path_costs[3], 1110.65685425, 1e-6);
+    EXPECT_NEAR(result->cost, 1015.485281374, 1e-6);
+    // EXPECT_NEAR(result->path_costs[1], 1021.899494937, 1e-6);
+    // EXPECT_NEAR(result->path_costs[3], 1110.65685425, 1e-6);
 }

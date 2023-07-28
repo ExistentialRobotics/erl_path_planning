@@ -124,7 +124,7 @@
 //        // }
 //
 //        // [[nodiscard]] inline int  // return the index of the goal that is reached, -1 if none is reached
-//        // IsGoal(const Eigen::Ref<const Eigen::VectorXd> &metric_state) override {
+//        // IsMetricGoal(const Eigen::Ref<const Eigen::VectorXd> &metric_state) override {
 //        //     int num_goals = GetNumGoals();
 //        //     for (int i = 0; i < num_goals; ++i) {
 //        //         if (m_goals_reached_[i] || std::isinf(m_terminal_costs_[i])) { continue; }
