@@ -29,14 +29,15 @@ namespace erl::search_planning {
         SetGoals(metric_goals_coords);
 
         if (num_goals == 1) {
-            ERL_INFO("use EuclideanDistanceHeuristic as default heuristic for single goal");
-            m_heuristic_ = std::make_shared<EuclideanDistanceHeuristic>(metric_goals_coords[0], m_goals_tolerances_[0]);
+            using HeuristicType = EuclideanDistanceHeuristic;
+            ERL_INFO("use %s as default heuristic for single goal.", type_name<HeuristicType>().c_str());
+            m_heuristic_ = std::make_shared<HeuristicType>(metric_goals_coords[0], m_goals_tolerances_[0]);
         } else {
-            ERL_INFO("use MultiGoalsHeuristic<EuclideanDistanceHeuristic> as default heuristic for multiple goals");
-            m_heuristic_ = std::make_shared<MultiGoalsHeuristic<EuclideanDistanceHeuristic>>(metric_goals_coords, m_goals_tolerances_);
+            using HeuristicType = MultiGoalsHeuristic<EuclideanDistanceHeuristic>;
+            ERL_INFO("use %s as default heuristic for multiple goals.", type_name<HeuristicType>().c_str());
+            m_heuristic_ = std::make_shared<HeuristicType>(metric_goals_coords, m_goals_tolerances_);
         }
         m_terminal_costs_.setZero(num_goals);
-
     }
 
     PlanningInterface::PlanningInterface(
@@ -93,7 +94,7 @@ namespace erl::search_planning {
                 successor.env_state->grid.resize(2);
                 successor.env_state->grid[0] = env::VirtualStateValue::kGoal;
                 successor.cost = m_terminal_costs_[i];
-                successor.action_id = -i - 1;
+                successor.action_coords = {-i - 1};
             }
             m_heuristic_ = std::make_shared<HeuristicType>(metric_goals_coords, m_goals_tolerances_, goal_cost_matrix);
         }
@@ -104,9 +105,7 @@ namespace erl::search_planning {
         int num_goals = GetNumGoals();
         long dim = env_state->metric.size();
         for (int i = 0; i < num_goals; ++i) {
-
             if (m_terminal_cost_set_ && (m_terminal_costs_[i] >= std::numeric_limits<double>::max())) { continue; }
-
             bool goal_reached = true;
             for (long j = 0; j < dim; ++j) {
                 double err = std::abs(env_state->metric[j] - m_goals_[i]->metric[j]);
@@ -115,10 +114,8 @@ namespace erl::search_planning {
                     break;
                 }
             }
-
             if (goal_reached) { return i; }
         }
-
         return -1;
     }
 }  // namespace erl::search_planning

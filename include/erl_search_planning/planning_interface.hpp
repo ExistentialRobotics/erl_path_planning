@@ -21,9 +21,9 @@ namespace erl::search_planning {
         std::shared_ptr<HeuristicBase> m_heuristic_ = nullptr;         // allow custom heuristic function to be used as callback in ComputeHeuristic
         Eigen::VectorXd m_init_start_;                                 // used to store the initial start position
         std::shared_ptr<env::EnvironmentState> m_start_;               // used to store the start position in metric & grid space
-        std::vector<std::shared_ptr<env::EnvironmentState>> m_goals_;  // used to store the goals in ComputeHeuristic and IsMetricGoal
-        std::vector<Eigen::VectorXd> m_goals_tolerances_;              // used to store the goals tolerance in ComputeHeuristic and IsMetricGoal
-        Eigen::VectorXd m_terminal_costs_;                             // used to store the terminal costs in ComputeHeuristic
+        std::vector<std::shared_ptr<env::EnvironmentState>> m_goals_;  // used to store the goals in GetHeuristic and IsMetricGoal
+        std::vector<Eigen::VectorXd> m_goals_tolerances_;              // used to store the goals tolerance in GetHeuristic and IsMetricGoal
+        Eigen::VectorXd m_terminal_costs_;                             // used to store the terminal costs in GetHeuristic
         bool m_terminal_cost_set_ = false;
         std::vector<env::Successor> m_virtual_goal_successors_ = {};
 
@@ -78,11 +78,6 @@ namespace erl::search_planning {
             return successors;
         }
 
-        [[nodiscard]] inline Eigen::VectorXd
-        GetInitStart() const {
-            return m_init_start_;
-        }
-
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentState>
         GetStartState() const {
             return m_start_;
@@ -93,24 +88,9 @@ namespace erl::search_planning {
             return m_goals_[index];
         }
 
-        [[nodiscard]] inline Eigen::VectorXd
-        GetGoalTolerance(int index) const {
-            return m_goals_tolerances_[index];
-        }
-
         [[nodiscard]] inline int
         GetNumGoals() const {
             return int(m_goals_.size()) - m_terminal_cost_set_;
-        }
-
-        [[nodiscard]] inline double
-        GetTerminalCost(int goal_index) const {
-            return m_terminal_costs_[goal_index];
-        }
-
-        [[nodiscard]] std::size_t
-        GetGridSpaceSize() const {
-            return m_env_->GetStateSpaceSize();
         }
 
         [[nodiscard]] int  // return the index of the goal that is reached, -1 if none is reached
@@ -129,11 +109,6 @@ namespace erl::search_planning {
             return env_state->grid[0] == env::VirtualStateValue::kGoal ? num_goals - 1 : -1;
         }
 
-        inline void
-        PlaceRobot() {
-            m_env_->PlaceRobot(m_start_->metric);
-        }
-
         [[nodiscard]] inline long
         StateHashing(const std::shared_ptr<env::EnvironmentState> &env_state) const {
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) { return env::VirtualStateValue::kGoal; }  // virtual goal env_state
@@ -141,19 +116,14 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] inline std::vector<std::shared_ptr<env::EnvironmentState>>
-        GetPath(const std::shared_ptr<const env::EnvironmentState> &env_state, int action_index) const {
+        GetPath(const std::shared_ptr<const env::EnvironmentState> &env_state, const std::vector<int> &action_coords) const {
             auto num_goals = int(m_goals_.size());
-            if (num_goals == 1 || !m_terminal_cost_set_) { return m_env_->ForwardAction(env_state, action_index); }
+            if (num_goals == 1 || !m_terminal_cost_set_) { return m_env_->ForwardAction(env_state, action_coords); }
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) {
                 ERL_DEBUG_ASSERT(action_index < 0, "virtual goal env_state can only be reached with action_index = -goal_index - 1.");
-                return {m_goals_[-(action_index + 1)]};
+                return {m_goals_[-(action_coords[0] + 1)]};
             }
-            return m_env_->ForwardAction(env_state, action_index);
-        }
-
-        inline void
-        Reset() {
-            if (m_env_ != nullptr) { m_env_->Reset(); }
+            return m_env_->ForwardAction(env_state, action_coords);
         }
 
     private:

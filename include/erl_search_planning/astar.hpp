@@ -37,17 +37,23 @@ namespace erl::search_planning::astar {
         }
     };
 
-     using HashMap = std::unordered_map<long, std::shared_ptr<State>>;
+    using HashMap = std::unordered_map<long, std::shared_ptr<State>>;
 
     // min-heap because we use Greater as a comparer instead
-    using PriorityQueue = boost::heap::
-        d_ary_heap<std::shared_ptr<PriorityQueueItem>, boost::heap::mutable_<true>, boost::heap::arity<8>, boost::heap::compare<Greater<PriorityQueueItem>>>;
+    // clang-format off
+    using PriorityQueue = boost::heap::d_ary_heap<
+        std::shared_ptr<PriorityQueueItem>,
+        boost::heap::mutable_<true>,
+        boost::heap::arity<8>,
+        boost::heap::compare<Greater<PriorityQueueItem>>>;
+
+    // clang-format on
 
     struct State {
         std::shared_ptr<env::EnvironmentState> env_state = nullptr;
         std::shared_ptr<State> parent = nullptr;
-        int parent_action_id = -1;
-        PriorityQueue::handle_type heap_key{};
+        std::vector<int> action_coords = {};
+        PriorityQueue::handle_type heap_key = {};
 
         double g_value = std::numeric_limits<double>::max();
         double h_value = std::numeric_limits<double>::max();
@@ -83,13 +89,13 @@ namespace erl::search_planning::astar {
     struct Output {
         int goal_index = -1;
         Eigen::MatrixXd path = {};
-        std::list<int> action_ids{};
+        std::list<std::vector<int>> action_coords = {};
         double cost = std::numeric_limits<double>::max();
 
         // logging
-        std::map<std::size_t, std::list<Eigen::VectorXd>> opened_list = {};
-        std::map<std::size_t, Eigen::VectorXd> closed_list = {};
-        std::map<std::size_t, std::list<Eigen::VectorXd>> inconsistent_list = {};
+        std::map<std::size_t, std::list<Eigen::VectorXi>> opened_list = {};
+        std::map<std::size_t, Eigen::VectorXi> closed_list = {};
+        std::map<std::size_t, std::list<Eigen::VectorXi>> inconsistent_list = {};
     };
 
     class AStar {
@@ -120,7 +126,7 @@ namespace erl::search_planning::astar {
         Plan();
 
     private:
-         std::shared_ptr<State>&
+        inline std::shared_ptr<State>&
         GetState(const std::shared_ptr<env::EnvironmentState>& env_state) {
             long hashing = m_planning_interface_->StateHashing(env_state);
             return m_states_hash_map_[hashing];

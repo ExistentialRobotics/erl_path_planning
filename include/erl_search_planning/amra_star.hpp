@@ -53,8 +53,9 @@ namespace erl::search_planning::amra_star {
         std::vector<double> h_values;
         const std::vector<uint8_t> in_resolution_levels;  // resolution levels where the state exists
         std::shared_ptr<State> parent = nullptr;          // parent state
-        std::size_t parent_action_id = -1;                // action id that generates this state from its parent
-        uint8_t action_resolution_level = -1;             // resolution level which the action belongs to
+        std::vector<int> action_coords = {};              // action coords = (env_action_coords, env_res_level) that generates this state from its parent
+
+        // uint8_t action_resolution_level = -1;             // resolution level which the action belongs to
 
         State(
             uint32_t plan_itr_in,
@@ -110,15 +111,10 @@ namespace erl::search_planning::amra_star {
         }
 
         inline void
-        SetParent(std::shared_ptr<State> parent_in, std::size_t action_id, uint8_t action_resolution_level_in) {
+        SetParent(std::shared_ptr<State> parent_in, std::vector<int> action_coords_in) {  // }, uint8_t action_resolution_level_in) {
             parent = std::move(parent_in);
-            parent_action_id = action_id;
-            action_resolution_level = action_resolution_level_in;
-        }
-
-        inline bool
-        Reached() const {
-            return parent != nullptr;
+            action_coords = std::move(action_coords_in);
+            // action_resolution_level = action_resolution_level_in;
         }
 
         inline void
@@ -127,17 +123,25 @@ namespace erl::search_planning::amra_star {
             iteration_closed.resize(iteration_closed.size(), 0);
             g_value = std::numeric_limits<double>::max();
             parent = nullptr;
-            parent_action_id = -1;
+            action_coords.clear();
         }
     };
 
     struct Output {
-        std::map<uint8_t, std::map<uint8_t, Eigen::MatrixXd>> paths;                      // goal_id -> action_resolution_level -> path
-        std::map<uint8_t, std::map<uint8_t, Eigen::VectorXi>> actions;                    // goal_id -> action_resolution_level -> actions
-        std::map<uint8_t, std::map<uint8_t, double>> costs;                               // goal_id -> action_resolution_level -> cost
-        std::map<uint64_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> opened_states;  // plan_itr -> heuristic_id -> list of states
-        std::map<uint64_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> closed_states;  // plan_itr -> action_resolution_level -> list of states
-        std::map<uint64_t, std::list<Eigen::VectorXi>> inconsistent_states;               // plan_itr -> list of states
+        int goal_index = -1;
+        Eigen::MatrixXd path = {};
+        std::list<std::vector<int>> action_coords = {};
+        double cost = std::numeric_limits<double>::max();
+
+        // statistics
+        double w1_solve = -1.0;
+        double w2_solve = -1.0;
+        double search_time = 0.;
+
+        // logging
+        std::map<uint32_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> opened_states;  // plan_itr -> heuristic_id -> list of states
+        std::map<uint32_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> closed_states;  // plan_itr -> action_resolution_level -> list of states
+        std::map<uint32_t, std::list<Eigen::VectorXi>> inconsistent_states;               // plan_itr -> list of states
     };
 
     class AMRAStar {
@@ -151,8 +155,7 @@ namespace erl::search_planning::amra_star {
             double w2_final = 1;
             double w1_decay_factor = 0.5;
             double w2_decay_factor = 0.5;
-            bool record = false;
-            bool paths_of_all_resolutions = false;
+            bool log = false;
         };
 
     private:
@@ -164,8 +167,6 @@ namespace erl::search_planning::amra_star {
 
         double m_w1_ = 0;
         double m_w2_ = 0;
-        double m_w1_solve_ = 0;
-        double m_w2_solve_ = 0;
 
         std::chrono::nanoseconds m_search_time_ = 0ns;
 

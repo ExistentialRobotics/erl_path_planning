@@ -156,18 +156,12 @@ BindPlanningInterfaces(py::module &m) {
         .def("set_heuristic", &PlanningInterface::SetHeuristic, py::arg("heuristic"))
         .def("get_heuristic", &PlanningInterface::GetHeuristic, py::arg("state"))
         .def("get_successors", &PlanningInterface::GetSuccessors, py::arg("state"))
-        .def_property_readonly("init_start", &PlanningInterface::GetInitStart)
         .def_property_readonly("start_state", &PlanningInterface::GetStartState)
         .def("get_goal_state", &PlanningInterface::GetGoalState, py::arg("index"))
-        .def("get_goal_tolerance", &PlanningInterface::GetGoalTolerance, py::arg("index"))
         .def_property_readonly("num_goals", &PlanningInterface::GetNumGoals)
-        .def("get_terminal_cost", &PlanningInterface::GetTerminalCost, py::arg("goal_index"))
-        .def("grid_space_size", &PlanningInterface::GetGridSpaceSize)
         .def("is_metric_goal", &PlanningInterface::IsMetricGoal, py::arg("env_state"))
-        .def("place_robot", &PlanningInterface::PlaceRobot)
         .def("state_hashing", &PlanningInterface::StateHashing, py::arg("state"))
-        .def("get_path", &PlanningInterface::GetPath, py::arg("state"), py::arg("action_index"))
-        .def("reset", &PlanningInterface::Reset);
+        .def("get_path", &PlanningInterface::GetPath, py::arg("state"), py::arg("action_index"));
 
     /*
      *                     |----> PlanningInterface------|
@@ -369,8 +363,8 @@ BindAStar(py::module &m) {
     // Output
     py::class_<astar::Output, std::shared_ptr<astar::Output>>(astar, "Output")
         .def_readwrite("path", &astar::Output::path)
-        .def_readwrite("action_ids", &astar::Output::action_ids)
-        .def_readwrite("path_cost", &astar::Output::cost)
+        .def_readwrite("action_coords", &astar::Output::action_coords)
+        .def_readwrite("cost", &astar::Output::cost)
         .def_readwrite("opened_list", &astar::Output::opened_list)
         .def_readwrite("closed_list", &astar::Output::closed_list)
         .def_readwrite("inconsistent_list", &astar::Output::inconsistent_list);

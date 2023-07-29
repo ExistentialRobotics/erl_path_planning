@@ -21,8 +21,6 @@ namespace erl::search_planning::astar {
     std::shared_ptr<Output>
     AStar::Plan() {
         if (m_planned_) { return m_output_; }
-        m_planning_interface_->Reset();       // reset the environment
-        m_planning_interface_->PlaceRobot();  // place the robot at the start state
 
         while (m_setting_->max_num_iterations < 0 || long(m_iterations_) < m_setting_->max_num_iterations) {
             // check if done
@@ -73,7 +71,7 @@ namespace erl::search_planning::astar {
             if (tentative_g_value < child->g_value) {
 
                 child->parent = m_current_;
-                child->parent_action_id = (int) successor.action_id;
+                child->action_coords = successor.action_coords;
                 child->g_value = tentative_g_value;
                 double f_value = tentative_g_value + m_setting_->eps * child->h_value;
 
@@ -88,9 +86,7 @@ namespace erl::search_planning::astar {
                         child->iteration_closed = 0;
                     } else {
                         ERL_WARN_ONCE("Inconsistent heuristic function is detected! (m_reopen_inconsistent_ is false).\n");
-                        if (m_setting_->log) {
-                            m_output_->inconsistent_list[m_iterations_].push_back(child->env_state->metric);
-                        }  // record this abnormal env_state
+                        if (m_setting_->log) { m_output_->inconsistent_list[m_iterations_].push_back(child->env_state->grid); }
                     }
                 } else {
                     // new node
@@ -109,7 +105,7 @@ namespace erl::search_planning::astar {
 
         std::shared_ptr<State> node;
         if (m_planning_interface_->IsVirtualGoal(goal_state->env_state)) {  // virtual goal state is used!
-            auto true_goal_env_state = m_planning_interface_->GetPath(goal_state->env_state, goal_state->parent_action_id)[0];
+            auto true_goal_env_state = m_planning_interface_->GetPath(goal_state->env_state, goal_state->action_coords)[0];
             goal_index = m_planning_interface_->IsMetricGoal(true_goal_env_state);
             node = GetState(true_goal_env_state);
         } else {
@@ -126,15 +122,15 @@ namespace erl::search_planning::astar {
             common::EigenToNumPyFmtString(m_planning_interface_->GetStartState()->metric.transpose()).c_str(),
             m_iterations_);
 
-        m_output_->action_ids.clear();
+        m_output_->action_coords.clear();
         while (node->parent != nullptr) {
-            m_output_->action_ids.push_front(node->parent_action_id);
+            m_output_->action_coords.push_front(node->action_coords);
             node = node->parent;
         }
         std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
         long num_path_states = 0;
         auto state = GetState(m_start_state_->env_state)->env_state;
-        for (auto &action_id: m_output_->action_ids) {
+        for (auto &action_id: m_output_->action_coords) {
             auto path_segment = m_planning_interface_->GetPath(state, action_id);
             if (path_segment.empty()) { continue; }
             path_segments.push_back(path_segment);
@@ -156,9 +152,9 @@ namespace erl::search_planning::astar {
         if (!m_setting_->log) { return; }
         for (auto &[state_hashing, astar_state]: m_states_hash_map_) {
             if (astar_state->IsOpened()) {
-                m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->metric);
+                m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->grid);
             } else if (astar_state->IsClosed()) {
-                m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->metric;
+                m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->grid;
             }
         }
     }
