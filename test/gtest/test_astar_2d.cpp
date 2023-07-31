@@ -40,7 +40,7 @@ TEST(AStar2DTest, PlanWithSingleGoal) {
     Eigen::Vector2d metric_start_coords = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
 
     std::shared_ptr<CostBase> cost_func = nullptr;  // use EuclideanDistanceCost as default
-    auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, cost_func, grid_map);
+    auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, false, cost_func, grid_map);
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal, metric_goal_tolerance);
     std::shared_ptr<erl::search_planning::astar::Output> result;
     ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithSingleGoal", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
@@ -92,7 +92,7 @@ TEST(AStar2DTest, PlanWithFourGoals) {
     bool allow_diagonal = true;
     int step_size = 1;
     std::shared_ptr<CostBase> cost_func = nullptr;  // use EuclideanDistanceCost as default
-    auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, cost_func, grid_map);
+    auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, false, cost_func, grid_map);
     Eigen::Vector2d metric_start_coords = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goals, metric_goals_tolerance, terminal_cost);
     std::shared_ptr<erl::search_planning::astar::Output> result;

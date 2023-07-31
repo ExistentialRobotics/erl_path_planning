@@ -168,7 +168,6 @@ namespace YAML {
 
     inline Emitter&
     operator<<(Emitter& out, const erl::search_planning::astar::AStar::Setting& rhs) {
-        out << YAML::Flow;
         out << YAML::BeginMap;
         out << YAML::Key << "eps" << YAML::Value << rhs.eps;
         out << YAML::Key << "max_num_iterations" << YAML::Value << rhs.max_num_iterations;

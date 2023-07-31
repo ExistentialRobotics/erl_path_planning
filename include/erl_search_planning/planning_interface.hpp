@@ -120,7 +120,7 @@ namespace erl::search_planning {
             auto num_goals = int(m_goals_.size());
             if (num_goals == 1 || !m_terminal_cost_set_) { return m_env_->ForwardAction(env_state, action_coords); }
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) {
-                ERL_DEBUG_ASSERT(action_index < 0, "virtual goal env_state can only be reached with action_index = -goal_index - 1.");
+                ERL_DEBUG_ASSERT(action_coords[0] < 0, "virtual goal env_state can only be reached with action_coords[0] = -goal_index - 1.");
                 return {m_goals_[-(action_coords[0] + 1)]};
             }
             return m_env_->ForwardAction(env_state, action_coords);

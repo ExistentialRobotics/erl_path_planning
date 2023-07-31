@@ -19,7 +19,7 @@ namespace erl::search_planning {
         std::vector<std::shared_ptr<env::EnvironmentBase>> m_envs_ = {};
         std::shared_ptr<EnvironmentAnchor> m_env_anchor_ = nullptr;
         // heuristic and its resolution level
-        std::vector<std::pair<std::shared_ptr<HeuristicBase>, uint8_t>> m_heuristics_ = {};
+        std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> m_heuristics_ = {};
         std::vector<std::vector<std::size_t>> m_heuristic_ids_by_resolution_level_ = {};
 
         Eigen::VectorXd m_init_start_;                                 // used to store the initial start position
@@ -38,9 +38,9 @@ namespace erl::search_planning {
          */
         PlanningInterfaceMultiResolutions(
             std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
-            std::vector<std::pair<std::shared_ptr<HeuristicBase>, uint8_t>> heuristics,
+            std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
-            std::vector<Eigen::VectorXd> metric_goals_coords,
+            const std::vector<Eigen::VectorXd> &metric_goals_coords,
             std::vector<Eigen::VectorXd> metric_goals_tolerances)
             : m_envs_(std::move(environments)),
               m_heuristics_(std::move(heuristics)),
@@ -54,6 +54,9 @@ namespace erl::search_planning {
             m_env_anchor_ = std::dynamic_pointer_cast<EnvironmentAnchor>(m_envs_[0]);
             ERL_ASSERTM(m_env_anchor_ != nullptr, "the anchor-level environment must be derived from EnvironmentAnchor.");
             for (std::size_t i = 1; i < num_resolution_levels; ++i) { ERL_ASSERTM(m_envs_[i] != nullptr, "environment %d is nullptr.", int(i)); }
+
+            SetStart();
+            SetGoals(metric_goals_coords);
 
             // check goals and goals tolerances
             int num_goals = GetNumGoals();
@@ -71,9 +74,6 @@ namespace erl::search_planning {
                     ERL_AS_STRING(MultiGoalsWithCostHeuristic));
             }
 
-            SetStart();
-            SetGoals(metric_goals_coords);
-
             // check if each resolution level has at least one heuristic
             std::size_t num_heuristics = m_heuristics_.size();
             m_heuristic_ids_by_resolution_level_.clear();
@@ -86,6 +86,7 @@ namespace erl::search_planning {
                 ERL_ASSERTM(!m_heuristic_ids_by_resolution_level_[i].empty(), "resolution level %d has no heuristic.", int(i));
             }
             ERL_ASSERTM(m_heuristics_[0].second == 0, "the first heuristic must be assigned to the anchor level (resolution level 0).");
+            ERL_ASSERTM(m_heuristic_ids_by_resolution_level_[0].size() == 1, "the anchor level must have exactly one heuristic.");
 
             // miscellaneous
             m_terminal_costs_.setZero(num_goals);
@@ -93,16 +94,16 @@ namespace erl::search_planning {
 
         PlanningInterfaceMultiResolutions(
             std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
-            std::vector<std::pair<std::shared_ptr<HeuristicBase>, uint8_t>> heuristics,
+            std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
-            std::vector<Eigen::VectorXd> metric_goals_coords,
+            const std::vector<Eigen::VectorXd> &metric_goals_coords,
             std::vector<Eigen::VectorXd> metric_goals_tolerances,
             Eigen::VectorXd terminal_costs)
             : PlanningInterfaceMultiResolutions(
                   std::move(environments),
                   std::move(heuristics),
                   std::move(metric_start_coords),
-                  std::move(metric_goals_coords),
+                  metric_goals_coords,
                   std::move(metric_goals_tolerances)) {
             m_terminal_costs_ = std::move(terminal_costs);
             m_terminal_cost_set_ = true;
@@ -123,19 +124,19 @@ namespace erl::search_planning {
             return m_heuristics_[heuristic_id].first;
         }
 
-        [[nodiscard]] inline uint8_t
+        [[nodiscard]] inline std::size_t
         GetResolutionAssignment(std::size_t heuristic_id) const {
             return m_heuristics_[heuristic_id].second;
         }
 
-        [[nodiscard]] inline std::vector<std::size_t>
-        GetResolutionHeuristicIds(uint8_t resolution_level) const {
+        [[nodiscard]] inline const std::vector<std::size_t>&
+        GetResolutionHeuristicIds(std::size_t resolution_level) const {
             return m_heuristic_ids_by_resolution_level_[resolution_level];
         }
 
-        [[nodiscard]] inline std::vector<uint8_t>
+        [[nodiscard]] inline std::vector<std::size_t>
         GetContainedResolutionLevels(const std::shared_ptr<env::EnvironmentState> &state) const {
-            std::vector<uint8_t> contained_resolution_levels;
+            std::vector<std::size_t> contained_resolution_levels;
             for (std::size_t i = 1; i < m_envs_.size(); ++i) {
                 if (m_envs_[i]->InStateSpace(state)) { contained_resolution_levels.push_back(i); }
             }
@@ -143,7 +144,7 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] inline std::vector<env::Successor>
-        GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, uint8_t env_resolution_level) const {
+        GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, std::size_t env_resolution_level) const {
             return m_env_anchor_->GetSuccessors(state, env_resolution_level);
         }
 
@@ -215,7 +216,7 @@ namespace erl::search_planning {
             auto num_goals = int(m_goals_.size());
             if (num_goals == 1 || !m_terminal_cost_set_) { return m_env_anchor_->ForwardAction(env_state, action_coords); }
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) {
-                ERL_DEBUG_ASSERT(action_index < 0, "virtual goal env_state can only be reached with action_index = -goal_index - 1.");
+                ERL_DEBUG_ASSERT(action_coords[0] < 0, "virtual goal env_state can only be reached with action_coords[0] = -goal_index - 1.");
                 return {m_goals_[-(action_coords[0] + 1)]};
             }
             return m_env_anchor_->ForwardAction(env_state, action_coords);

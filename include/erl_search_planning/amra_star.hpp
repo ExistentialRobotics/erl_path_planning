@@ -51,17 +51,17 @@ namespace erl::search_planning::amra_star {
         std::vector<uint64_t> iteration_closed;
         double g_value = std::numeric_limits<double>::max();
         std::vector<double> h_values;
-        const std::vector<uint8_t> in_resolution_levels;  // resolution levels where the state exists
-        std::shared_ptr<State> parent = nullptr;          // parent state
-        std::vector<int> action_coords = {};              // action coords = (env_action_coords, env_res_level) that generates this state from its parent
+        const std::vector<std::size_t> in_resolution_levels;  // resolution levels where the state exists
+        std::shared_ptr<State> parent = nullptr;              // parent state
+        std::vector<int> action_coords = {};                  // action coords = (env_action_coords, env_res_level) that generates this state from its parent
 
         // uint8_t action_resolution_level = -1;             // resolution level which the action belongs to
 
         State(
             uint32_t plan_itr_in,
             std::shared_ptr<env::EnvironmentState> env_state_in,
-            uint8_t num_resolution_levels,
-            std::vector<uint8_t> in_resolution_levels,
+            std::size_t num_resolution_levels,
+            std::vector<std::size_t> in_resolution_levels,
             std::vector<double> h_vals)
             : plan_itr(plan_itr_in),
               env_state(std::move(env_state_in)),
@@ -72,12 +72,12 @@ namespace erl::search_planning::amra_star {
               in_resolution_levels(std::move(in_resolution_levels)) {}
 
         [[nodiscard]] bool
-        InResolutionLevel(uint8_t resolution_level) const {
+        InResolutionLevel(std::size_t resolution_level) const {
             return std::find(in_resolution_levels.begin(), in_resolution_levels.end(), resolution_level) != in_resolution_levels.end();
         }
 
         [[nodiscard]] inline bool
-        InOpened(uint8_t open_set_id, uint8_t close_set_id) const {
+        InOpened(std::size_t open_set_id, std::size_t close_set_id) const {
             // 1. if state is just moved into OPEN_i, then iteration_opened[i] > 0 and for other heuristics assigned to the same resolution,
             // iteration_opened[j] == 0 and any iteration_closed[j] == 0, i.e. iteration_opened[i] > any iteration_closed[j] of the same resolution.
             // 2. if state is moved into OPEN_i because it has not been in CLOSE_res(i), then iteration_opened[i] > iteration_closed[res(i)]
@@ -85,33 +85,30 @@ namespace erl::search_planning::amra_star {
         }
 
         [[nodiscard]] inline bool
-        InClosed(uint8_t closed_set_id) const {
+        InClosed(std::size_t closed_set_id) const {
             // as long as the state is moved into CLOSE_res(i), then iteration_closed[res(i)] > 0, where close_set_id = res(i).
             return iteration_closed[closed_set_id] > 0;
         }
 
         inline void
-        SetOpened(uint8_t open_set_id, uint64_t opened_itr) {
+        SetOpened(std::size_t open_set_id, uint64_t opened_itr) {
             iteration_opened[open_set_id] = opened_itr;
         }
 
         inline void
-        SetClosed(uint8_t close_set_id, uint64_t closed_itr) {
+        SetClosed(std::size_t close_set_id, uint64_t closed_itr) {
             iteration_closed[close_set_id] = closed_itr;
         }
 
         inline void
-        RemoveFromClosed(uint8_t close_set_id) {
+        RemoveFromClosed(std::size_t close_set_id, const std::vector<std::size_t>& open_set_ids) {
+            if (!InClosed(close_set_id)) { return; }
+            for (auto open_set_id: open_set_ids) { iteration_opened[open_set_id] = 0; }
             iteration_closed[close_set_id] = 0;
         }
 
         inline void
-        RemoveFromAllClosed() {
-            std::fill(iteration_closed.begin(), iteration_closed.end(), 0);
-        }
-
-        inline void
-        SetParent(std::shared_ptr<State> parent_in, std::vector<int> action_coords_in) {  // }, uint8_t action_resolution_level_in) {
+        SetParent(std::shared_ptr<State> parent_in, std::vector<int> action_coords_in) {  // }, std::size_t action_resolution_level_in) {
             parent = std::move(parent_in);
             action_coords = std::move(action_coords_in);
             // action_resolution_level = action_resolution_level_in;
@@ -139,18 +136,18 @@ namespace erl::search_planning::amra_star {
         double search_time = 0.;
 
         // logging
-        std::map<uint32_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> opened_states;  // plan_itr -> heuristic_id -> list of states
-        std::map<uint32_t, std::map<uint8_t, std::list<Eigen::VectorXi>>> closed_states;  // plan_itr -> action_resolution_level -> list of states
-        std::map<uint32_t, std::list<Eigen::VectorXi>> inconsistent_states;               // plan_itr -> list of states
+        std::map<uint32_t, std::map<std::size_t, std::list<Eigen::VectorXi>>> opened_states;  // plan_itr -> heuristic_id -> list of states
+        std::map<uint32_t, std::map<std::size_t, std::list<Eigen::VectorXi>>> closed_states;  // plan_itr -> action_resolution_level -> list of states
+        std::map<uint32_t, std::list<Eigen::VectorXi>> inconsistent_states;                   // plan_itr -> list of states
     };
 
     class AMRAStar {
 
     public:
         struct Setting : public common::Yamlable<Setting> {
-            std::chrono::nanoseconds time_limit = std::chrono::duration_cast<std::chrono::nanoseconds>(1s);
-            double w1_init = 0;
-            double w2_init = 0;
+            std::chrono::nanoseconds time_limit = std::chrono::duration_cast<std::chrono::nanoseconds>(10000000s);
+            double w1_init = 10;
+            double w2_init = 20;
             double w1_final = 1;
             double w2_final = 1;
             double w1_decay_factor = 0.5;
@@ -179,6 +176,8 @@ namespace erl::search_planning::amra_star {
         std::shared_ptr<Output> m_output_ = nullptr;
 
     public:
+        explicit AMRAStar(std::shared_ptr<PlanningInterfaceMultiResolutions> planning_interface, std::shared_ptr<Setting> setting = nullptr);
+
         /**
          * @brief Re-plan the path:
          * 1. check if any goal is reached
@@ -272,7 +271,7 @@ namespace erl::search_planning::amra_star {
 
         inline void
         InsertOrUpdate(const std::shared_ptr<State>& state, std::size_t heuristic_id, double f_value) {
-            uint8_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
+            std::size_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
             if (state->InOpened(heuristic_id, resolution_level)) {
                 // state is already in open, update its f-value
                 (*state->open_queue_keys[heuristic_id])->f_value = f_value;
@@ -299,3 +298,50 @@ namespace erl::search_planning::amra_star {
         RecoverPath(int goal_index);
     };
 }  // namespace erl::search_planning::amra_star
+
+namespace YAML {
+    template<>
+    struct convert<erl::search_planning::amra_star::AMRAStar::Setting> {
+        static Node
+        encode(const erl::search_planning::amra_star::AMRAStar::Setting& rhs) {
+            Node node;
+            node["time_limit"] = double(rhs.time_limit.count()) / 1.e9;
+            node["w1_init"] = rhs.w1_init;
+            node["w2_init"] = rhs.w2_init;
+            node["w1_final"] = rhs.w1_final;
+            node["w2_final"] = rhs.w2_final;
+            node["w1_decay_factor"] = rhs.w1_decay_factor;
+            node["w2_decay_factor"] = rhs.w2_decay_factor;
+            node["log"] = rhs.log;
+            return node;
+        }
+
+        static bool
+        decode(const Node& node, erl::search_planning::amra_star::AMRAStar::Setting& rhs) {
+            rhs.time_limit = std::chrono::nanoseconds(std::size_t(node["time_limit"].as<double>() * 1.e9));
+            rhs.w1_init = node["w1_init"].as<double>();
+            rhs.w2_init = node["w2_init"].as<double>();
+            rhs.w1_final = node["w1_final"].as<double>();
+            rhs.w2_final = node["w2_final"].as<double>();
+            rhs.w1_decay_factor = node["w1_decay_factor"].as<double>();
+            rhs.w2_decay_factor = node["w2_decay_factor"].as<double>();
+            rhs.log = node["log"].as<bool>();
+            return true;
+        }
+    };
+
+    inline Emitter&
+    operator<<(Emitter& out, const erl::search_planning::amra_star::AMRAStar::Setting& rhs) {
+        out << YAML::BeginMap;
+        out << YAML::Key << "time_limit" << YAML::Value << double(rhs.time_limit.count()) / 1.e9;
+        out << YAML::Key << "w1_init" << YAML::Value << rhs.w1_init;
+        out << YAML::Key << "w2_init" << YAML::Value << rhs.w2_init;
+        out << YAML::Key << "w1_final" << YAML::Value << rhs.w1_final;
+        out << YAML::Key << "w2_final" << YAML::Value << rhs.w2_final;
+        out << YAML::Key << "w1_decay_factor" << YAML::Value << rhs.w1_decay_factor;
+        out << YAML::Key << "w2_decay_factor" << YAML::Value << rhs.w2_decay_factor;
+        out << YAML::Key << "log" << YAML::Value << rhs.log;
+        out << YAML::EndMap;
+        return out;
+    }
+}  // namespace YAML

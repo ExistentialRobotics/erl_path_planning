@@ -17,25 +17,6 @@ namespace erl::search_planning {
         std::size_t m_max_action_space_size_ = 0;
 
     public:
-        // struct Successor : env::Successor {
-        //     uint8_t action_resolution_level = 0;
-        //
-        //     Successor() = default;
-        //
-        //     Successor(std::shared_ptr<env::EnvironmentState> state, double cost, std::vector<int> action_coords, uint8_t resolution_level)
-        //         : env::Successor(std::move(state), cost, std::move(action_coords)),
-        //           action_resolution_level(resolution_level) {}
-        //
-        //     Successor(Eigen::VectorXd env_metric_state, Eigen::VectorXi env_grid_state, double cost, std::vector<int> action_coords, uint8_t
-        //     resolution_level)
-        //         : env::Successor(std::move(env_metric_state), std::move(env_grid_state), cost, std::move(action_coords)),
-        //           action_resolution_level(resolution_level) {}
-        //
-        //     Successor(env::Successor successor, uint8_t resolution_level)
-        //         : env::Successor(std::move(successor)),
-        //           action_resolution_level(resolution_level) {}
-        // };
-
         explicit EnvironmentAnchor(std::vector<std::shared_ptr<env::EnvironmentBase>> environments)
             : env::EnvironmentBase(nullptr),  // just use the interface of EnvironmentBase, no need to use the distance cost function
               m_envs_(std::move(environments)) {
@@ -88,7 +69,7 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] std::vector<env::Successor>
-        GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, uint8_t resolution_level) const {
+        GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, std::size_t resolution_level) const {
             if (resolution_level == 0) { return GetSuccessors(state); }
             std::vector<env::Successor> successors = m_envs_[resolution_level - 1]->GetSuccessors(state);
             for (auto &successor: successors) { successor.action_coords.push_back(resolution_level); }
