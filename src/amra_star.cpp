@@ -99,11 +99,12 @@ namespace erl::search_planning::amra_star {
             if (goal_index < 0 || m_search_time_ > m_setting_->time_limit) { break; }  // fail to find a solution or time out
             RecoverPath(goal_index);                                                   // L60
             ERL_INFO(
-                "Solution found with (w1, w2) = (%f, %f) | expansions = %s | time = %f sec",
+                "Solved with (w1, w2) = (%f, %f) | expansions = %s | time = %f sec | cost = %f",
                 m_w1_,
                 m_w2_,
                 common::EigenToNumPyFmtString(m_expand_itr_.transpose()).c_str(),
-                m_search_time_.count() / 1e9);
+                m_search_time_.count() / 1e9,
+                m_output_->cost);
 
             if (m_w1_ == m_setting_->w1_final && m_w2_ == m_setting_->w2_final) { break; }  // L61-62
             m_w1_ = std::max(m_w1_ * m_setting_->w1_decay_factor, m_setting_->w1_final);    // L63
@@ -224,7 +225,7 @@ namespace erl::search_planning::amra_star {
         }
         m_output_->goal_index = goal_index;
 
-        ERL_INFO(
+        ERL_DEBUG(
             "Reach goal[%d/%d] (metric: %s, grid: %s) from metric start %s at expansion_itr %lu plan_itr %u.",
             goal_index,
             m_planning_interface_->GetNumGoals(),
