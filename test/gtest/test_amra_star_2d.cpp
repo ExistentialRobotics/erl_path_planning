@@ -69,6 +69,7 @@ TEST(AMRAStar2DTest, AStarConsistency) {
 
 std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
 std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
+std::filesystem::path result_dir = src_dir.parent_path() / "results";
 
 std::shared_ptr<erl::common::GridMapUnsigned2D>
 ReadAmraStarTestMap(const std::string &filepath, bool display = false) {
@@ -197,10 +198,11 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
         {euclidean_heuristic, 3}};
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(all_envs, heuristics, start, goal, goal_tolerance);
+    auto setting = std::make_shared<AMRAStar::Setting>();
+    setting->log = false;
     std::shared_ptr<Output> result;
-    ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() {
-        result = AMRAStar(planning_interface).Plan();
-    });
+    AMRAStar amra_star(planning_interface, setting);
+    ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() { result = amra_star.Plan(); });
     std::cout << "Path cost: " << result->cost << std::endl;
     EXPECT_NEAR(result->cost, expected_cost, 1.e-6);
 
@@ -208,6 +210,10 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     // auto &path = result->path;
     // long num_points = path.cols();
     // for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
+
+    // TODO: save result to file for visualization
+    // if (!std::filesystem::exists(result_dir)) { std::filesystem::create_directories(result_dir); }
+    // result->Save(result_dir / (map_name + ".solution"));
 }
 
 TEST(AMRAStar2DTest, MultiResolutions) {

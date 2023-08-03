@@ -4,6 +4,52 @@
 
 namespace erl::search_planning::amra_star {
 
+    void
+    Output::Save(const std::filesystem::path &file_path) const {
+        std::ofstream ofs(file_path);
+        ERL_ASSERTM(ofs.is_open(), "Failed to open file: %s", file_path.string().c_str());
+        long n = path.cols();
+        ofs << "AMRA* solution" << std::endl
+            << "goal_index: " << goal_index << std::endl
+            << "cost: " << cost << std::endl
+            << "w1_solve: " << w1_solve << std::endl
+            << "w2_solve: " << w2_solve << std::endl
+            << "search_time: " << search_time << std::endl
+            << "num waypoints: " << n << std::endl
+            << "path: " << std::endl
+            << "x, y" << std::endl;
+        for (int i = 0; i < n; ++i) { ofs << path(0, i) << ", " << path(1, i) << std::endl; }
+        ofs << "action_coords: " << std::endl;
+        for (const auto &action_coord: action_coords) {
+            std::size_t m = action_coord.size();
+            ERL_ASSERTM(m > 0, "action_coord is empty");
+            ofs << action_coord[0];
+            for (std::size_t i = 1; i < m; ++i) { ofs << ", " << action_coord[i]; }
+            ofs << std::endl;
+        }
+        ofs << "opened_states: " << std::endl << "plan_itr, heuristic_id, x, y" << std::endl;
+        for (const auto &[plan_itr, opened_states_at_plan_itr]: opened_states) {
+            for (const auto &[heuristic_id, opened_states_at_heuristic_id]: opened_states_at_plan_itr) {
+                for (const auto &state: opened_states_at_heuristic_id) {
+                    ofs << plan_itr << ", " << heuristic_id << ", " << state[0] << ", " << state[1] << std::endl;
+                }
+            }
+        }
+        ofs << "closed_states: " << std::endl << "plan_itr, action_resolution_level, x, y" << std::endl;
+        for (const auto &[plan_itr, closed_states_at_plan_itr]: closed_states) {
+            for (const auto &[action_resolution_level, closed_states_at_action_resolution_level]: closed_states_at_plan_itr) {
+                for (const auto &state: closed_states_at_action_resolution_level) {
+                    ofs << plan_itr << ", " << action_resolution_level << ", " << state[0] << ", " << state[1] << std::endl;
+                }
+            }
+        }
+        ofs << "inconsistent_states: " << std::endl << "plan_itr, x, y" << std::endl;
+        for (const auto &[plan_itr, inconsistent_states_at_plan_itr]: inconsistent_states) {
+            for (const auto &state: inconsistent_states_at_plan_itr) { ofs << plan_itr << ", " << state[0] << ", " << state[1] << std::endl; }
+        }
+        ofs.close();
+    }
+
     AMRAStar::AMRAStar(std::shared_ptr<PlanningInterfaceMultiResolutions> planning_interface, std::shared_ptr<Setting> setting)
         : m_setting_(std::move(setting)),
           m_planning_interface_(std::move(planning_interface)),
@@ -20,7 +66,7 @@ namespace erl::search_planning::amra_star {
             m_plan_itr_,
             start_env_state,
             num_resolution_levels,
-            m_planning_interface_->GetContainedResolutionLevels(start_env_state),
+            m_planning_interface_->GetInResolutionLevelFlags(start_env_state),
             m_planning_interface_->GetHeuristicValues(start_env_state));
         GetState(start_env_state) = m_start_state_;
 
@@ -32,15 +78,17 @@ namespace erl::search_planning::amra_star {
                 m_plan_itr_,
                 goal_env_state,
                 num_resolution_levels,
-                m_planning_interface_->GetContainedResolutionLevels(goal_env_state),
+                m_planning_interface_->GetInResolutionLevelFlags(goal_env_state),
                 m_planning_interface_->GetHeuristicValues(goal_env_state)));
             GetState(goal_env_state) = m_goal_states_.back();
         }
+
+        for (auto &queue : m_open_queues_) { queue.reserve(20000); }
     }
 
     std::shared_ptr<Output>
     AMRAStar::Plan() {
-        int goal_index = m_planning_interface_->IsMetricGoal(m_start_state_->env_state);
+        int goal_index = m_planning_interface_->ReachGoal(m_start_state_->env_state);
         if (goal_index >= 0) {
             RecoverPath(goal_index);
             return m_output_;
@@ -135,7 +183,7 @@ namespace erl::search_planning::amra_star {
                 if (!m_open_queues_[heuristic_id].empty() && m_open_queues_[heuristic_id].top()->f_value <= f_check) {
                     std::shared_ptr<State> state = m_open_queues_[heuristic_id].top()->state;
                     m_open_queues_[heuristic_id].pop();
-                    int goal_index = m_planning_interface_->IsMetricGoal(state->env_state);
+                    int goal_index = m_planning_interface_->ReachGoal(state->env_state);
                     if (goal_index >= 0) { return goal_index; }
                     Expand(state, heuristic_id);
                     m_expand_itr_[long(heuristic_id)]++;
@@ -143,7 +191,7 @@ namespace erl::search_planning::amra_star {
                 } else {
                     std::shared_ptr<State> state = m_open_queues_[0].top()->state;
                     m_open_queues_[0].pop();
-                    int goal_index = m_planning_interface_->IsMetricGoal(state->env_state);
+                    int goal_index = m_planning_interface_->ReachGoal(state->env_state);
                     if (goal_index >= 0) { return goal_index; }
                     Expand(state, 0);
                     m_expand_itr_[0]++;
@@ -167,8 +215,9 @@ namespace erl::search_planning::amra_star {
             // L6 to L8
             parent->SetClosed(resolution_level, m_total_expand_itr_);  // parent is also removed from other opened sets assigned to the same resolution level
         }
+        if (m_setting_->log) { m_output_->closed_states[m_plan_itr_][resolution_level].push_back(parent->env_state->metric); }
 
-        ERL_DEBUG_ASSERT(m_planning_interface_->IsMetricGoal(parent->env_state) < 0, "should not expand from a goal parent.");
+        ERL_DEBUG_ASSERT(m_planning_interface_->ReachGoal(parent->env_state) < 0, "should not expand from a goal parent.");
         std::vector<env::Successor> successors = m_planning_interface_->GetSuccessors(parent->env_state, resolution_level);
         std::size_t num_resolution_levels = m_planning_interface_->GetNumResolutionLevels();
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
@@ -179,7 +228,7 @@ namespace erl::search_planning::amra_star {
                     m_plan_itr_,
                     successor.env_state,
                     num_resolution_levels,
-                    m_planning_interface_->GetContainedResolutionLevels(successor.env_state),
+                    m_planning_interface_->GetInResolutionLevelFlags(successor.env_state),
                     m_planning_interface_->GetHeuristicValues(successor.env_state)));
             }
 
@@ -190,6 +239,7 @@ namespace erl::search_planning::amra_star {
                 // in anchor-level closed set, inconsistency detected, re-open it
                 if (child->InClosed(0)) {                  // L13
                     m_inconsistent_states_.insert(child);  // L14
+                    if (m_setting_->log) { m_output_->inconsistent_states[m_plan_itr_].push_back(child->env_state->metric); }
                     continue;
                 }
                 double f0 = GetKeyValue(child, 0);
@@ -218,7 +268,7 @@ namespace erl::search_planning::amra_star {
         std::shared_ptr<State> node;
         if (m_planning_interface_->IsVirtualGoal(goal_state->env_state)) {  // virtual goal state is used!
             auto true_goal_env_state = m_planning_interface_->GetPath(goal_state->env_state, goal_state->action_coords)[0];
-            goal_index = m_planning_interface_->IsMetricGoal(true_goal_env_state);
+            goal_index = m_planning_interface_->IsMetricGoal(true_goal_env_state);  // get the true goal index
             node = GetState(true_goal_env_state);
         } else {
             node = goal_state;
@@ -241,6 +291,7 @@ namespace erl::search_planning::amra_star {
             node = node->parent;
         }
         std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
+        path_segments.reserve(m_output_->action_coords.size());
         long num_path_states = 0;
         auto state = GetState(m_start_state_->env_state)->env_state;
         for (auto &action_id: m_output_->action_coords) {
@@ -250,13 +301,12 @@ namespace erl::search_planning::amra_star {
             num_path_states += long(path_segment.size());
             state = path_segment.back();
         }
-        m_output_->path.resize(state->metric.size(), num_path_states + 2);
+        m_output_->path.resize(state->metric.size(), num_path_states + 1);
         m_output_->path.col(0) = m_planning_interface_->GetStartState()->metric;
         long index = 1;
         for (auto &path_segment: path_segments) {
             auto num_states = long(path_segment.size());
             for (long i = 0; i < num_states; ++i) { m_output_->path.col(index++) = path_segment[i]->metric; }
         }
-        m_output_->path.col(index) = m_planning_interface_->GetGoalState(goal_index)->metric;
     }
 }  // namespace erl::search_planning::amra_star

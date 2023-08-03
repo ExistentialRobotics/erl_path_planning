@@ -98,13 +98,12 @@ namespace erl::search_planning {
             return m_heuristic_ids_by_resolution_level_[resolution_level];
         }
 
-        [[nodiscard]] inline std::vector<std::size_t>
-        GetContainedResolutionLevels(const std::shared_ptr<env::EnvironmentState> &state) const {
-            std::vector<std::size_t> contained_resolution_levels;
-            for (std::size_t i = 1; i < m_envs_.size(); ++i) {
-                if (m_envs_[i]->InStateSpace(state)) { contained_resolution_levels.push_back(i); }
-            }
-            return contained_resolution_levels;
+        [[nodiscard]] inline std::vector<bool>
+        GetInResolutionLevelFlags(const std::shared_ptr<env::EnvironmentState> &state) const {
+            std::vector<bool> in_resolution_level_flags(m_envs_.size());
+            in_resolution_level_flags[0] = true;
+            for (std::size_t i = 1; i < m_envs_.size(); ++i) { in_resolution_level_flags[i] = m_envs_[i]->InStateSpace(state); }
+            return in_resolution_level_flags;
         }
 
         [[nodiscard]] inline std::vector<env::Successor>

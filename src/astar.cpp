@@ -86,7 +86,7 @@ namespace erl::search_planning::astar {
                         child->iteration_closed = 0;
                     } else {
                         ERL_WARN_ONCE("Inconsistent heuristic function is detected! (m_reopen_inconsistent_ is false).\n");
-                        if (m_setting_->log) { m_output_->inconsistent_list[m_iterations_].push_back(child->env_state->grid); }
+                        if (m_setting_->log) { m_output_->inconsistent_list[m_iterations_].push_back(child->env_state->metric); }
                     }
                 } else {
                     // new node
@@ -152,9 +152,9 @@ namespace erl::search_planning::astar {
         if (!m_setting_->log) { return; }
         for (auto &[state_hashing, astar_state]: m_states_hash_map_) {
             if (astar_state->IsOpened()) {
-                m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->grid);
+                m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->metric);
             } else if (astar_state->IsClosed()) {
-                m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->grid;
+                m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->metric;
             }
         }
     }

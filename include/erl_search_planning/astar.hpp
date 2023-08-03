@@ -93,9 +93,9 @@ namespace erl::search_planning::astar {
         double cost = std::numeric_limits<double>::max();
 
         // logging
-        std::map<std::size_t, std::list<Eigen::VectorXi>> opened_list = {};
-        std::map<std::size_t, Eigen::VectorXi> closed_list = {};
-        std::map<std::size_t, std::list<Eigen::VectorXi>> inconsistent_list = {};
+        std::map<std::size_t, std::list<Eigen::VectorXd>> opened_list = {};
+        std::map<std::size_t, Eigen::VectorXd> closed_list = {};
+        std::map<std::size_t, std::list<Eigen::VectorXd>> inconsistent_list = {};
     };
 
     class AStar {

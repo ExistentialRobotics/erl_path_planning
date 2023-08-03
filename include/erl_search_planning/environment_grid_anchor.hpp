@@ -14,20 +14,20 @@ namespace erl::search_planning {
             : EnvironmentAnchor(std::move(environments)),
               m_grid_map_info_(std::move(grid_map_info)) {}
 
-        [[nodiscard]] uint32_t
+        [[nodiscard]] inline uint32_t
         StateHashing(const std::shared_ptr<env::EnvironmentState> &state) const override {
-            ERL_ASSERTM(state->metric.size() == Dim, "state dimension is not equal to grid map dimension.");
+            ERL_DEBUG_ASSERT(state->metric.size() == Dim, "state dimension is not equal to grid map dimension.");
             return m_grid_map_info_->GridToIndex(state->grid, true);  // row major
         }
 
-        [[nodiscard]] Eigen::VectorXi
+        [[nodiscard]] inline Eigen::VectorXi
         MetricToGrid(const Eigen::Ref<const Eigen::VectorXd> &metric_state) const override {
             Eigen::Vector<int, Dim> grid;
             for (int i = 0; i < Dim; ++i) { grid[i] = m_grid_map_info_->MeterToGridForValue(metric_state[i], i); }
             return grid;
         }
 
-        [[nodiscard]] Eigen::VectorXd
+        [[nodiscard]] inline Eigen::VectorXd
         GridToMetric(const Eigen::Ref<const Eigen::VectorXi> &grid_state) const override {
             Eigen::Vector<double, Dim> metric;
             for (int i = 0; i < Dim; ++i) { metric[i] = m_grid_map_info_->GridToMeterForValue(grid_state[i], i); }

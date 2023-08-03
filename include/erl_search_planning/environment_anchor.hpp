@@ -14,7 +14,7 @@ namespace erl::search_planning {
     class EnvironmentAnchor : public env::EnvironmentBase {
     protected:
         std::vector<std::shared_ptr<env::EnvironmentBase>> m_envs_ = {};
-        std::size_t m_max_action_space_size_ = 0;
+        std::size_t m_action_space_size_ = 0;
 
     public:
         explicit EnvironmentAnchor(std::vector<std::shared_ptr<env::EnvironmentBase>> environments)
@@ -22,7 +22,7 @@ namespace erl::search_planning {
               m_envs_(std::move(environments)) {
             for (auto &env: m_envs_) {
                 ERL_ASSERTM(env != nullptr, "env is nullptr");
-                if (env->GetActionSpaceSize() > m_max_action_space_size_) { m_max_action_space_size_ = env->GetActionSpaceSize(); }
+                m_action_space_size_ += env->GetActionSpaceSize();
             }
         }
 
@@ -37,9 +37,7 @@ namespace erl::search_planning {
         [[nodiscard]] inline std::size_t
         GetActionSpaceSize() const override {
             ERL_WARN("Default implementation of GetActionSpaceSize() is used. The returned size is an upper bound.");
-            std::size_t action_space_size = 0;
-            for (auto &env: m_envs_) { action_space_size += env->GetActionSpaceSize(); }
-            return action_space_size;
+            return m_action_space_size_;
         }
 
         /**
@@ -53,9 +51,16 @@ namespace erl::search_planning {
             return m_envs_[action_coords.back() - 1]->ForwardAction(state, {action_coords.begin(), action_coords.end() - 1});
         }
 
+        /**
+         * @brief Get successors of the given state with the finest resolution, i.e. all possible actions.
+         * @param state
+         * @return
+         */
         [[nodiscard]] std::vector<env::Successor>
         GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state) const override {
+            if (!InStateSpace(state)) { return {}; }
             std::vector<env::Successor> successors;
+            successors.reserve(m_action_space_size_);
             for (auto it = m_envs_.begin(); it < m_envs_.end(); ++it) {
                 std::vector<env::Successor> env_successors = (*it)->GetSuccessors(state);
                 if (env_successors.empty()) { continue; }
@@ -72,18 +77,13 @@ namespace erl::search_planning {
         GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, std::size_t resolution_level) const {
             if (resolution_level == 0) { return GetSuccessors(state); }
             std::vector<env::Successor> successors = m_envs_[resolution_level - 1]->GetSuccessors(state);
-            for (auto &successor: successors) { successor.action_coords.push_back(resolution_level); }
+            for (auto &successor: successors) { successor.action_coords.push_back(int(resolution_level)); }
             return successors;
         }
 
         [[nodiscard]] bool
         InStateSpace(const std::shared_ptr<env::EnvironmentState> &state) const override {
             return std::any_of(m_envs_.begin(), m_envs_.end(), [&state](const auto &env) { return env->InStateSpace(state); });
-        }
-
-        [[nodiscard]] bool
-        IsReachable(const std::vector<std::shared_ptr<env::EnvironmentState>> &trajectory) const override {
-            return std::any_of(m_envs_.begin(), m_envs_.end(), [&trajectory](const auto &env) { return env->IsReachable(trajectory); });
         }
     };
 
