@@ -120,7 +120,7 @@ namespace erl::search_planning::astar {
         std::shared_ptr<Output> m_output_ = nullptr;
 
     public:
-        explicit AStar(const std::shared_ptr<PlanningInterface>& planning_interface, std::shared_ptr<Setting> setting = nullptr);
+        explicit AStar(std::shared_ptr<PlanningInterface> planning_interface, std::shared_ptr<Setting> setting = nullptr);
 
         [[nodiscard]] std::shared_ptr<Output>
         Plan();

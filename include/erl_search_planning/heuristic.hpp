@@ -2,6 +2,7 @@
 
 #include "erl_common/assert.hpp"
 #include "erl_common/eigen.hpp"
+#include "erl_common/csv.hpp"
 #include "erl_env/environment_state.hpp"
 
 namespace erl::search_planning {
@@ -10,13 +11,15 @@ namespace erl::search_planning {
     protected:
         Eigen::VectorXd m_goal_;
         Eigen::VectorXd m_goal_tolerance_;
+        double m_terminal_cost_ = 0.0;
 
     public:
         HeuristicBase() = default;
 
-        HeuristicBase(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance)
+        HeuristicBase(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
             : m_goal_(std::move(goal)),
-              m_goal_tolerance_(std::move(goal_tolerance)) {
+              m_goal_tolerance_(std::move(goal_tolerance)),
+              m_terminal_cost_(terminal_cost) {
             ERL_ASSERTM(this->m_goal_.size() > 0, "goal dimension is zero.");
             ERL_ASSERTM(this->m_goal_tolerance_.size() == this->m_goal_.size(), "goal tolerance dimension is not equal to goal dimension.");
         }
@@ -29,8 +32,8 @@ namespace erl::search_planning {
 
     struct EuclideanDistanceHeuristic : public HeuristicBase {
 
-        EuclideanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance)
-            : HeuristicBase(std::move(goal), std::move(goal_tolerance)) {}
+        EuclideanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
+            : HeuristicBase(std::move(goal), std::move(goal_tolerance), terminal_cost) {}
 
         double
         operator()(const env::EnvironmentState &state) const override {
@@ -42,15 +45,15 @@ namespace erl::search_planning {
                 diff = std::max(diff - m_goal_tolerance_[i], 0.0);
                 distance += diff * diff;
             }
-            distance = std::sqrt(distance);
+            distance = std::sqrt(distance) + m_terminal_cost_;
             return distance;
         }
     };
 
     struct ManhattanDistanceHeuristic : public HeuristicBase {
 
-        ManhattanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance)
-            : HeuristicBase(std::move(goal), std::move(goal_tolerance)) {}
+        ManhattanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
+            : HeuristicBase(std::move(goal), std::move(goal_tolerance), terminal_cost) {}
 
         double
         operator()(const env::EnvironmentState &state) const override {
@@ -62,13 +65,65 @@ namespace erl::search_planning {
                 diff = std::max(diff - m_goal_tolerance_[i], 0.0);
                 distance += diff;
             }
+            distance += m_terminal_cost_;
             return distance;
         }
     };
 
-    template<typename Heuristic>
+    struct DictionaryHeuristic : public HeuristicBase {
+        std::unordered_map<long, double> m_heuristic_dictionary_;
+        std::function<long(const env::EnvironmentState &)> m_state_hashing_func_;
+        bool m_assert_on_missing_ = true;
+
+        DictionaryHeuristic(const std::string &csv_path, std::function<long(const env::EnvironmentState &)> state_hashing_func, bool assert_on_missing = true)
+            : m_state_hashing_func_(std::move(state_hashing_func)),
+              m_assert_on_missing_(assert_on_missing) {
+            ERL_ASSERTM(!csv_path.empty(), "csv_path is empty.");
+            ERL_ASSERTM(std::filesystem::exists(csv_path), "%s does not exist.", csv_path.c_str());
+            ERL_ASSERTM(m_state_hashing_func_ != nullptr, "state_hashing is nullptr.");
+            // Read csv file of two columns. The first column is the state hashing, and the second one is the heuristic value.
+            std::vector<std::vector<std::string>> lines = common::LoadCsvFile(csv_path.c_str());
+            std::size_t num_lines = lines.size();
+            ERL_ASSERTM(num_lines > 0, "No heuristic values are provided.");
+            for (std::size_t i = 0; i < num_lines; ++i) {
+                auto &line = lines[i];
+                ERL_ASSERTM(line.size() == 2, "Each line should be <state hashing>, <heuristic value>.");
+                long state_hashing;
+                double heuristic_value;
+                try {
+                    state_hashing = std::stol(line[0]);
+                } catch (const std::invalid_argument &e) {
+                    ERL_FATAL("%s. Failed to convert %s to a long number.", e.what(), line[0].c_str());
+                } catch (const std::out_of_range &e) { ERL_FATAL("%s. The number, %s, is out of the range of signed long.", e.what(), line[0].c_str()); }
+                try {
+                    heuristic_value = std::stod(line[1]);
+                } catch (const std::invalid_argument &e) {
+                    ERL_FATAL("%s. Failed to convert %s to a double number.", e.what(), line[1].c_str());
+                } catch (const std::out_of_range &e) { ERL_FATAL("%s. The number, %s, is out of the range of double.", e.what(), line[1].c_str()); }
+                ERL_ASSERTM(m_heuristic_dictionary_.insert({state_hashing, heuristic_value}).second, "Duplicated state hashing %ld.", state_hashing);
+            }
+        }
+
+        double
+        operator()(const env::EnvironmentState &state) const override {
+            long state_hashing = m_state_hashing_func_(state);
+            auto it = m_heuristic_dictionary_.find(state_hashing);
+            if (it == m_heuristic_dictionary_.end()) {
+                if (m_assert_on_missing_) {
+                    ERL_FATAL(
+                        "The state (metric: %s, grid: %s, hashing: %ld) is not found in the dictionary.",
+                        common::EigenToNumPyFmtString(state.metric).c_str(),
+                        common::EigenToNumPyFmtString(state.grid).c_str(),
+                        state_hashing);
+                }
+                return std::numeric_limits<double>::max();
+            } else {
+                return it->second;
+            }
+        }
+    };
+
     struct MultiGoalsHeuristic : public HeuristicBase {
-        static_assert(std::is_base_of_v<HeuristicBase, Heuristic>, "Heuristic must be derived from HeuristicBase.");
         std::vector<std::shared_ptr<HeuristicBase>> goal_heuristics;
 
         explicit MultiGoalsHeuristic(std::vector<std::shared_ptr<HeuristicBase>> goal_heuristics_in)
@@ -78,75 +133,12 @@ namespace erl::search_planning {
             for (std::size_t i = 0; i < num_goals; ++i) { ERL_ASSERTM(goal_heuristics[i] != nullptr, "goal_heuristics_in[%d] is nullptr.", int(i)); }
         }
 
-        explicit MultiGoalsHeuristic(const Eigen::Ref<const Eigen::MatrixXd> &goals, const Eigen::Ref<const Eigen::VectorXd> &goal_tolerance) {
-            ERL_ASSERTM(goals.size() > 0, "goals is empty.");
-            long num_goals = goals.cols();
-            goal_heuristics.reserve(num_goals);
-            for (long i = 0; i < num_goals; ++i) { goal_heuristics.emplace_back(std::make_shared<Heuristic>(goals.col(i), goal_tolerance)); }
-        }
-
-        MultiGoalsHeuristic(const std::vector<Eigen::VectorXd> &goals, const std::vector<Eigen::VectorXd> &goal_tolerances) {
-            ERL_ASSERTM(!goals.empty(), "goals is empty.");
-            ERL_ASSERTM(goals.size() == goal_tolerances.size(), "goals and goal tolerances have different sizes.");
-            std::size_t num_goals = goals.size();
-            for (std::size_t i = 0; i < num_goals; ++i) { goal_heuristics.emplace_back(std::make_shared<Heuristic>(goals[i], goal_tolerances[i])); }
-        }
-
         double
         operator()(const env::EnvironmentState &state) const override {
+            if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
             double min_h = std::numeric_limits<double>::max();
             for (auto &heuristic: goal_heuristics) {
                 double h = (*heuristic)(state);
-                if (h < min_h) { min_h = h; }
-            }
-            return min_h;
-        }
-    };
-
-    template<typename Heuristic>
-    struct MultiGoalsWithCostHeuristic : public HeuristicBase {
-        static_assert(std::is_base_of_v<HeuristicBase, Heuristic>, "Heuristic must be derived from HeuristicBase.");
-        std::vector<std::shared_ptr<Heuristic>> goal_heuristics;
-        Eigen::VectorXd min_cost_to_virtual_goal;
-
-        /**
-         *
-         * @param goals
-         * @param goal_tolerances
-         * @param goal_cost_matrix the cost of moving from goal i to goal j is goal_cost_matrix(i, j), where i and j are indices of goals.
-         * The terminal cost of goal i is goal_cost_matrix(i, i).
-         */
-        explicit MultiGoalsWithCostHeuristic(
-            const std::vector<Eigen::VectorXd> &goals,
-            const std::vector<Eigen::VectorXd> &goal_tolerances,
-            const Eigen::Ref<const Eigen::MatrixXd> &goal_cost_matrix) {
-
-            ERL_ASSERTM(!goals.empty(), "goals is empty.");
-            ERL_ASSERTM(goals.size() == goal_tolerances.size(), "goals and goal tolerances have different sizes.");
-            auto num_goals = long(goals.size());
-            ERL_ASSERTM(goal_cost_matrix.rows() == num_goals, "goal distance matrix should have %ld rows.", num_goals);
-            ERL_ASSERTM(goal_cost_matrix.cols() == num_goals, "goal distance matrix should have %ld columns.", num_goals);
-            ERL_ASSERTM((goal_cost_matrix.array() >= 0.0).all(), "goal distance matrix should be non-negative.");
-            ERL_ASSERTM(goal_cost_matrix.transpose() == goal_cost_matrix, "goal distance matrix should be symmetric.");
-
-            Eigen::MatrixXd cost_to_virtual_goal = goal_cost_matrix;
-            Eigen::VectorXd terminal_cost = goal_cost_matrix.diagonal();
-            for (long i = 0; i < num_goals; ++i) {
-                cost_to_virtual_goal(i, i) = 0.0;
-                for (long j = 0; j < num_goals; ++j) { cost_to_virtual_goal(j, i) += terminal_cost[j]; }  // per column
-                goal_heuristics.emplace_back(std::make_shared<Heuristic>(goals[i], goal_tolerances[i]));
-            }
-            min_cost_to_virtual_goal = cost_to_virtual_goal.colwise().minCoeff();  // continuous memory access by per column
-        }
-
-        double
-        operator()(const env::EnvironmentState &state) const override {
-            if (state.grid[0] == env::VirtualStateValue::kGoal) {
-                return 0.0; }  // virtual goal
-            double min_h = std::numeric_limits<double>::max();
-            auto num_goals = int(goal_heuristics.size());
-            for (int i = 0; i < num_goals; ++i) {
-                double h = (*goal_heuristics[i])(state) + min_cost_to_virtual_goal[i];
                 if (h < min_h) { min_h = h; }
             }
             return min_h;

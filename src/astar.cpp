@@ -2,9 +2,9 @@
 
 namespace erl::search_planning::astar {
 
-    AStar::AStar(const std::shared_ptr<PlanningInterface> &planning_interface, std::shared_ptr<Setting> setting)
+    AStar::AStar(std::shared_ptr<PlanningInterface> planning_interface, std::shared_ptr<Setting> setting)
         : m_setting_(std::move(setting)),
-          m_planning_interface_(planning_interface),
+          m_planning_interface_(std::move(planning_interface)),
           m_output_(std::make_shared<Output>()) {
 
         if (!m_setting_) { m_setting_ = std::make_shared<Setting>(); }

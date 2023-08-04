@@ -112,8 +112,8 @@ namespace erl::search_planning::amra_star {
         m_inconsistent_states_.insert(m_start_state_);  // L48
 
         m_search_time_ = 0ns;
+        std::chrono::system_clock::time_point start_time = std::chrono::system_clock::now();
         while (m_search_time_ < m_setting_->time_limit && (m_w1_ >= m_setting_->w1_final && m_w2_ >= m_setting_->w2_final)) {  // L49
-            std::chrono::system_clock::time_point start_time = std::chrono::system_clock::now();
             for (auto &state: m_inconsistent_states_) {  // L50
                 state->RemoveFromClosed(0, m_planning_interface_->GetResolutionHeuristicIds(0));
                 InsertOrUpdate(state, 0, GetKeyValue(state, 0));  // L51
@@ -144,6 +144,7 @@ namespace erl::search_planning::amra_star {
             std::chrono::nanoseconds elapsed_time;
             goal_index = ImprovePath(start_time, elapsed_time);  // L59
             m_search_time_ += elapsed_time;
+            start_time = std::chrono::system_clock::now();
             if (goal_index < 0 || m_search_time_ > m_setting_->time_limit) { break; }  // fail to find a solution or time out
             RecoverPath(goal_index);                                                   // L60
             ERL_INFO(

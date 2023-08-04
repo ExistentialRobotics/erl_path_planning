@@ -87,7 +87,7 @@ TEST(AStar2DTest, PlanWithFourGoals) {
     std::vector<Eigen::VectorXd> metric_goals;
     std::vector<Eigen::VectorXd> metric_goals_tolerance = {Eigen::VectorXd::Zero(2)};
     for (long i = 0; i < grid_goals.cols(); ++i) { metric_goals.emplace_back(grid_map_info->GridToMeterForPoints(grid_goals.col(i))); }
-    Eigen::Vector4d terminal_cost(1000.0, 1000.0, 0.0, 1100.0);
+    std::vector<double> terminal_cost{1000.0, 1000.0, 0.0, 1100.0};
 
     bool allow_diagonal = true;
     int step_size = 1;

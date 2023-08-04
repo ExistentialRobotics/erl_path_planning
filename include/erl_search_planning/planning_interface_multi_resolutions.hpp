@@ -26,22 +26,18 @@ namespace erl::search_planning {
         std::shared_ptr<env::EnvironmentState> m_start_;               // used to store the start position in metric & grid space
         std::vector<std::shared_ptr<env::EnvironmentState>> m_goals_;  // used to store the goals in GetHeuristic and IsMetricGoal
         std::vector<Eigen::VectorXd> m_goals_tolerances_;              // used to store the goals tolerance in GetHeuristic and IsMetricGoal
-        Eigen::VectorXd m_terminal_costs_;                             // used to store the terminal costs in GetHeuristic
-        bool m_terminal_cost_set_ = false;
+        std::vector<double> m_terminal_costs_;                         // used to store the terminal costs in GetHeuristic
+        bool m_multiple_goals_ = false;
 
     public:
-        /**
-         *
-         * @param environments environment instances for each resolution level
-         * @param heuristics instances of heuristics
-         * @param heuristic_assignments resolution level that each heuristic is assigned to
-         */
+
         PlanningInterfaceMultiResolutions(
             std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
             std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
             const std::vector<Eigen::VectorXd> &metric_goals_coords,
-            std::vector<Eigen::VectorXd> metric_goals_tolerances);
+            std::vector<Eigen::VectorXd> metric_goals_tolerances,
+            std::vector<double> terminal_costs = std::vector<double>{0.0});
 
         PlanningInterfaceMultiResolutions(
             std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
@@ -55,23 +51,6 @@ namespace erl::search_planning {
                   std::move(metric_start_coords),
                   std::vector({std::move(metric_goal_coords)}),
                   std::vector({std::move(metric_goal_tolerance)})) {}
-
-        PlanningInterfaceMultiResolutions(
-            std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
-            std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
-            Eigen::VectorXd metric_start_coords,
-            const std::vector<Eigen::VectorXd> &metric_goals_coords,
-            std::vector<Eigen::VectorXd> metric_goals_tolerances,
-            Eigen::VectorXd terminal_costs)
-            : PlanningInterfaceMultiResolutions(
-                  std::move(environments),
-                  std::move(heuristics),
-                  std::move(metric_start_coords),
-                  metric_goals_coords,
-                  std::move(metric_goals_tolerances)) {
-            m_terminal_costs_ = std::move(terminal_costs);
-            m_terminal_cost_set_ = true;
-        }
 
         [[nodiscard]] inline std::size_t
         GetNumHeuristics() const {
@@ -123,7 +102,7 @@ namespace erl::search_planning {
 
         [[nodiscard]] inline int
         GetNumGoals() const {
-            return int(m_goals_.size()) - m_terminal_cost_set_;
+            return int(m_goals_.size()) - m_multiple_goals_;
         }
 
         [[nodiscard]] inline std::vector<double>
@@ -140,7 +119,7 @@ namespace erl::search_planning {
             int num_goals = GetNumGoals();
             long dim = state->metric.size();
             for (int i = 0; i < num_goals; ++i) {
-                if (m_terminal_cost_set_ && (m_terminal_costs_[i] >= std::numeric_limits<double>::max())) { continue; }
+                if (m_multiple_goals_ && (m_terminal_costs_[i] >= std::numeric_limits<double>::max())) { continue; }
                 bool goal_reached = true;
                 for (long j = 0; j < dim; ++j) {
                     double err = std::abs(state->metric[j] - m_goals_[i]->metric[j]);
@@ -162,7 +141,7 @@ namespace erl::search_planning {
         [[nodiscard]] inline int
         ReachGoal(const std::shared_ptr<env::EnvironmentState> &env_state) const {
             auto num_goals = int(m_goals_.size());
-            if (num_goals == 1 || !m_terminal_cost_set_) { return IsMetricGoal(env_state); }
+            if (num_goals == 1 || !m_multiple_goals_) { return IsMetricGoal(env_state); }
             // When terminal cost is set, the virtual goal is used to check if the goal is reached, we should not return other goal indices.
             return env_state->grid[0] == env::VirtualStateValue::kGoal ? num_goals - 1 : -1;
         }
@@ -177,7 +156,7 @@ namespace erl::search_planning {
         [[nodiscard]] inline std::vector<std::shared_ptr<env::EnvironmentState>>
         GetPath(const std::shared_ptr<const env::EnvironmentState> &env_state, const std::vector<int> &action_coords) const {
             auto num_goals = int(m_goals_.size());
-            if (num_goals == 1 || !m_terminal_cost_set_) { return m_env_anchor_->ForwardAction(env_state, action_coords); }
+            if (num_goals == 1 || !m_multiple_goals_) { return m_env_anchor_->ForwardAction(env_state, action_coords); }
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) {
                 ERL_DEBUG_ASSERT(action_coords[0] < 0, "virtual goal env_state can only be reached with action_coords[0] = -goal_index - 1.");
                 return {m_goals_[-(action_coords[0] + 1)]};
@@ -196,7 +175,7 @@ namespace erl::search_planning {
         inline void
         SetGoals(const std::vector<Eigen::VectorXd> &metric_goals_coords) {
             auto num_goals = int(metric_goals_coords.size());
-            if (m_terminal_cost_set_) {
+            if (m_multiple_goals_) {
                 m_goals_.reserve(num_goals + 1);
                 for (const auto &metric_goal_coords: metric_goals_coords) {
                     auto goal = std::make_shared<env::EnvironmentState>();
