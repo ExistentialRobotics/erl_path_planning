@@ -52,11 +52,6 @@ namespace erl::search_planning {
             return m_env_;
         }
 
-        inline void
-        SetHeuristic(std::shared_ptr<HeuristicBase> heuristic) {
-            m_heuristic_ = std::move(heuristic);
-        }
-
         [[nodiscard]] inline double
         GetHeuristic(const std::shared_ptr<env::EnvironmentState> &env_state) const {
             return (*m_heuristic_)(*env_state);
@@ -79,8 +74,8 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentState>
-        GetGoalState(int index) const {
-            return m_goals_[index];
+        GetGoalState(int goal_index) const {
+            return m_goals_[goal_index];
         }
 
         [[nodiscard]] inline int

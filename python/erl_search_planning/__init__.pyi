@@ -1,29 +1,71 @@
 from typing import Callable
 from typing import List
 from typing import overload
-
+from typing import Tuple
 import numpy as np
 import numpy.typing as npt
-from erl_common.storage import GridMapUnsigned2D
-from erl_env import DdcMotionPrimitive
-from erl_env import Environment2D
+from erl_env import EnvironmentState
 from erl_env import EnvironmentBase
-from erl_env import EnvironmentSe2
 from erl_env import Successor
 
 __all__ = [
+    "HeuristicBase",
+    "EuclideanDistanceHeuristic",
+    "ManhattanDistanceHeuristic",
+    "DictionaryHeuristic",
+    "MultiGoalsHeuristic",
     "PlanningInterface",
-    "Planning2D",
-    "PlanningSe2",
-    "PlanningGridSe2",
+    "PlanningInterfaceMultiResolutions",
 ]
+
+class HeuristicBase:
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(
+        self: HeuristicBase,
+        goal: npt.NDArray[np.float64],
+        goal_tolerance: npt.NDArray[np.float64],
+        terminal_cost: float,
+    ) -> None: ...
+    def __call__(self: HeuristicBase, env_state: EnvironmentState) -> float: ...
+
+class EuclideanDistanceHeuristic(HeuristicBase):
+    def __init__(
+        self: EuclideanDistanceHeuristic,
+        goal: npt.NDArray[np.float64],
+        goal_tolerance: npt.NDArray[np.float64],
+        terminal_cost: float,
+    ) -> None: ...
+
+class ManhattanDistanceHeuristic(HeuristicBase):
+    def __init__(
+        self: ManhattanDistanceHeuristic,
+        goal: npt.NDArray[np.float64],
+        goal_tolerance: npt.NDArray[np.float64],
+        terminal_cost: float,
+    ) -> None: ...
+
+class DictionaryHeuristic(HeuristicBase):
+    def __init__(
+        self: DictionaryHeuristic,
+        csv_path: str,
+        state_hashing_func: Callable[[EnvironmentState], int],
+        assert_on_missing: bool = True,
+    ) -> None: ...
+
+class MultiGoalsHeuristic(HeuristicBase):
+    def __init__(self: MultiGoalsHeuristic, goal_heuristics: List[HeuristicBase]) -> None: ...
 
 class PlanningInterface(EnvironmentBase):
     def __init__(
         self: PlanningInterface,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
+        env: EnvironmentBase,
+        metric_start_coords: npt.NDArray[np.float64],
+        metric_goals_coords: List[npt.NDArray[np.float64]],
+        metric_goals_tolerances: List[npt.NDArray[np.float64]],
+        terminal_costs: List[float],
+        heuristic: HeuristicBase = None,
     ) -> None: ...
     def connect_compute_cost_callback(
         self: PlanningInterface,
@@ -76,96 +118,47 @@ class PlanningInterface(EnvironmentBase):
     def get_terminal_cost(self: PlanningInterface, goal_index: int) -> float: ...
     def is_goal(self: PlanningInterface, metric_state: npt.NDArray[np.float64]) -> int: ...
 
-class Planning2D(PlanningInterface, Environment2D):
+class PlanningInterfaceMultiResolutions:
     @overload
     def __init__(
-        self: Planning2D,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
-        allow_diagonal: bool,
-        step_size: int,
-        grid_map: GridMapUnsigned2D,
+        self: PlanningInterfaceMultiResolutions,
+        environments: List[EnvironmentBase],
+        heuristics: List[Tuple[HeuristicBase, int]],
+        metric_start_coords: npt.NDArray[np.float64],
+        metric_goals_coords: List[npt.NDArray[np.float64]],
+        metric_goals_tolerances: List[npt.NDArray[np.float64]],
+        terminal_costs: List[float],
     ) -> None: ...
     @overload
     def __init__(
-        self: Planning2D,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
-        allow_diagonal: bool,
-        step_size: int,
-        grid_map: GridMapUnsigned2D,
-        inflate_scale: float,
-        shape_metric_vertices: npt.NDArray[np.float64],
+        self: PlanningInterfaceMultiResolutions,
+        environments: List[EnvironmentBase],
+        heuristics: List[Tuple[HeuristicBase, int]],
+        metric_start_coords: npt.NDArray[np.float64],
+        metric_goal_coords: List[npt.NDArray[np.float64]],
+        metric_goal_tolerance: List[npt.NDArray[np.float64]],
     ) -> None: ...
-
-class PlanningSe2(PlanningInterface, EnvironmentSe2):
-    @overload
-    def __init__(
-        self: PlanningSe2,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
-        collision_check_dt: float,
-        motion_primitives: List[DdcMotionPrimitive],
-        grid_map: GridMapUnsigned2D,
-        num_thetas: int,
-    ) -> None: ...
-    @overload
-    def __init__(
-        self: PlanningSe2,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
-        collision_check_dt: float,
-        motion_primitives: List[DdcMotionPrimitive],
-        grid_map: GridMapUnsigned2D,
-        num_thetas: int,
-        inflate_scale: float,
-        shape_metric_vertices: npt.NDArray[np.float64],
-    ) -> None: ...
-
-class PlanningGridSe2(PlanningInterface, EnvironmentGridSe2):
-    @overload
-    def __init__(
-        self: PlanningGridSe2,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
-        linear_velocity_min: float,
-        linear_velocity_max: float,
-        linear_velocity_step: float,
-        euclidean_square_distance_cost_weight: float,
-        angular_velocity_min: float,
-        angular_velocity_max: float,
-        angular_velocity_step: float,
-        angular_square_distance_cost_weight: float,
-        duration_step: float,
-        duration: float,
-        max_step_size: int,
-        grid_map: GridMapUnsigned2D,
-        num_orientations: int,
-    ) -> None: ...
-    @overload
-    def __init__(
-        self: PlanningGridSe2,
-        metric_goals_coords: npt.NDArray[np.float64],
-        metric_goals_tolerance: npt.NDArray[np.float64],
-        terminal_costs: npt.NDArray[np.float64],
-        linear_velocity_min: float,
-        linear_velocity_max: float,
-        linear_velocity_step: float,
-        euclidean_square_distance_cost_weight: float,
-        angular_velocity_min: float,
-        angular_velocity_max: float,
-        angular_velocity_step: float,
-        angular_square_distance_cost_weight: float,
-        duration_step: float,
-        duration: float,
-        max_step_size: int,
-        grid_map: GridMapUnsigned2D,
-        num_orientations: int,
-        inflate_scale: float,
-        shape_metric_vertices: npt.NDArray[np.float64],
-    ) -> None: ...
+    @property
+    def num_heuristics(self: PlanningInterfaceMultiResolutions) -> int: ...
+    @property
+    def num_resolution_levels(self: PlanningInterfaceMultiResolutions) -> int: ...
+    @property
+    def start_state(self: PlanningInterfaceMultiResolutions) -> EnvironmentState: ...
+    @property
+    def num_goals(self: PlanningInterfaceMultiResolutions) -> int: ...
+    def get_heuristic(self: PlanningInterfaceMultiResolutions, heuristic_id: int) -> HeuristicBase: ...
+    def get_resolution_assignment(self: PlanningInterfaceMultiResolutions, heuristic_id: int) -> int: ...
+    def get_in_resolution_level_flag(
+        self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState
+    ) -> List[bool]: ...
+    def get_successors(
+        self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState, env_resolution_level: int
+    ) -> List[Successor]: ...
+    def get_heuristic_values(self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState) -> List[float]: ...
+    def is_metric_goal(self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState) -> bool: ...
+    def is_virtual_goal(self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState) -> bool: ...
+    def reach_goal(self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState) -> int: ...
+    def state_hashing(self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState) -> int: ...
+    def get_path(
+        self: PlanningInterfaceMultiResolutions, env_state: EnvironmentState, action_coords: List[int]
+    ) -> List[EnvironmentState]: ...

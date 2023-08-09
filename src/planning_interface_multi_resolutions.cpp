@@ -18,7 +18,7 @@ namespace erl::search_planning {
         // check environments
         std::size_t num_resolution_levels = m_envs_.size();
         ERL_ASSERTM(num_resolution_levels > 0, "at least one environment must be provided.");
-        m_env_anchor_ = std::dynamic_pointer_cast<EnvironmentAnchor>(m_envs_[0]);
+        m_env_anchor_ = std::dynamic_pointer_cast<env::EnvironmentAnchor>(m_envs_[0]);
         ERL_ASSERTM(m_env_anchor_ != nullptr, "environments[0] must be derived from EnvironmentAnchor.");
         for (std::size_t i = 1; i < num_resolution_levels; ++i) { ERL_ASSERTM(m_envs_[i] != nullptr, "environments[%d] is nullptr.", int(i)); }
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "erl_env/environment_base.hpp"
-#include "environment_anchor.hpp"
+#include "erl_env/environment_anchor.hpp"
 #include "heuristic.hpp"
 
 #include <map>
@@ -17,7 +17,7 @@ namespace erl::search_planning {
          * the union of action spaces of all other environments. m_envs_[i] is the i-th resolution-level environment.
          */
         std::vector<std::shared_ptr<env::EnvironmentBase>> m_envs_ = {};
-        std::shared_ptr<EnvironmentAnchor> m_env_anchor_ = nullptr;
+        std::shared_ptr<env::EnvironmentAnchor> m_env_anchor_ = nullptr;
         // heuristic and its resolution level
         std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> m_heuristics_ = {};
         std::vector<std::vector<std::size_t>> m_heuristic_ids_by_resolution_level_ = {};
@@ -78,16 +78,16 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] inline std::vector<bool>
-        GetInResolutionLevelFlags(const std::shared_ptr<env::EnvironmentState> &state) const {
+        GetInResolutionLevelFlags(const std::shared_ptr<env::EnvironmentState> &env_state) const {
             std::vector<bool> in_resolution_level_flags(m_envs_.size());
             in_resolution_level_flags[0] = true;
-            for (std::size_t i = 1; i < m_envs_.size(); ++i) { in_resolution_level_flags[i] = m_envs_[i]->InStateSpace(state); }
+            for (std::size_t i = 1; i < m_envs_.size(); ++i) { in_resolution_level_flags[i] = m_envs_[i]->InStateSpace(env_state); }
             return in_resolution_level_flags;
         }
 
         [[nodiscard]] inline std::vector<env::Successor>
-        GetSuccessors(const std::shared_ptr<env::EnvironmentState> &state, std::size_t env_resolution_level) const {
-            return m_env_anchor_->GetSuccessors(state, env_resolution_level);
+        GetSuccessors(const std::shared_ptr<env::EnvironmentState> &env_state, std::size_t env_resolution_level) const {
+            return m_env_anchor_->GetSuccessors(env_state, env_resolution_level);
         }
 
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentState>
@@ -106,23 +106,24 @@ namespace erl::search_planning {
         }
 
         [[nodiscard]] inline std::vector<double>
-        GetHeuristicValues(const std::shared_ptr<env::EnvironmentState> &state) const {
+        GetHeuristicValues(const std::shared_ptr<env::EnvironmentState> &env_state) const {
             std::vector<double> heuristic_values;
             std::size_t num_heuristics = GetNumHeuristics();
             heuristic_values.resize(num_heuristics);
-            for (std::size_t i = 0; i < num_heuristics; ++i) { heuristic_values[i] = (*m_heuristics_[i].first)(*state); }
+            for (std::size_t i = 0; i < num_heuristics; ++i) { heuristic_values[i] = (*m_heuristics_[i].first)(*env_state); }
             return heuristic_values;
         }
 
         [[nodiscard]] int  // return the index of the goal that is reached, -1 if none is reached
-        IsMetricGoal(const std::shared_ptr<env::EnvironmentState> &state) const {
+        IsMetricGoal(const std::shared_ptr<env::EnvironmentState> &env_state) const {
+            if (IsVirtualGoal(env_state)) { return false; }
             int num_goals = GetNumGoals();
-            long dim = state->metric.size();
+            long dim = env_state->metric.size();
             for (int i = 0; i < num_goals; ++i) {
                 if (m_multiple_goals_ && (m_terminal_costs_[i] >= std::numeric_limits<double>::max())) { continue; }
                 bool goal_reached = true;
                 for (long j = 0; j < dim; ++j) {
-                    double err = std::abs(state->metric[j] - m_goals_[i]->metric[j]);
+                    double err = std::abs(env_state->metric[j] - m_goals_[i]->metric[j]);
                     if (err > m_goals_tolerances_[i][j]) {
                         goal_reached = false;
                         break;

@@ -186,13 +186,13 @@ namespace erl::search_planning::amra_star {
         std::shared_ptr<Output>
         Plan();
 
+    private:
         int
         ImprovePath(const std::chrono::system_clock::time_point& start_time, std::chrono::nanoseconds& elapsed_time);
 
         void
         Expand(const std::shared_ptr<State>& parent, std::size_t heuristic_id);
 
-    private:
         inline std::shared_ptr<State>&
         GetState(const std::shared_ptr<env::EnvironmentState>& env_state) {
             return m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
@@ -280,16 +280,16 @@ namespace YAML {
 
     inline Emitter&
     operator<<(Emitter& out, const erl::search_planning::amra_star::AMRAStar::Setting& rhs) {
-        out << YAML::BeginMap;
-        out << YAML::Key << "time_limit" << YAML::Value << double(rhs.time_limit.count()) / 1.e9;
-        out << YAML::Key << "w1_init" << YAML::Value << rhs.w1_init;
-        out << YAML::Key << "w2_init" << YAML::Value << rhs.w2_init;
-        out << YAML::Key << "w1_final" << YAML::Value << rhs.w1_final;
-        out << YAML::Key << "w2_final" << YAML::Value << rhs.w2_final;
-        out << YAML::Key << "w1_decay_factor" << YAML::Value << rhs.w1_decay_factor;
-        out << YAML::Key << "w2_decay_factor" << YAML::Value << rhs.w2_decay_factor;
-        out << YAML::Key << "log" << YAML::Value << rhs.log;
-        out << YAML::EndMap;
+        out << BeginMap;
+        out << Key << "time_limit" << Value << double(rhs.time_limit.count()) / 1.e9;
+        out << Key << "w1_init" << Value << rhs.w1_init;
+        out << Key << "w2_init" << Value << rhs.w2_init;
+        out << Key << "w1_final" << Value << rhs.w1_final;
+        out << Key << "w2_final" << Value << rhs.w2_final;
+        out << Key << "w1_decay_factor" << Value << rhs.w1_decay_factor;
+        out << Key << "w2_decay_factor" << Value << rhs.w2_decay_factor;
+        out << Key << "log" << Value << rhs.log;
+        out << EndMap;
         return out;
     }
 }  // namespace YAML

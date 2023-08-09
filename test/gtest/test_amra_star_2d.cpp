@@ -37,11 +37,12 @@ TEST(AMRAStar2DTest, AStarConsistency) {
     auto grid_map_info = std::make_shared<GridMapInfo<2>>(Eigen::Vector2i{15, 15}, Eigen::Vector2d::Zero(), Eigen::Vector2d::Constant(15));
     auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, grid_map_data);
 
-    bool allow_diagonal = true;
-    int step_size = 1;
-    bool down_sampled = false;
+    auto env_2d_setting = std::make_shared<Environment2D::Setting>();
+    env_2d_setting->allow_diagonal = true;
+    env_2d_setting->step_size = 1;
+    env_2d_setting->down_sampled = false;
     std::shared_ptr<CostBase> cost_func = nullptr;
-    auto env = std::make_shared<Environment2D>(allow_diagonal, step_size, down_sampled, cost_func, grid_map);
+    auto env = std::make_shared<Environment2D>(grid_map, env_2d_setting, cost_func);
     Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
     Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 10});
     Eigen::VectorXd goal_tolerance = Eigen::Vector2d::Zero();
@@ -178,11 +179,18 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     auto grid_map = ReadAmraStarTestMap(map_file);
     auto grid_map_info = grid_map->info;
 
-    bool allow_diagonal = true;
-    auto cost_func = std::make_shared<EuclideanDistanceCost>();
-    auto env_high_res = std::make_shared<Environment2D>(allow_diagonal, 1, false, cost_func, grid_map);
-    auto env_mid_res = std::make_shared<Environment2D>(allow_diagonal, 3, true, cost_func, grid_map);
-    auto env_low_res = std::make_shared<Environment2D>(allow_diagonal, 9, true, cost_func, grid_map);
+    auto env_high_res_setting = std::make_shared<Environment2D::Setting>();
+    env_high_res_setting->step_size = 1.0;
+    env_high_res_setting->down_sampled = false;
+    auto env_high_res = std::make_shared<Environment2D>(grid_map, env_high_res_setting);
+    auto env_mid_res_setting = std::make_shared<Environment2D::Setting>();
+    env_mid_res_setting->step_size = 3.0;
+    env_mid_res_setting->down_sampled = true;
+    auto env_mid_res = std::make_shared<Environment2D>(grid_map, env_mid_res_setting);
+    auto env_low_res_setting = std::make_shared<Environment2D::Setting>();
+    env_low_res_setting->step_size = 9.0;
+    env_low_res_setting->down_sampled = true;
+    auto env_low_res = std::make_shared<Environment2D>(grid_map, env_low_res_setting);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<2>>(envs, grid_map_info);
     std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
