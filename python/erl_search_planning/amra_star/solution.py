@@ -204,7 +204,7 @@ class AMRAStarSolution:
     def visualize_closed_states(self) -> plt.Figure:
         fig = None
         closed_states_by_resolution_level = self.closed_states.groupby(["action_resolution_level"])
-        for resolution_level in range(self.num_resolution_levels - 1, -1, -1):
+        for resolution_level in range(self.num_resolution_levels, -1, -1):
             fig = self.visualize_map()
             path = self.solutions[self.latest_plan_itr].path
             n = self.solutions[self.latest_plan_itr].num_waypoints

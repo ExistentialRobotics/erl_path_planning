@@ -9,7 +9,6 @@ namespace erl::search_planning::amra_star {
         std::ofstream ofs(file_path);
         ERL_ASSERTM(ofs.is_open(), "Failed to open file: %s", file_path.string().c_str());
         std::size_t num_successful_plans = paths.size();
-        // long n = path.cols();
         ofs << "AMRA* solution" << std::endl
             << "num_successful_plans: " << num_successful_plans << std::endl
             << "latest_plan_itr: " << latest_plan_itr << std::endl
@@ -46,7 +45,7 @@ namespace erl::search_planning::amra_star {
         }
 
         // save opened_states, closed_states, inconsistent_states
-        long cnt = 1;
+        std::size_t cnt = 1;
         for (const auto &[plan_itr, opened_states_at_plan_itr]: opened_states) {
             for (const auto &[heuristic_id, opened_states_at_heuristic_id]: opened_states_at_plan_itr) { cnt += opened_states_at_heuristic_id.size(); }
         }
