@@ -3,6 +3,14 @@ AMRA*
 
 AMRA* is a anytime multi-resolution multi-heuristic A* algorithm.
 
+- `AMRAStar`
+    - `PlanningInterfaceMultiResolutions`
+        - `environments`: [`EnvironmentAnchor`, `Environment_1`, `Environment_2`, ...]
+        - `heuristics`: [`<heuristic_0, 0>`, `<heuristic_1, r1>`, `<heuristic_2, r2>`, ...]
+        - `start`
+        - `goals`
+        - `goals tolerance`
+
 # Usage
 
 ## C++
