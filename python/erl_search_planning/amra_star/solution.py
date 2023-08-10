@@ -195,7 +195,7 @@ class AMRAStarSolution:
                 gif_path = os.path.join(
                     self.output_video_dir, f"{self.sol_name}-opened_states-heuristic_id_{heuristic_id}.gif"
                 )
-                with imageio.get_writer(gif_path, mode="I") as writer:
+                with imageio.get_writer(gif_path, mode="I", loop=10000) as writer:
                     for image_path in images:
                         image = imageio.imread(image_path)
                         writer.append_data(image)
@@ -260,7 +260,7 @@ class AMRAStarSolution:
                 gif_filepath = os.path.join(
                     self.output_video_dir, f"{self.sol_name}-closed_states-resolution_level_{resolution_level}.gif"
                 )
-                with imageio.get_writer(gif_filepath, mode="I") as writer:
+                with imageio.get_writer(gif_filepath, mode="I", loop=10000) as writer:
                     for image_filepath in images:
                         image = imageio.imread(image_filepath)
                         writer.append_data(image)
@@ -315,7 +315,7 @@ class AMRAStarSolution:
         if len(images) > 1:
             images = sorted(images)
             gif_filepath = os.path.join(self.output_video_dir, f"{self.sol_name}-inconsistent_states.gif")
-            with imageio.get_writer(gif_filepath, mode="I") as writer:
+            with imageio.get_writer(gif_filepath, mode="I", loop=10000) as writer:
                 for image_filepath in images:
                     image = imageio.imread(image_filepath)
                     writer.append_data(image)
