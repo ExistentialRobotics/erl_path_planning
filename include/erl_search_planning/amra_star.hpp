@@ -128,20 +128,26 @@ namespace erl::search_planning::amra_star {
     };
 
     struct Output {
-        int goal_index = -1;
-        Eigen::MatrixXd path = {};
-        std::list<std::vector<int>> action_coords = {};
-        double cost = std::numeric_limits<double>::max();
+        uint32_t latest_plan_itr = -1;                                        // latest plan iteration
+        std::map<uint32_t, int> goal_indices = {};                            // plan_itr -> goal_index
+        std::map<uint32_t, Eigen::MatrixXd> paths = {};                       // plan_itr -> path
+        std::map<uint32_t, std::list<std::vector<int>>> actions_coords = {};  // plan_itr -> actions_coords
+        std::map<uint32_t, double> costs = {};                                // plan_itr -> cost
 
         // statistics
+        uint32_t num_heuristics = 0;
+        uint32_t num_resolution_levels = 0;
+        uint64_t num_expansions = 0;
         double w1_solve = -1.0;
         double w2_solve = -1.0;
         double search_time = 0.;
 
         // logging
-        std::map<uint32_t, std::map<std::size_t, std::list<Eigen::VectorXd>>> opened_states;  // plan_itr -> heuristic_id -> list of states
-        std::map<uint32_t, std::map<std::size_t, std::list<Eigen::VectorXd>>> closed_states;  // plan_itr -> action_resolution_level -> list of states
-        std::map<uint32_t, std::list<Eigen::VectorXd>> inconsistent_states;                   // plan_itr -> list of states
+        std::map<uint32_t, double> w1_values;                                                 // plan_itr -> w1
+        std::map<uint32_t, double> w2_values;                                                 // plan_itr -> w2
+        std::map<uint32_t, std::map<std::size_t, std::list<Eigen::VectorXd>>> opened_states;  // total_expand_itr -> heuristic_id -> list of states
+        std::map<uint32_t, std::map<std::size_t, Eigen::VectorXd>> closed_states;             // total_expand_itr -> action_resolution_level -> list of states
+        std::map<uint32_t, std::list<Eigen::VectorXd>> inconsistent_states;                   // total_expand_itr -> list of states
 
         void
         Save(const std::filesystem::path& file_path) const;
@@ -226,7 +232,7 @@ namespace erl::search_planning::amra_star {
                 // state is not in open, insert it into open
                 state->open_queue_keys[heuristic_id] = m_open_queues_[heuristic_id].push(std::make_shared<PriorityQueueItem>(f_value, state));
                 state->SetOpened(heuristic_id, m_total_expand_itr_);
-                if (m_setting_->log) { m_output_->opened_states[m_plan_itr_][heuristic_id].push_back(state->env_state->metric); }
+                if (m_setting_->log) { m_output_->opened_states[m_total_expand_itr_][heuristic_id].push_back(state->env_state->metric); }
             }
         }
 
@@ -244,6 +250,9 @@ namespace erl::search_planning::amra_star {
 
         void
         RecoverPath(int goal_index);
+
+        void
+        SaveOutput(int goal_index);
     };
 }  // namespace erl::search_planning::amra_star
 

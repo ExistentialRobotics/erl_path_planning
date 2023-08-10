@@ -7,13 +7,19 @@ from erl_common.yaml import YamlableBase
 from .. import PlanningInterfaceMultiResolutions
 
 class Output:
-    goal_index: int
-    path: npt.NDArray[np.float64]
-    action_coords: List[int]
-    cost: float
+    latest_plan_itr: int
+    goal_indices: int
+    paths: Dict[int, npt.NDArray[np.float64]]
+    actions_coords: Dict[int, List[int]]
+    costs: Dict[int, float]
+    num_heuristics: int
+    num_resolution_levels: int
+    num_expansions: int
     w1_solve: float
     w2_solve: float
     search_time: float
+    w1_values: Dict[int, float]
+    w2_values: Dict[int, float]
     opened_states: Dict[int, Dict[int, List[npt.NDArray[np.float64]]]]
     closed_states: Dict[int, Dict[int, List[npt.NDArray[np.float64]]]]
     inconsistent_states: Dict[int, List[npt.NDArray[np.float64]]]

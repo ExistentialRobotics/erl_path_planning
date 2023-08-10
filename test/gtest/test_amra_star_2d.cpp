@@ -4,10 +4,10 @@
 #include "erl_common/grid_map.hpp"
 #include "erl_common/test_helper.hpp"
 #include "erl_env/environment_2d.hpp"
+#include "erl_env/environment_grid_anchor.hpp"
 #include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/planning_interface_multi_resolutions.hpp"
 #include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/environment_grid_anchor.hpp"
 
 TEST(AMRAStar2DTest, AStarConsistency) {
     using namespace erl::common;
@@ -61,11 +61,12 @@ TEST(AMRAStar2DTest, AStarConsistency) {
         std::vector<Eigen::VectorXd>{goal_tolerance});
     std::shared_ptr<Output> result;
     ReportTime<std::chrono::microseconds>("AMRAStar2D::AStarConsistency", 0, true, [&]() { result = AMRAStar(planning_interface).Plan(); });
-    std::cout << "Path cost: " << result->cost << std::endl << "Path: " << std::endl;
-    auto &path = result->path;
+    double path_cost = result->costs[result->latest_plan_itr];
+    std::cout << "Path cost: " << path_cost << std::endl << "Path: " << std::endl;
+    auto &path = result->paths[result->latest_plan_itr];
     long num_points = path.cols();
     for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
-    EXPECT_NEAR(result->cost, 15.485281374238571, 1e-6);
+    EXPECT_NEAR(path_cost, 15.485281374238571, 1e-6);
 }
 
 std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
@@ -73,7 +74,7 @@ std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/da
 std::filesystem::path result_dir = src_dir.parent_path() / "results";
 
 std::shared_ptr<erl::common::GridMapUnsigned2D>
-ReadAmraStarTestMap(const std::string &filepath, bool display = false) {
+ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std::string &img_path = "") {
     std::ifstream file(filepath);
     std::string line, word, temp;
     std::stringstream ss;
@@ -162,6 +163,12 @@ ReadAmraStarTestMap(const std::string &filepath, bool display = false) {
         cv::waitKey(1000);
     }
 
+    if (!img_path.empty()) {
+        cv::Mat img;
+        cv::eigen2cv(Eigen::MatrixX8U(255 - binary_map.array().transpose()), img);
+        cv::imwrite(img_path, img);
+    }
+
     auto grid_map = std::make_shared<erl::common::GridMapUnsigned2D>(grid_map_info, Eigen::VectorX8U(binary_map.reshaped(binary_map.size(), 1)));
     return grid_map;
 }
@@ -176,7 +183,11 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
-    auto grid_map = ReadAmraStarTestMap(map_file);
+    auto map_result_dir = result_dir / map_name;
+    if (!std::filesystem::exists(map_result_dir)) { std::filesystem::create_directories(map_result_dir); }
+    constexpr bool kDisplay = false;
+    std::string img_path = map_result_dir / (map_name + ".png");
+    auto grid_map = ReadAmraStarTestMap(map_file, kDisplay, img_path);
     auto grid_map_info = grid_map->info;
 
     auto env_high_res_setting = std::make_shared<Environment2D::Setting>();
@@ -207,26 +218,25 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(all_envs, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AMRAStar::Setting>();
-    setting->log = false;
+    setting->log = true;
     std::shared_ptr<Output> result;
     AMRAStar amra_star(planning_interface, setting);
     ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() { result = amra_star.Plan(); });
-    std::cout << "Path cost: " << result->cost << std::endl;
-    EXPECT_NEAR(result->cost, expected_cost, 1.e-6);
+    double path_cost = result->costs[result->latest_plan_itr];
+    std::cout << "Path cost: " << path_cost << std::endl;
+    EXPECT_NEAR(path_cost, expected_cost, 1.e-6);
 
     // std::cout << "Path: " << std::endl
     // auto &path = result->path;
     // long num_points = path.cols();
     // for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
 
-    // TODO: save result to file for visualization
-    // if (!std::filesystem::exists(result_dir)) { std::filesystem::create_directories(result_dir); }
-    // result->Save(result_dir / (map_name + ".solution"));
+    result->Save(map_result_dir / (map_name + ".solution"));
 }
 
 TEST(AMRAStar2DTest, MultiResolutions) {
-    RunTestWithMap(data_dir / "Boston_0_1024.map", {828, 657}, {1008, 756}, 234.86104730411358);
-    RunTestWithMap(data_dir / "Cauldron.map", {342, 450}, {522, 333}, 266.38660980808476);
+    RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.1511709743168);
+    RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1075.1796007476626);
     RunTestWithMap(data_dir / "Denver_0_1024.map", {306, 171}, {1008, 603}, 916.18768003761579);
     RunTestWithMap(data_dir / "Expedition.map", {720, 423}, {198, 891}, 766.06725471071707);
     RunTestWithMap(data_dir / "NewYork_0_1024.map", {0, 171}, {612, 882}, 999.25583708915997);

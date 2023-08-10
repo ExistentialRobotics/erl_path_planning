@@ -1,9 +1,4 @@
-dash
-plotly
-tqdm
-opencv-python
-pyyaml
-screeninfo
-scipy
+matplotlib
 numpy
-vedo
+pandas
+imageio

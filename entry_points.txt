@@ -1,0 +1,1 @@
+erl-amra-star-visualize-solution=erl_search_planning.amra_star.visualize_solution:main
