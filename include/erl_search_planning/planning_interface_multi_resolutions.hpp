@@ -120,7 +120,7 @@ namespace erl::search_planning {
             int num_goals = GetNumGoals();
             long dim = env_state->metric.size();
             for (int i = 0; i < num_goals; ++i) {
-                if (m_multiple_goals_ && (m_terminal_costs_[i] >= std::numeric_limits<double>::max())) { continue; }
+                if (m_multiple_goals_ && (std::isinf(m_terminal_costs_[i]))) { continue; }
                 bool goal_reached = true;
                 for (long j = 0; j < dim; ++j) {
                     double err = std::abs(env_state->metric[j] - m_goals_[i]->metric[j]);

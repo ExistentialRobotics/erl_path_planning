@@ -18,7 +18,7 @@ namespace erl::search_planning::amra_star {
     struct State;
 
     struct PriorityQueueItem {
-        double f_value = std::numeric_limits<double>::max();
+        double f_value = std::numeric_limits<double>::infinity();
         std::shared_ptr<State> state = nullptr;
 
         PriorityQueueItem() = default;
@@ -49,7 +49,7 @@ namespace erl::search_planning::amra_star {
         std::vector<uint64_t> iteration_opened;
         std::vector<PriorityQueue::handle_type> open_queue_keys;
         std::vector<uint64_t> iteration_closed;
-        double g_value = std::numeric_limits<double>::max();
+        double g_value = std::numeric_limits<double>::infinity();
         std::vector<double> h_values;
         std::vector<bool> in_resolution_levels;   // flags to indicate whether the state is in the resolution level
         std::shared_ptr<State> parent = nullptr;  // parent state
@@ -121,7 +121,7 @@ namespace erl::search_planning::amra_star {
         Reset() {
             iteration_opened.resize(iteration_opened.size(), 0);
             iteration_closed.resize(iteration_closed.size(), 0);
-            g_value = std::numeric_limits<double>::max();
+            g_value = std::numeric_limits<double>::infinity();
             parent = nullptr;
             action_coords.clear();
         }

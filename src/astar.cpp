@@ -26,7 +26,7 @@ namespace erl::search_planning::astar {
             // check if done
             int reached_goal_index = m_planning_interface_->ReachGoal(m_current_->env_state);
             if (reached_goal_index >= 0) {
-                RecoverPath(reached_goal_index);
+                RecoverPath(m_current_, reached_goal_index);
                 LogStates();
                 m_planned_ = true;
                 return m_output_;
@@ -98,8 +98,8 @@ namespace erl::search_planning::astar {
     }
 
     void
-    AStar::RecoverPath(int goal_index) {
-        std::shared_ptr<State> goal_state = GetState(m_planning_interface_->GetGoalState(goal_index));
+    AStar::RecoverPath(const std::shared_ptr<State>& goal_state, int goal_index) {
+        // std::shared_ptr<State> goal_state = GetState(m_planning_interface_->GetGoalState(goal_index));
         // If there is multiple goals with nonzero terminal costs, the planning interface will handle it to make g_value include the terminal cost.
         m_output_->cost = goal_state->g_value;
 
@@ -137,14 +137,13 @@ namespace erl::search_planning::astar {
             num_path_states += long(path_segment.size());
             state = path_segment.back();
         }
-        m_output_->path.resize(state->metric.size(), num_path_states + 2);
+        m_output_->path.resize(state->metric.size(), num_path_states + 1);
         m_output_->path.col(0) = m_planning_interface_->GetStartState()->metric;
         long index = 1;
         for (auto &path_segment: path_segments) {
             auto num_states = long(path_segment.size());
             for (long i = 0; i < num_states; ++i) { m_output_->path.col(index++) = path_segment[i]->metric; }
         }
-        m_output_->path.col(index) = m_planning_interface_->GetGoalState(goal_index)->metric;
     }
 
     void

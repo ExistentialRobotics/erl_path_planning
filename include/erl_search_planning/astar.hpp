@@ -15,7 +15,7 @@ namespace erl::search_planning::astar {
     struct State;
 
     struct PriorityQueueItem {
-        double f_value = std::numeric_limits<double>::max();
+        double f_value = std::numeric_limits<double>::infinity();
         std::shared_ptr<State> state = nullptr;
 
         PriorityQueueItem() = default;
@@ -55,8 +55,8 @@ namespace erl::search_planning::astar {
         std::vector<int> action_coords = {};
         PriorityQueue::handle_type heap_key = {};
 
-        double g_value = std::numeric_limits<double>::max();
-        double h_value = std::numeric_limits<double>::max();
+        double g_value = std::numeric_limits<double>::infinity();
+        double h_value = std::numeric_limits<double>::infinity();
 
         std::size_t iteration_opened = 0;
         std::size_t iteration_closed = 0;
@@ -90,7 +90,7 @@ namespace erl::search_planning::astar {
         int goal_index = -1;
         Eigen::MatrixXd path = {};
         std::list<std::vector<int>> action_coords = {};
-        double cost = std::numeric_limits<double>::max();
+        double cost = std::numeric_limits<double>::infinity();
 
         // logging
         std::map<std::size_t, std::list<Eigen::VectorXd>> opened_list = {};
@@ -136,7 +136,7 @@ namespace erl::search_planning::astar {
         Expand();
 
         void
-        RecoverPath(int goal_index);
+        RecoverPath(const std::shared_ptr<State>& goal_state, int goal_index);
 
         void
         LogStates() const;

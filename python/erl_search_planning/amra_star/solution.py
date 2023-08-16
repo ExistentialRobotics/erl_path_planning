@@ -186,6 +186,7 @@ class AMRAStarSolution:
                     f"{self.sol_name}-expand_itr_{expand_itr:09d}-heuristic_id_{heuristic_id}.png",
                 )
             )
+            plt.savefig(os.path.join(self.output_dir, f"{self.sol_name}-opened_states-heuristic_id_{heuristic_id}.png"))
 
             images = glob.glob(
                 os.path.join(self.output_image_dir, f"{self.sol_name}-expand_itr_*-heuristic_id_{heuristic_id}.png")
@@ -249,6 +250,9 @@ class AMRAStarSolution:
                     f"{self.sol_name}-expand_itr_{expand_itr:09d}-resolution_level_{resolution_level}.png",
                 )
             )
+            plt.savefig(
+                os.path.join(self.output_dir, f"{self.sol_name}-closed_states-resolution_level_{resolution_level}.png")
+            )
 
             images = glob.glob(
                 os.path.join(
@@ -310,6 +314,7 @@ class AMRAStarSolution:
                 f"{self.sol_name}-expand_itr_{expand_itr:09d}-inconsistent_states.png",
             )
         )
+        plt.savefig(os.path.join(self.output_dir, f"{self.sol_name}-inconsistent_states.png"))
 
         images = glob.glob(os.path.join(self.output_image_dir, f"{self.sol_name}-expand_itr_*-inconsistent_states.png"))
         if len(images) > 1:

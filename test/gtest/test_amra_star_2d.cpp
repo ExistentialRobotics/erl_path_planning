@@ -218,7 +218,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(all_envs, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AMRAStar::Setting>();
-    setting->log = true;
+    setting->log = false;
     std::shared_ptr<Output> result;
     AMRAStar amra_star(planning_interface, setting);
     ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() { result = amra_star.Plan(); });
@@ -231,7 +231,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     // long num_points = path.cols();
     // for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
 
-    result->Save(map_result_dir / (map_name + ".solution"));
+    if (setting->log) { result->Save(map_result_dir / (map_name + ".solution")); }
 }
 
 TEST(AMRAStar2DTest, MultiResolutions) {

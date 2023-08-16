@@ -126,7 +126,7 @@ namespace erl::search_planning::amra_star {
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
         std::size_t num_resolution_levels = m_planning_interface_->GetNumResolutionLevels();
         m_expand_itr_.setZero();
-        m_expand_itr_[0] = 1;
+        // m_expand_itr_[0] = 1;
         m_total_expand_itr_ = 1;
 
         m_plan_itr_++;
@@ -197,7 +197,7 @@ namespace erl::search_planning::amra_star {
     AMRAStar::ImprovePath(const std::chrono::system_clock::time_point &start_time, std::chrono::nanoseconds &elapsed_time) {
         elapsed_time = 0ns;
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
-        while (!m_open_queues_[0].empty() && (m_open_queues_[0].top()->f_value < std::numeric_limits<double>::max())) {  // L25
+        while (!m_open_queues_[0].empty() && (m_open_queues_[0].top()->f_value < std::numeric_limits<double>::infinity())) {  // L25
             elapsed_time = std::chrono::system_clock::now() - start_time;
             if (elapsed_time + m_search_time_ > m_setting_->time_limit) { return -1; }
 
