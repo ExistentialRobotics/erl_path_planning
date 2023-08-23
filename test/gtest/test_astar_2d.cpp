@@ -6,7 +6,7 @@
 #include "erl_env/environment_ltl_2d.hpp"
 #include "erl_common/test_helper.hpp"
 
-TEST(AStar2DTest, PlanWithSingleGoal) {
+TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithSingleGoal) {
 
     using namespace erl::common;
     using namespace erl::search_planning;
@@ -54,7 +54,7 @@ TEST(AStar2DTest, PlanWithSingleGoal) {
     EXPECT_NEAR(result->cost, 15.485281374238571, 1e-6);
 }
 
-TEST(AStar2DTest, PlanWithFourGoals) {
+TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithFourGoals) {
 
     using namespace erl::common;
     using namespace erl::search_planning;
@@ -120,7 +120,7 @@ TEST(AStar2DTest, PlanWithFourGoals) {
     ofs << out.c_str();
 }
 
-TEST(AStar2DTest, LinearTemporalLogic2D) {
+TEST(ERL_SEARCH_PLANNING, AStar2D_LinearTemporalLogic2D) {
     using namespace erl::common;
     using namespace erl::search_planning;
     using namespace erl::env;
@@ -169,7 +169,7 @@ TEST(AStar2DTest, LinearTemporalLogic2D) {
     cv::Mat img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}});
     cv::imwrite("AStar2DTest-LinearTemporalLogic2D.png", img);
 
-    EXPECT_NEAR(result->cost, 20.417871555019111, 1e-6);
+    EXPECT_NEAR(result->cost, 20.417871555019111, 1e-15);
     EXPECT_EQ(result->path.cols(), 165);
 
     long num_points = result->path.cols();

@@ -4,12 +4,13 @@
 #include "erl_common/grid_map.hpp"
 #include "erl_common/test_helper.hpp"
 #include "erl_env/environment_2d.hpp"
+#include "erl_env/environment_ltl_2d.hpp"
 #include "erl_env/environment_grid_anchor.hpp"
 #include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/planning_interface_multi_resolutions.hpp"
 #include "erl_search_planning/heuristic.hpp"
 
-TEST(AMRAStar2DTest, AStarConsistency) {
+TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -234,7 +235,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     if (setting->log) { result->Save(map_result_dir / (map_name + ".solution")); }
 }
 
-TEST(AMRAStar2DTest, MultiResolutions) {
+TEST(ERL_SEARCH_PLANNING, AMRAStar2D_MultiResolutions) {
     RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.1511709743168);
     RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1075.1796007476626);
     RunTestWithMap(data_dir / "Denver_0_1024.map", {306, 171}, {1008, 603}, 916.18768003761579);
@@ -242,4 +243,73 @@ TEST(AMRAStar2DTest, MultiResolutions) {
     RunTestWithMap(data_dir / "NewYork_0_1024.map", {0, 171}, {612, 882}, 999.25583708915997);
     RunTestWithMap(data_dir / "Octopus.map", {549, 837}, {639, 279}, 644.11319062351083);
     RunTestWithMap(data_dir / "TheFrozenSea.map", {288, 414}, {207, 990}, 649.50994061340202);
+}
+
+TEST(ERL_SEARCH_PLANNING, AMRAStar2D_GraphBased) {}
+
+TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
+    using namespace erl::common;
+    using namespace erl::env;
+    using namespace erl::search_planning;
+    using namespace erl::search_planning::amra_star;
+
+    std::filesystem::path path = __FILE__;
+    path = path.parent_path();
+
+    auto env_setting_yaml = path / "environment_ltl_2d.yaml";
+    auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
+    env_setting->FromYamlFile(env_setting_yaml);
+
+    auto label_map_png = path / "label_map.png";
+    cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
+    Eigen::MatrixX8U label_map_img_eigen;
+    cv::cv2eigen(label_map_img, label_map_img_eigen);
+    Eigen::MatrixXi label_map = label_map_img_eigen.cast<int>();
+
+    Eigen::Vector2i map_shape(251, 261);
+    Eigen::Vector2d map_min(-5.05, -5.05);
+    Eigen::Vector2d map_max(20.05, 21.05);
+    auto grid_map_info = std::make_shared<GridMapInfo2D>(map_shape, map_min, map_max);
+    auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, 0);  // free to move everywhere
+    auto cost_func = std::make_shared<EuclideanDistanceCost>();
+
+    auto env_high_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
+    env_high_res_setting->step_size = 1.0;
+    env_high_res_setting->down_sampled = false;
+    auto env_high_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_high_res_setting, cost_func);
+    auto env_mid_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
+    env_mid_res_setting->step_size = 3.0;
+    env_mid_res_setting->down_sampled = true;
+    auto env_mid_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_mid_res_setting, cost_func);
+    auto env_low_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
+    env_low_res_setting->step_size = 9.0;
+    env_low_res_setting->down_sampled = true;
+    auto env_low_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_low_res_setting, cost_func);
+    std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
+    auto env_anchor = std::make_shared<EnvironmentGridAnchor<3>>(envs, env_high_res->GetGridMapInfo());
+    std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
+
+    Eigen::VectorXd start(Eigen::Vector3d(-2, 3, env_setting->fsa->initial_state));
+    Eigen::VectorXd goal(Eigen::Vector3d(0, 0, env_setting->fsa->accepting_states[0]));
+    double inf = std::numeric_limits<double>::infinity();
+    Eigen::VectorXd goal_tolerance(Eigen::Vector3d(inf, inf, 0));
+
+    // auto euclidean_heuristic = std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance);
+    auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic2D>(env_high_res->GetFiniteStateAutomaton(), label_map, grid_map_info);
+    std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
+        {ltl_heuristic, 0},
+        {ltl_heuristic, 1},
+        {ltl_heuristic, 2},
+        {ltl_heuristic, 3}};
+
+    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(all_envs, heuristics, start, goal, goal_tolerance);
+    auto setting = std::make_shared<AMRAStar::Setting>();
+    setting->log = false;
+    std::shared_ptr<Output> result;
+    AMRAStar amra_star(planning_interface, setting);
+    ReportTime<std::chrono::milliseconds>("AMRA* 2D LTL", 0, true, [&]() { result = amra_star.Plan(); });
+    double path_cost = result->costs[result->latest_plan_itr];
+    std::cout << "Path cost: " << path_cost << std::endl;
+
+    EXPECT_NEAR(path_cost, 20.417871555019111, 1e-12);  // 20.417871555018998, slightly larger than the A* result
 }

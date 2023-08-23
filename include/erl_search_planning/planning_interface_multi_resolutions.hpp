@@ -171,6 +171,7 @@ namespace erl::search_planning {
             m_start_ = std::make_shared<env::EnvironmentState>();
             m_start_->grid = m_env_anchor_->MetricToGrid(m_init_start_);
             m_start_->metric = m_env_anchor_->GridToMetric(m_start_->grid);
+
         }
 
         inline void

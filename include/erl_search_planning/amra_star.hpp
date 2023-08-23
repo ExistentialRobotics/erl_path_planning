@@ -55,8 +55,6 @@ namespace erl::search_planning::amra_star {
         std::shared_ptr<State> parent = nullptr;  // parent state
         std::vector<int> action_coords = {};      // action coords = (env_action_coords, env_res_level) that generates this state from its parent
 
-        // uint8_t action_resolution_level = -1;             // resolution level which the action belongs to
-
         State(
             uint32_t plan_itr_in,
             std::shared_ptr<env::EnvironmentState> env_state_in,
@@ -111,10 +109,9 @@ namespace erl::search_planning::amra_star {
         }
 
         inline void
-        SetParent(std::shared_ptr<State> parent_in, std::vector<int> action_coords_in) {  // }, std::size_t action_resolution_level_in) {
+        SetParent(std::shared_ptr<State> parent_in, std::vector<int> action_coords_in) {
             parent = std::move(parent_in);
             action_coords = std::move(action_coords_in);
-            // action_resolution_level = action_resolution_level_in;
         }
 
         inline void
@@ -193,7 +190,7 @@ namespace erl::search_planning::amra_star {
         Plan();
 
     private:
-        int
+        std::pair<std::shared_ptr<State>, int>
         ImprovePath(const std::chrono::system_clock::time_point& start_time, std::chrono::nanoseconds& elapsed_time);
 
         void
@@ -248,11 +245,19 @@ namespace erl::search_planning::amra_star {
             open_queue.swap(new_open_queue);
         }
 
+        /**
+         * @brief Recover the path from the start state to the reached goal state
+         * @param goal_info (goal state, goal index)
+         */
         void
-        RecoverPath(int goal_index);
+        RecoverPath(const std::pair<std::shared_ptr<State>, int>& goal_info);
 
+        /**
+         * @brief Save the output of the search
+         * @param goal_info (goal state, goal index)
+         */
         void
-        SaveOutput(int goal_index);
+        SaveOutput(const std::pair<std::shared_ptr<State>, int>& goal_info);
     };
 }  // namespace erl::search_planning::amra_star
 

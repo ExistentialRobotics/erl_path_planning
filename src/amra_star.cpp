@@ -114,10 +114,12 @@ namespace erl::search_planning::amra_star {
 
     std::shared_ptr<Output>
     AMRAStar::Plan() {
-        int goal_index = m_planning_interface_->ReachGoal(m_start_state_->env_state);
-        if (goal_index >= 0) {
-            SaveOutput(goal_index);
-            return m_output_;
+        {
+            int goal_index = m_planning_interface_->ReachGoal(m_start_state_->env_state);
+            if (goal_index >= 0) {
+                SaveOutput({m_start_state_, goal_index});
+                return m_output_;
+            }
         }
 
         m_w1_ = m_setting_->w1_init;  // L43
@@ -126,7 +128,6 @@ namespace erl::search_planning::amra_star {
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
         std::size_t num_resolution_levels = m_planning_interface_->GetNumResolutionLevels();
         m_expand_itr_.setZero();
-        // m_expand_itr_[0] = 1;
         m_total_expand_itr_ = 1;
 
         m_plan_itr_++;
@@ -172,11 +173,11 @@ namespace erl::search_planning::amra_star {
 
             // improve path
             std::chrono::nanoseconds elapsed_time;
-            goal_index = ImprovePath(start_time, elapsed_time);  // L59
+            auto goal_info = ImprovePath(start_time, elapsed_time);  // L59
             m_search_time_ += elapsed_time;
             start_time = std::chrono::system_clock::now();
-            SaveOutput(goal_index);                                                    // L60
-            if (goal_index < 0 || m_search_time_ > m_setting_->time_limit) { break; }  // fail to find a solution or time out
+            SaveOutput(goal_info);                                                           // L60
+            if (goal_info.second < 0 || m_search_time_ > m_setting_->time_limit) { break; }  // fail to find a solution or time out
             ERL_INFO(
                 "Solved with (w1, w2) = (%f, %f) | expansions = %s | time = %f sec | cost = %f",
                 m_w1_,
@@ -193,44 +194,44 @@ namespace erl::search_planning::amra_star {
         return m_output_;
     }
 
-    int
+    std::pair<std::shared_ptr<State>, int>
     AMRAStar::ImprovePath(const std::chrono::system_clock::time_point &start_time, std::chrono::nanoseconds &elapsed_time) {
         elapsed_time = 0ns;
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
         while (!m_open_queues_[0].empty() && (m_open_queues_[0].top()->f_value < std::numeric_limits<double>::infinity())) {  // L25
             elapsed_time = std::chrono::system_clock::now() - start_time;
-            if (elapsed_time + m_search_time_ > m_setting_->time_limit) { return -1; }
+            if (elapsed_time + m_search_time_ > m_setting_->time_limit) { return {nullptr, -1}; }
 
             for (std::size_t heuristic_id = 1; heuristic_id < num_heuristics; ++heuristic_id) {  // L26
-                if (m_open_queues_[0].empty()) { return -1; }
+                if (m_open_queues_[0].empty()) { return {nullptr, -1}; }
                 double f_check = m_w2_ * m_open_queues_[0].top()->f_value;
-                auto min_goal_itr =
-                    std::min_element(m_goal_states_.begin(), m_goal_states_.end(), [](const std::shared_ptr<State> &a, const std::shared_ptr<State> &b) {
-                        return a->g_value < b->g_value;
-                    });
+                auto min_goal_itr = std::min_element(  // get the goal of minimum g_value
+                    m_goal_states_.begin(),
+                    m_goal_states_.end(),
+                    [](const std::shared_ptr<State> &a, const std::shared_ptr<State> &b) { return a->g_value < b->g_value; });
                 double min_goal_g_value = (*min_goal_itr)->g_value;
-                if (f_check >= min_goal_g_value) { return int(std::distance(m_goal_states_.begin(), min_goal_itr)); }
+                if (f_check >= min_goal_g_value) { return {*min_goal_itr, int(std::distance(m_goal_states_.begin(), min_goal_itr))}; }
 
                 if (!m_open_queues_[heuristic_id].empty() && m_open_queues_[heuristic_id].top()->f_value <= f_check) {
                     std::shared_ptr<State> state = m_open_queues_[heuristic_id].top()->state;
-                    m_open_queues_[heuristic_id].pop();
                     int goal_index = m_planning_interface_->ReachGoal(state->env_state);
-                    if (goal_index >= 0) { return goal_index; }
+                    if (goal_index >= 0) { return {state, goal_index}; }
+                    m_open_queues_[heuristic_id].pop();
                     Expand(state, heuristic_id);
                     m_expand_itr_[long(heuristic_id)]++;
                     m_total_expand_itr_++;
                 } else {
                     std::shared_ptr<State> state = m_open_queues_[0].top()->state;
-                    m_open_queues_[0].pop();
                     int goal_index = m_planning_interface_->ReachGoal(state->env_state);
-                    if (goal_index >= 0) { return goal_index; }
+                    if (goal_index >= 0) { return {state, goal_index}; }
+                    m_open_queues_[0].pop();
                     Expand(state, 0);
                     m_expand_itr_[0]++;
                     m_total_expand_itr_++;
                 }
             }
         }
-        return -1;
+        return {nullptr, -1};
     }
 
     void
@@ -292,14 +293,14 @@ namespace erl::search_planning::amra_star {
     }
 
     void
-    AMRAStar::RecoverPath(int goal_index) {
+    AMRAStar::RecoverPath(const std::pair<std::shared_ptr<State>, int> &goal_info) {
         m_output_->latest_plan_itr = m_plan_itr_;
         m_output_->w1_solve = m_w1_;
         m_output_->w2_solve = m_w2_;
 
         ERL_ASSERTM(m_output_->paths.find(m_plan_itr_) == m_output_->paths.end(), "path already exists for plan iteration %d.", m_plan_itr_);
-
-        std::shared_ptr<State> goal_state = GetState(m_planning_interface_->GetGoalState(goal_index));
+        const std::shared_ptr<State> &goal_state = goal_info.first;
+        int goal_index = goal_info.second;
         m_output_->costs[m_plan_itr_] = goal_state->g_value;
 
         std::shared_ptr<State> node;
@@ -351,8 +352,8 @@ namespace erl::search_planning::amra_star {
     }
 
     void
-    AMRAStar::SaveOutput(int goal_index) {
-        if (goal_index >= 0) { RecoverPath(goal_index); }
+    AMRAStar::SaveOutput(const std::pair<std::shared_ptr<State>, int> &goal_info) {
+        if (goal_info.second >= 0) { RecoverPath(goal_info); }
         m_output_->num_heuristics = m_planning_interface_->GetNumHeuristics();
         m_output_->num_resolution_levels = m_planning_interface_->GetNumResolutionLevels();
         m_output_->num_expansions = m_total_expand_itr_;

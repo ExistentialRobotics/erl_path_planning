@@ -2,7 +2,7 @@
 #include <filesystem>
 #include "erl_search_planning/heuristic.hpp"
 
-TEST(LinearTemporalLogicHeuristic2D, Test) {
+TEST(ERL_SEARCH_PLANNING, LinearTemporalLogicHeuristic2D) {
     std::filesystem::path path = __FILE__;
     path = path.parent_path();
 
