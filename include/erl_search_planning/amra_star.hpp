@@ -65,10 +65,14 @@ namespace erl::search_planning::amra_star {
               env_state(std::move(env_state_in)),
               iteration_opened(h_vals.size(), 0),
               open_queue_keys(h_vals.size()),
-              iteration_closed(num_resolution_levels + 1, 0),  // +1 for the anchor resolution level
+              iteration_closed(num_resolution_levels, 0),  // +1 for the anchor resolution level
               h_values(std::move(h_vals)),
               in_resolution_levels(std::move(in_resolution_level_flags)) {
-            ERL_DEBUG_ASSERT(this->in_resolution_levels.size() == num_resolution_levels + 1, "in_resolution_level_flags.size() != num_resolution_levels + 1");
+            ERL_DEBUG_ASSERT(
+                this->in_resolution_levels.size() == num_resolution_levels,
+                "in_resolution_level_flags.size() == %zu, num_resolution_levels = %zu",
+                this->in_resolution_levels.size(),
+                num_resolution_levels);
             ERL_DEBUG_ASSERT(this->in_resolution_levels[0], "in_resolution_level_flags[0] != true");
         }
 

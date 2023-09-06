@@ -98,7 +98,7 @@ BindAStar(py::module &m) {
         .def_readwrite("inconsistent_list", &astar::Output::inconsistent_list);
 
     // Astar
-    py::class_<astar::AStar> astar(astar_module, "AStar");
+    py::class_<astar::AStar> astar(astar_module, "ReverseAStar");
     py::class_<astar::AStar::Setting, YamlableBase, std::shared_ptr<astar::AStar::Setting>>(astar, "Setting")
         .def_readwrite("eps", &astar::AStar::Setting::eps)
         .def_readwrite("max_num_iterations", &astar::AStar::Setting::max_num_iterations)

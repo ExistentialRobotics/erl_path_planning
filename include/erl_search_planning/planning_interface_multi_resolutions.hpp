@@ -1,7 +1,6 @@
 #pragma once
 
-#include "erl_env/environment_base.hpp"
-#include "erl_env/environment_anchor.hpp"
+#include "erl_env/environment_multi_resolution.hpp"
 #include "heuristic.hpp"
 
 #include <map>
@@ -16,8 +15,8 @@ namespace erl::search_planning {
          * environment. Its state space is the union of state spaces of all other environments. And its action space is
          * the union of action spaces of all other environments. m_envs_[i] is the i-th resolution-level environment.
          */
-        std::vector<std::shared_ptr<env::EnvironmentBase>> m_envs_ = {};
-        std::shared_ptr<env::EnvironmentAnchor> m_env_anchor_ = nullptr;
+        // std::vector<std::shared_ptr<env::EnvironmentBase>> m_envs_ = {};
+        std::shared_ptr<env::EnvironmentMultiResolution> m_environment_multi_resolution_ = nullptr;
         // heuristic and its resolution level
         std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> m_heuristics_ = {};
         std::vector<std::vector<std::size_t>> m_heuristic_ids_by_resolution_level_ = {};
@@ -30,9 +29,9 @@ namespace erl::search_planning {
         bool m_multiple_goals_ = false;
 
     public:
-
         PlanningInterfaceMultiResolutions(
-            std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
+            // std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
+            std::shared_ptr<env::EnvironmentMultiResolution> environment_multi_resolution,
             std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
             const std::vector<Eigen::VectorXd> &metric_goals_coords,
@@ -40,13 +39,15 @@ namespace erl::search_planning {
             std::vector<double> terminal_costs = std::vector<double>{0.0});
 
         PlanningInterfaceMultiResolutions(
-            std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
+            // std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
+            std::shared_ptr<env::EnvironmentMultiResolution> environment_multi_resolution,
             std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
             Eigen::VectorXd metric_goal_coords,
             Eigen::VectorXd metric_goal_tolerance)
             : PlanningInterfaceMultiResolutions(
-                  std::move(environments),
+                  // std::move(environments),
+                  std::move(environment_multi_resolution),
                   std::move(heuristics),
                   std::move(metric_start_coords),
                   std::vector({std::move(metric_goal_coords)}),
@@ -59,7 +60,7 @@ namespace erl::search_planning {
 
         [[nodiscard]] inline std::size_t
         GetNumResolutionLevels() const {
-            return m_envs_.size() - 1;
+            return m_environment_multi_resolution_->GetNumResolutionLevels();
         }
 
         [[nodiscard]] inline std::shared_ptr<HeuristicBase>
@@ -79,15 +80,19 @@ namespace erl::search_planning {
 
         [[nodiscard]] inline std::vector<bool>
         GetInResolutionLevelFlags(const std::shared_ptr<env::EnvironmentState> &env_state) const {
-            std::vector<bool> in_resolution_level_flags(m_envs_.size());
+            std::size_t num_resolution_levels = GetNumResolutionLevels();
+            std::vector<bool> in_resolution_level_flags(num_resolution_levels, false);
             in_resolution_level_flags[0] = true;
-            for (std::size_t i = 1; i < m_envs_.size(); ++i) { in_resolution_level_flags[i] = m_envs_[i]->InStateSpace(env_state); }
+            for (std::size_t i = 1; i < num_resolution_levels; ++i) {
+                // in_resolution_level_flags[i] = m_envs_[i]->InStateSpace(env_state);
+                in_resolution_level_flags[i] = m_environment_multi_resolution_->InStateSpaceAtLevel(env_state, i);
+            }
             return in_resolution_level_flags;
         }
 
         [[nodiscard]] inline std::vector<env::Successor>
         GetSuccessors(const std::shared_ptr<env::EnvironmentState> &env_state, std::size_t env_resolution_level) const {
-            return m_env_anchor_->GetSuccessors(env_state, env_resolution_level);
+            return m_environment_multi_resolution_->GetSuccessorsAtLevel(env_state, env_resolution_level);
         }
 
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentState>
@@ -151,27 +156,26 @@ namespace erl::search_planning {
         StateHashing(const std::shared_ptr<env::EnvironmentState> &env_state) const {
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) { return env::VirtualStateValue::kGoal; }  // virtual goal env_state
             // use the anchor-level environment to hash the state
-            return m_env_anchor_->StateHashing(env_state);
+            return m_environment_multi_resolution_->StateHashing(env_state);
         }
 
         [[nodiscard]] inline std::vector<std::shared_ptr<env::EnvironmentState>>
         GetPath(const std::shared_ptr<const env::EnvironmentState> &env_state, const std::vector<int> &action_coords) const {
             auto num_goals = int(m_goals_.size());
-            if (num_goals == 1 || !m_multiple_goals_) { return m_env_anchor_->ForwardAction(env_state, action_coords); }
+            if (num_goals == 1 || !m_multiple_goals_) { return m_environment_multi_resolution_->ForwardAction(env_state, action_coords); }
             if (env_state->grid[0] == env::VirtualStateValue::kGoal) {
                 ERL_DEBUG_ASSERT(action_coords[0] < 0, "virtual goal env_state can only be reached with action_coords[0] = -goal_index - 1.");
                 return {m_goals_[-(action_coords[0] + 1)]};
             }
-            return m_env_anchor_->ForwardAction(env_state, action_coords);
+            return m_environment_multi_resolution_->ForwardAction(env_state, action_coords);
         }
 
     private:
         inline void
         SetStart() {
             m_start_ = std::make_shared<env::EnvironmentState>();
-            m_start_->grid = m_env_anchor_->MetricToGrid(m_init_start_);
-            m_start_->metric = m_env_anchor_->GridToMetric(m_start_->grid);
-
+            m_start_->grid = m_environment_multi_resolution_->MetricToGrid(m_init_start_);
+            m_start_->metric = m_environment_multi_resolution_->GridToMetric(m_start_->grid);
         }
 
         inline void
@@ -182,7 +186,7 @@ namespace erl::search_planning {
                 for (const auto &metric_goal_coords: metric_goals_coords) {
                     auto goal = std::make_shared<env::EnvironmentState>();
                     goal->metric = metric_goal_coords;
-                    goal->grid = m_env_anchor_->MetricToGrid(metric_goal_coords);
+                    goal->grid = m_environment_multi_resolution_->MetricToGrid(metric_goal_coords);
                     m_goals_.push_back(goal);
                 }
                 // virtual goal
@@ -195,7 +199,7 @@ namespace erl::search_planning {
                 for (const auto &metric_goal_coords: metric_goals_coords) {
                     auto goal = std::make_shared<env::EnvironmentState>();
                     goal->metric = metric_goal_coords;
-                    goal->grid = m_env_anchor_->MetricToGrid(metric_goal_coords);
+                    goal->grid = m_environment_multi_resolution_->MetricToGrid(metric_goal_coords);
                     m_goals_.push_back(goal);
                 }
             }

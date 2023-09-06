@@ -2,7 +2,7 @@
 
 #include <boost/heap/d_ary_heap.hpp>
 #include <limits>
-#include <map>
+#include <unordered_map>
 #include <utility>
 #include <memory>
 

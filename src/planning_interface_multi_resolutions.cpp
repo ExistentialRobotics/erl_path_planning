@@ -2,13 +2,14 @@
 
 namespace erl::search_planning {
     PlanningInterfaceMultiResolutions::PlanningInterfaceMultiResolutions(
-        std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
+        // std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
+        std::shared_ptr<env::EnvironmentMultiResolution> environment_multi_resolution,
         std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
         Eigen::VectorXd metric_start_coords,
         const std::vector<Eigen::VectorXd> &metric_goals_coords,
         std::vector<Eigen::VectorXd> metric_goals_tolerances,
         std::vector<double> terminal_costs)
-        : m_envs_(std::move(environments)),
+        : m_environment_multi_resolution_(std::move(environment_multi_resolution)),  // m_envs_(std::move(environments)),
           m_heuristics_(std::move(heuristics)),
           m_init_start_(std::move(metric_start_coords)),
           m_goals_tolerances_(std::move(metric_goals_tolerances)),
@@ -16,11 +17,7 @@ namespace erl::search_planning {
           m_multiple_goals_(metric_goals_coords.size() > 1) {
 
         // check environments
-        std::size_t num_resolution_levels = m_envs_.size();
-        ERL_ASSERTM(num_resolution_levels > 0, "at least one environment must be provided.");
-        m_env_anchor_ = std::dynamic_pointer_cast<env::EnvironmentAnchor>(m_envs_[0]);
-        ERL_ASSERTM(m_env_anchor_ != nullptr, "environments[0] must be derived from EnvironmentAnchor.");
-        for (std::size_t i = 1; i < num_resolution_levels; ++i) { ERL_ASSERTM(m_envs_[i] != nullptr, "environments[%d] is nullptr.", int(i)); }
+        ERL_ASSERTM(m_environment_multi_resolution_ != nullptr, "environment_anchor is nullptr.");
 
         // check goals and goals tolerances
         std::size_t num_goals = metric_goals_coords.size();
@@ -41,6 +38,7 @@ namespace erl::search_planning {
         }
 
         // check heuristics
+        std::size_t num_resolution_levels = m_environment_multi_resolution_->GetNumResolutionLevels();
         std::size_t num_heuristics = m_heuristics_.size();
         m_heuristic_ids_by_resolution_level_.clear();
         m_heuristic_ids_by_resolution_level_.resize(num_resolution_levels);

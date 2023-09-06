@@ -332,10 +332,13 @@ namespace erl::search_planning::amra_star {
         std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
         path_segments.reserve(actions_coords.size());
         long num_path_states = 0;
-        auto state = GetState(m_start_state_->env_state)->env_state;
+        auto state = m_start_state_->env_state;
         for (auto &action_coords: actions_coords) {
-            auto path_segment = m_planning_interface_->GetPath(state, action_coords);
+//            std::cout << "state: " << state->grid[0] << ", " << state->grid[1] << ", " << state->grid[2] << std::endl;
+//            std::cout << "action_coords: " << action_coords[0] << ", " << action_coords[1] << std::endl;
+            std::vector<std::shared_ptr<env::EnvironmentState>> path_segment = m_planning_interface_->GetPath(state, action_coords);
             if (path_segment.empty()) { continue; }
+//            std::cout << "arrive: " << path_segment.back()->grid[0] << ", " << path_segment.back()->grid[1] << ", " << path_segment.back()->grid[2] << std::endl;
             path_segments.push_back(path_segment);
             num_path_states += long(path_segment.size());
             state = path_segment.back();

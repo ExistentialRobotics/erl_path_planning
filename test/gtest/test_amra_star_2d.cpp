@@ -49,19 +49,23 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     Eigen::VectorXd goal_tolerance = Eigen::Vector2d::Zero();
 
     auto anchor_env = std::make_shared<EnvironmentGridAnchor<2>>(std::vector<std::shared_ptr<EnvironmentBase>>{env}, grid_map_info);
-    std::vector<std::shared_ptr<EnvironmentBase>> environments = {anchor_env, env};
+    // std::vector<std::shared_ptr<EnvironmentBase>> environments = {anchor_env, env};
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance), 0},
         {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance), 1}};
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
-        environments,
+        // environments,
+        anchor_env,
         heuristics,
         start,
         std::vector<Eigen::VectorXd>{goal},
         std::vector<Eigen::VectorXd>{goal_tolerance});
+    auto amra_setting = std::make_shared<AMRAStar::Setting>();
+    amra_setting->log = true;
+    AMRAStar planner(planning_interface, amra_setting);
     std::shared_ptr<Output> result;
-    ReportTime<std::chrono::microseconds>("AMRAStar2D::AStarConsistency", 0, true, [&]() { result = AMRAStar(planning_interface).Plan(); });
+    ReportTime<std::chrono::microseconds>("AMRAStar2D::AStarConsistency", 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl << "Path: " << std::endl;
     auto &path = result->paths[result->latest_plan_itr];
@@ -205,7 +209,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     auto env_low_res = std::make_shared<Environment2D>(grid_map, env_low_res_setting);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<2>>(envs, grid_map_info);
-    std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
+    // std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
 
     Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(start_grid);
     Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(goal_grid);
@@ -217,9 +221,9 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
         {euclidean_heuristic, 2},
         {euclidean_heuristic, 3}};
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(all_envs, heuristics, start, goal, goal_tolerance);
+    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AMRAStar::Setting>();
-    setting->log = false;
+    setting->log = true;
     std::shared_ptr<Output> result;
     AMRAStar amra_star(planning_interface, setting);
     ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() { result = amra_star.Plan(); });
@@ -287,7 +291,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     auto env_low_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_low_res_setting, cost_func);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<3>>(envs, env_high_res->GetGridMapInfo());
-    std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
+    // std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
 
     Eigen::VectorXd start(Eigen::Vector3d(-2, 3, env_setting->fsa->initial_state));
     Eigen::VectorXd goal(Eigen::Vector3d(0, 0, env_setting->fsa->accepting_states[0]));
@@ -302,7 +306,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
         {ltl_heuristic, 2},
         {ltl_heuristic, 3}};
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(all_envs, heuristics, start, goal, goal_tolerance);
+    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AMRAStar::Setting>();
     setting->log = false;
     std::shared_ptr<Output> result;

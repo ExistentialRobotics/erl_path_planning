@@ -129,7 +129,7 @@ namespace erl::search_planning {
             };
 
             struct CompareNode {
-                [[nodiscard]] bool
+                [[nodiscard]] inline bool
                 operator()(const std::shared_ptr<Node> &n1, const std::shared_ptr<Node> &n2) const {
                     return n1->cost > n2->cost;
                 }
@@ -139,9 +139,8 @@ namespace erl::search_planning {
             using Mutable = boost::heap::mutable_<true>;
             using PriorityQueue = boost::heap::d_ary_heap<QueueItem, Mutable, boost::heap::arity<8>, boost::heap::compare<CompareNode>>;
             using HeapKey = PriorityQueue::handle_type;
-
-            Eigen::MatrixXd cost_l2l =
-                Eigen::MatrixXd::Constant(num_labels, num_labels, std::numeric_limits<double>::infinity());   // cost from one label to another
+            // cost from one label to another
+            Eigen::MatrixXd cost_l2l = Eigen::MatrixXd::Constant(num_labels, num_labels, std::numeric_limits<double>::infinity());
             label_distance.setConstant(num_labels, num_fsa_states, std::numeric_limits<double>::infinity());  // g values
             Eigen::MatrixXb closed = Eigen::MatrixXb::Constant(num_labels, num_fsa_states, false);            // closed set
             Eigen::MatrixXb opened = Eigen::MatrixXb::Constant(num_labels, num_fsa_states, false);            // open set
@@ -196,17 +195,16 @@ namespace erl::search_planning {
                         }
                         // update g value
                         double tentative_g = cost_l2l(pred_label, node->label) + label_distance(node->label, node->fsa_state);
-                        if (tentative_g < label_distance(pred_label, pred_state)) {
-                            label_distance(pred_label, pred_state) = tentative_g;
-                            if (opened(pred_label, pred_state)) {
-                                // node->cost = tentative_g;
-                                (*heap_keys(pred_label, pred_state))->cost = tentative_g;
-                                (*heap_keys(pred_label, pred_state))->parent = node;
-                                queue.increase(heap_keys(pred_label, pred_state));
-                            } else {
-                                heap_keys(pred_label, pred_state) = queue.push(std::make_shared<Node>(tentative_g, pred_label, pred_state, node));
-                                opened(pred_label, pred_state) = true;
-                            }
+                        if (tentative_g >= label_distance(pred_label, pred_state)) { continue; }
+                        label_distance(pred_label, pred_state) = tentative_g;
+                        if (opened(pred_label, pred_state)) {
+                            // node->cost = tentative_g;
+                            (*heap_keys(pred_label, pred_state))->cost = tentative_g;
+                            (*heap_keys(pred_label, pred_state))->parent = node;
+                            queue.increase(heap_keys(pred_label, pred_state));
+                        } else {
+                            heap_keys(pred_label, pred_state) = queue.push(std::make_shared<Node>(tentative_g, pred_label, pred_state, node));
+                            opened(pred_label, pred_state) = true;
                         }
                     }
                 }
