@@ -9,6 +9,7 @@
 #include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/planning_interface_multi_resolutions.hpp"
 #include "erl_search_planning/heuristic.hpp"
+#include "erl_search_planning/ltl_2d.hpp"
 
 TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     using namespace erl::common;
@@ -51,8 +52,8 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     auto anchor_env = std::make_shared<EnvironmentGridAnchor<2>>(std::vector<std::shared_ptr<EnvironmentBase>>{env}, grid_map_info);
     // std::vector<std::shared_ptr<EnvironmentBase>> environments = {anchor_env, env};
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
-        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance), 0},
-        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance), 1}};
+        {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 0},
+        {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 1}};
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
         // environments,
@@ -214,7 +215,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(start_grid);
     Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(goal_grid);
     Eigen::VectorXd goal_tolerance = Eigen::Vector2d::Zero();
-    auto euclidean_heuristic = std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance);
+    auto euclidean_heuristic = std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {euclidean_heuristic, 0},
         {euclidean_heuristic, 1},
@@ -268,7 +269,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);
-    Eigen::MatrixXi label_map = label_map_img_eigen.cast<int>();
+    Eigen::MatrixX<uint64_t> label_map = label_map_img_eigen.cast<uint64_t>();
 
     Eigen::Vector2i map_shape(251, 261);
     Eigen::Vector2d map_min(-5.05, -5.05);

@@ -52,7 +52,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph) {
 
     // draw path
     for (auto &itr : result->paths) {
-        int plan_itr = itr.first;
+        uint32_t plan_itr = itr.first;
         Eigen::Matrix3Xd amra_path = itr.second;
         long num_points = amra_path.cols();
         cv::Mat cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, 1));

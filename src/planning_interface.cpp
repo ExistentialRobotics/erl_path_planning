@@ -35,15 +35,16 @@ namespace erl::search_planning {
         }
 
         if (m_heuristic_ == nullptr) {
-            ERL_INFO("use %s as default heuristic for single goal.", type_name<EuclideanDistanceHeuristic>().c_str());
+            ERL_INFO("use %s as default heuristic for single goal.", type_name<EuclideanDistanceHeuristic<Eigen::Dynamic>>().c_str());
+            using DefaultHeuristic = EuclideanDistanceHeuristic<Eigen::Dynamic>;
             if (num_goals == 1) {
-                m_heuristic_ = std::make_shared<EuclideanDistanceHeuristic>(metric_goals_coords[0], m_goals_tolerances_[0], m_terminal_costs_[0]);
+                m_heuristic_ = std::make_shared<DefaultHeuristic>(metric_goals_coords[0], m_goals_tolerances_[0], m_terminal_costs_[0]);
             } else {
                 std::vector<std::shared_ptr<HeuristicBase>> heuristics;
                 heuristics.reserve(num_goals);
                 m_virtual_goal_successors_.resize(num_goals);
                 for (std::size_t i = 0; i < num_goals; ++i) {
-                    heuristics.emplace_back(std::make_shared<EuclideanDistanceHeuristic>(metric_goals_coords[i], m_goals_tolerances_[i], m_terminal_costs_[i]));
+                    heuristics.emplace_back(std::make_shared<DefaultHeuristic>(metric_goals_coords[i], m_goals_tolerances_[i], m_terminal_costs_[i]));
 
                     auto &successor = m_virtual_goal_successors_[i];
                     successor.env_state = std::make_shared<env::EnvironmentState>();
