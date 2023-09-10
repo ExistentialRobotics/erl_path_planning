@@ -4,14 +4,18 @@ namespace erl::search_planning {
 
     LinearTemporalLogicHeuristic3D::LinearTemporalLogicHeuristic3D(
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa_in,
-        std::unordered_map<int, Eigen::MatrixX<uint64_t>> label_maps_in,
+        const std::unordered_map<int, Eigen::MatrixX<uint32_t>> &label_maps_in,
         const std::shared_ptr<erl::common::GridMapInfo3D> &grid_map_info)
         : fsa(std::move(fsa_in)) {
 
+        auto cache_dir = std::filesystem::current_path() / "ltl_3d_cache";
+        if (LoadFromCache(cache_dir)) { return; }
+
+        auto t0 = std::chrono::high_resolution_clock::now();
         ERL_ASSERTM(fsa != nullptr, "fsa is nullptr.");
         ERL_ASSERTM(grid_map_info != nullptr, "grid_map_info is nullptr.");
-        long label_map_rows = label_maps_in[0].rows();
-        long label_map_cols = label_maps_in[0].cols();
+        long label_map_rows = label_maps_in.at(0).rows();
+        long label_map_cols = label_maps_in.at(0).cols();
         int grid_map_rows = grid_map_info->Shape(0);
         int grid_map_cols = grid_map_info->Shape(1);
         auto num_floors = int(label_maps_in.size());
@@ -23,14 +27,14 @@ namespace erl::search_planning {
         auto num_fsa_states = fsa_setting->num_states;
 
         // compute label_to_grid_states
-        label_to_metric_states.reserve(num_labels);
+        label_to_metric_states.resize(num_labels);
         for (int i = 0; i < grid_map_rows; ++i) {
             for (int j = 0; j < grid_map_cols; ++j) {
                 for (int k = 0; k < num_floors; ++k) {
                     double &&x = grid_map_info->GridToMeterForValue(i, 0);
                     double &&y = grid_map_info->GridToMeterForValue(j, 1);
                     double &&z = grid_map_info->GridToMeterForValue(k, 2);
-                    label_to_metric_states[label_maps_in[k](i, j)].emplace_back(x, y, z);
+                    label_to_metric_states[label_maps_in.at(k)(i, j)].emplace_back(x, y, z);
                 }
             }
         }
@@ -79,17 +83,17 @@ namespace erl::search_planning {
         /// Dijkstra's algorithm
         auto compute_label_distance = [&](uint32_t label1, uint32_t label2) -> double {
             if (label1 == label2) { return 0.; }
-            auto label1_states_it = label_to_metric_states.find(label1);
-            if (label1_states_it == label_to_metric_states.end()) { return std::numeric_limits<double>::infinity(); }
-            auto label2_states_it = label_to_metric_states.find(label2);
-            if (label2_states_it == label_to_metric_states.end()) { return std::numeric_limits<double>::infinity(); }
+            auto &label1_states = label_to_metric_states[label1];
+            if (label1_states.empty()) { return std::numeric_limits<double>::infinity(); }
+            auto &label2_states = label_to_metric_states[label2];
+            if (label2_states.empty()) { return std::numeric_limits<double>::infinity(); }
 
             /// label1 and label2 both exist.
             if (label1 == 0 || label2 == 0) { return 0.; }  // label 0 means all atomic propositions are evaluated false. Distance to label 0 is always 0.
 
             double min_d = std::numeric_limits<double>::infinity();
-            for (auto &state1: label1_states_it->second) {
-                for (auto &state2: label2_states_it->second) {
+            for (auto &state1: label1_states) {
+                for (auto &state2: label2_states) {
                     double dx = state1[0] - state2[0];
                     double dy = state1[1] - state2[1];
                     double dz = state1[2] - state2[2];
@@ -132,6 +136,11 @@ namespace erl::search_planning {
                 }
             }
         }
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        ERL_INFO("LTL 3D heuristic computation time: %f ms.", std::chrono::duration<double, std::milli>(t1 - t0).count());
+
+        SaveToCache(cache_dir);
     }
 
     double
@@ -146,12 +155,12 @@ namespace erl::search_planning {
         auto num_states = fsa->GetSetting()->num_states;
         for (uint32_t nq = 0; nq < num_states; ++nq) {
             if (q == nq) { continue; }
-            auto labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
+            std::vector<uint32_t> labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
             for (uint32_t &label: labels) {
                 double c = std::numeric_limits<double>::infinity();
-                auto itr = label_to_metric_states.find(label);
-                if (itr == label_to_metric_states.end()) { continue; }
-                for (const Eigen::Vector3d &metric_state: itr->second) {
+                auto &metric_states = label_to_metric_states[label];
+                if (metric_states.empty()) { continue; }
+                for (const Eigen::Vector3d &metric_state: metric_states) {
                     double dx = metric_state[0] - state.metric[0];
                     double dy = metric_state[1] - state.metric[1];
                     double dz = metric_state[2] - state.metric[2];
@@ -165,6 +174,48 @@ namespace erl::search_planning {
             }
         }
         return h;
+    }
+
+    bool
+    LinearTemporalLogicHeuristic3D::LoadFromCache(const std::filesystem::path &cache_dir) {
+        if (!std::filesystem::exists(cache_dir)) { return false; }
+        auto fsa_setting_file = cache_dir / "fsa_setting.yaml";
+        if (!std::filesystem::exists(fsa_setting_file)) { return false; }
+        auto fsa_setting = std::make_shared<erl::env::FiniteStateAutomaton::Setting>();
+        fsa_setting->FromYamlFile(fsa_setting_file);
+        if (fsa_setting->AsYamlString() != fsa->GetSetting()->AsYamlString()) { return false; }  // fsa setting is different
+
+        uint32_t num_labels = fsa->GetAlphabetSize();
+        label_to_metric_states.resize(num_labels);
+        for (uint32_t label = 0; label < num_labels; ++label) {
+            auto file = cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin");
+            if (!std::filesystem::exists(file)) { continue; }
+            Eigen::Matrix3Xd data = erl::common::LoadEigenMatrixFromBinaryFile<double, 3, Eigen::Dynamic>(file);
+            long num_states = data.cols();
+            auto &metric_states = label_to_metric_states[label];
+            metric_states.reserve(num_states);
+            for (long i = 0; i < num_states; ++i) { metric_states.emplace_back(data.col(i)); }
+        }
+        label_distance = erl::common::LoadEigenMatrixFromBinaryFile<double, Eigen::Dynamic, Eigen::Dynamic>(cache_dir / "label_distance.bin");
+
+        if (label_distance.rows() != num_labels) { return false; }
+        if (label_distance.cols() != fsa->GetSetting()->num_states) { return false; }
+        return true;
+    }
+
+    void
+    LinearTemporalLogicHeuristic3D::SaveToCache(const std::filesystem::path &cache_dir) const {
+        std::filesystem::create_directories(cache_dir);
+        fsa->GetSetting()->AsYamlFile(cache_dir / "fsa_setting.yaml");
+        uint32_t num_labels = fsa->GetAlphabetSize();
+        for (uint32_t label = 0; label < num_labels; ++label) {
+            auto &metric_states = label_to_metric_states[label];
+            auto num_states = long(metric_states.size());
+            Eigen::Matrix3Xd data(3, num_states);
+            for (long i = 0; i < num_states; ++i) { data.col(i) = metric_states[i]; }
+            erl::common::SaveEigenMatrixToBinaryFile<double>(cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin"), data);
+        }
+        erl::common::SaveEigenMatrixToBinaryFile<double>(cache_dir / "label_distance.bin", label_distance);
     }
 
 }  // namespace erl::search_planning

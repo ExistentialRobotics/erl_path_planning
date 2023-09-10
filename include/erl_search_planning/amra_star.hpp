@@ -158,7 +158,7 @@ namespace erl::search_planning::amra_star {
 
     public:
         struct Setting : public common::Yamlable<Setting> {
-            std::chrono::nanoseconds time_limit = std::chrono::duration_cast<std::chrono::nanoseconds>(10000000s);
+            std::chrono::nanoseconds time_limit = 10000000s;
             double w1_init = 10;
             double w2_init = 20;
             double w1_final = 1;

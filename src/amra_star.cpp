@@ -20,9 +20,11 @@ namespace erl::search_planning::amra_star {
             << "search_time: " << search_time << std::endl;
 
         // save solutions and their cost, actions, etc. for each plan iteration
+        long d = 0;
         for (auto &[plan_itr, goal_index]: goal_indices) {
             auto &path = paths.at(plan_itr);
             auto &action_coords = actions_coords.at(plan_itr);
+            d = path.rows();
             long n = path.cols();
 
             ofs << "plan_itr: " << plan_itr << std::endl
@@ -31,9 +33,15 @@ namespace erl::search_planning::amra_star {
                 << "goal_index: " << goal_index << std::endl
                 << "cost: " << costs.at(plan_itr) << std::endl
                 << "num waypoints: " << n << std::endl
-                << "path: " << std::endl
-                << "x, y" << std::endl;
-            for (int i = 0; i < n; ++i) { ofs << path(0, i) << ", " << path(1, i) << std::endl; }
+                << "path: " << std::endl;
+            ofs << "pos[0]";
+            for (int i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
+            ofs << std::endl;
+            for (int i = 0; i < n; ++i) {
+                ofs << path(0, i);
+                for (int j = 1; j < d; ++j) { ofs << ", " << path(j, i); }
+                ofs << std::endl;
+            }
             ofs << "action_coords: " << std::endl;
             for (const auto &action_coord: action_coords) {
                 std::size_t m = action_coord.size();
@@ -49,29 +57,42 @@ namespace erl::search_planning::amra_star {
         for (const auto &[plan_itr, opened_states_at_plan_itr]: opened_states) {
             for (const auto &[heuristic_id, opened_states_at_heuristic_id]: opened_states_at_plan_itr) { cnt += opened_states_at_heuristic_id.size(); }
         }
-        ofs << "opened_states: " << std::endl << cnt << std::endl << "expand_itr, heuristic_id, x, y" << std::endl;
+        ofs << "opened_states: " << std::endl << cnt << std::endl << "expand_itr, heuristic_id, pos[0]";
+        for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
+        ofs << std::endl;
         for (const auto &[expand_itr, opened_states_at_expand_itr]: opened_states) {
             for (const auto &[heuristic_id, opened_states_at_heuristic_id]: opened_states_at_expand_itr) {
                 for (const auto &state: opened_states_at_heuristic_id) {
-                    ofs << expand_itr << ", " << heuristic_id << ", " << state[0] << ", " << state[1] << std::endl;
+                    ofs << expand_itr << ", " << heuristic_id << ", " << state[0];
+                    for (long i = 1; i < d; ++i) { ofs << ", " << state[i]; }
+                    ofs << std::endl;
                 }
             }
         }
 
         cnt = 1;
         for (const auto &[expand_itr, closed_states_at_expand_itr]: closed_states) { cnt += closed_states_at_expand_itr.size(); }
-        ofs << "closed_states: " << std::endl << cnt << std::endl << "expand_itr, action_resolution_level, x, y" << std::endl;
+        ofs << "closed_states: " << std::endl << cnt << std::endl << "expand_itr, action_resolution_level, pos[0]" << std::endl;
+        for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
+        ofs << std::endl;
         for (const auto &[expand_itr, closed_states_at_expand_itr]: closed_states) {
             for (const auto &[action_resolution_level, state]: closed_states_at_expand_itr) {
-                ofs << expand_itr << ", " << action_resolution_level << ", " << state[0] << ", " << state[1] << std::endl;
+                ofs << expand_itr << ", " << action_resolution_level << ", " << state[0];
+                for (long i = 1; i < d; ++i) { ofs << ", " << state[i]; }
+                ofs << std::endl;
             }
         }
 
         cnt = 1;
         for (const auto &[expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) { cnt += inconsistent_states_at_expand_itr.size(); }
-        ofs << "inconsistent_states: " << std::endl << cnt << std::endl << "expand_itr, x, y" << std::endl;
+        ofs << "inconsistent_states: " << std::endl << cnt << std::endl << "expand_itr, pos[0]" << std::endl;
+        for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
         for (const auto &[expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) {
-            for (const auto &state: inconsistent_states_at_expand_itr) { ofs << expand_itr << ", " << state[0] << ", " << state[1] << std::endl; }
+            for (const auto &state: inconsistent_states_at_expand_itr) {
+                ofs << expand_itr << ", " << state[0];
+                for (long i = 1; i < d; ++i) { ofs << ", " << state[i]; }
+                ofs << std::endl;
+            }
         }
         ofs.close();
     }
@@ -242,9 +263,8 @@ namespace erl::search_planning::amra_star {
             ERL_DEBUG_ASSERT(!parent->InClosed(0), "parent is already in anchor-level closed set.");
             parent->SetClosed(0, m_total_expand_itr_);  // anchor level, consistent heuristic
         } else {                                        // L5
-            ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in closed set of resolution level %d.", int(resolution_level));
-            ERL_DEBUG_ASSERT(parent->InOpened(heuristic_id, resolution_level), "parent is not in opened set of heuristic %d.", int(heuristic_id));
-            // L6 to L8
+            ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in CLOSED of resolution level %d.", int(resolution_level));
+            ERL_DEBUG_ASSERT(parent->InOpened(heuristic_id, resolution_level), "parent is not in OPENED of heuristic %d.", int(heuristic_id));  // L6 to L8
             parent->SetClosed(resolution_level, m_total_expand_itr_);  // parent is also removed from other opened sets assigned to the same resolution level
         }
         if (m_setting_->log) {
@@ -334,11 +354,11 @@ namespace erl::search_planning::amra_star {
         long num_path_states = 0;
         auto state = m_start_state_->env_state;
         for (auto &action_coords: actions_coords) {
-//            std::cout << "state: " << state->grid[0] << ", " << state->grid[1] << ", " << state->grid[2] << std::endl;
-//            std::cout << "action_coords: " << action_coords[0] << ", " << action_coords[1] << std::endl;
+            ERL_DEBUG("state: %s", common::EigenToNumPyFmtString(state->metric.transpose()).c_str());
+            ERL_DEBUG("action_coords: %s", common::AsString(action_coords).c_str());
             std::vector<std::shared_ptr<env::EnvironmentState>> path_segment = m_planning_interface_->GetPath(state, action_coords);
             if (path_segment.empty()) { continue; }
-//            std::cout << "arrive: " << path_segment.back()->grid[0] << ", " << path_segment.back()->grid[1] << ", " << path_segment.back()->grid[2] << std::endl;
+            ERL_DEBUG("arrive: %s", common::EigenToNumPyFmtString(path_segment.back()->metric.transpose()).c_str());
             path_segments.push_back(path_segment);
             num_path_states += long(path_segment.size());
             state = path_segment.back();

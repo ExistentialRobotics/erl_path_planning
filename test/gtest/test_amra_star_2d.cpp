@@ -250,8 +250,6 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_MultiResolutions) {
     RunTestWithMap(data_dir / "TheFrozenSea.map", {288, 414}, {207, 990}, 649.50994061340202);
 }
 
-TEST(ERL_SEARCH_PLANNING, AMRAStar2D_GraphBased) {}
-
 TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     using namespace erl::common;
     using namespace erl::env;
@@ -309,7 +307,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AMRAStar::Setting>();
-    setting->log = false;
+    setting->log = true;
     std::shared_ptr<Output> result;
     AMRAStar amra_star(planning_interface, setting);
     ReportTime<std::chrono::milliseconds>("AMRA* 2D LTL", 0, true, [&]() { result = amra_star.Plan(); });

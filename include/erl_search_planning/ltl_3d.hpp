@@ -8,18 +8,18 @@ namespace erl::search_planning {
     struct LinearTemporalLogicHeuristic3D : public HeuristicBase {
 
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa;
-        std::unordered_map<uint32_t, std::vector<Eigen::Vector3d>> label_to_metric_states;
+        std::vector<std::vector<Eigen::Vector3d>> label_to_metric_states;
         Eigen::MatrixXd label_distance;
 
         /**
          * @brief Construct a new Linear Temporal Logic Heuristic 3D object
          * @param fsa_in
          * @param label_maps_in
-         * @param grid_map_info cell size of label_maps_in
+         * @param grid_map_info cell size of x, y and z axis
          */
         LinearTemporalLogicHeuristic3D(
             std::shared_ptr<erl::env::FiniteStateAutomaton> fsa_in,
-            std::unordered_map<int, Eigen::MatrixX<uint64_t>> label_maps_in,
+            const std::unordered_map<int, Eigen::MatrixX<uint32_t>> &label_maps_in,
             const std::shared_ptr<erl::common::GridMapInfo3D> &grid_map_info);
 
         /**
@@ -29,6 +29,12 @@ namespace erl::search_planning {
          */
         [[nodiscard]] double
         operator()(const env::EnvironmentState &state) const override;
+
+    private:
+        bool
+        LoadFromCache(const std::filesystem::path &cache_dir);
+        void
+        SaveToCache(const std::filesystem::path &cache_dir) const;
     };
 
 }  // namespace erl::search_planning
