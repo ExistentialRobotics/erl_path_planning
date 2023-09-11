@@ -26,15 +26,24 @@ namespace erl::search_planning {
         auto num_fsa_states = fsa_setting->num_states;
 
         // compute label_to_grid_states
-        label_to_metric_states.reserve(num_labels);
+        std::unordered_map<uint32_t, std::vector<std::array<double, 2>>> label_to_metric_states(num_labels);
         int n_rows = grid_map_info->Rows();
         int n_cols = grid_map_info->Cols();
         for (int i = 0; i < n_rows; ++i) {
             for (int j = 0; j < n_cols; ++j) {
                 double &&x = grid_map_info->GridToMeterForValue(i, 0);
                 double &&y = grid_map_info->GridToMeterForValue(j, 1);
-                label_to_metric_states[label_map(i, j)].emplace_back(x, y);
+                label_to_metric_states[label_map(i, j)].emplace_back(std::array<double, 2>{x, y});
             }
+        }
+        // construct kdtree for each label
+        label_to_kdtree.resize(num_labels);
+        for (uint32_t label = 0; label < num_labels; ++label) {
+            auto &metric_states = label_to_metric_states[label];
+            auto num_states = long(metric_states.size());
+            if (!num_states) { continue; }
+            Eigen::Map<Eigen::Matrix2Xd> data_map(metric_states[0].data(), 2, num_states);
+            label_to_kdtree[label] = std::make_shared<KdTree>(data_map);
         }
 
         // compute label distances
@@ -81,22 +90,27 @@ namespace erl::search_planning {
         /// Dijkstra's algorithm
         auto compute_label_distance = [&](uint32_t label1, uint32_t label2) -> double {
             if (label1 == label2) { return 0.; }
-            auto label1_states_it = label_to_metric_states.find(label1);
-            if (label1_states_it == label_to_metric_states.end()) { return std::numeric_limits<double>::infinity(); }
-            auto label2_states_it = label_to_metric_states.find(label2);
-            if (label2_states_it == label_to_metric_states.end()) { return std::numeric_limits<double>::infinity(); }
+            auto label1_kdtree = label_to_kdtree[label1];
+            if (label1_kdtree == nullptr) { return std::numeric_limits<double>::infinity(); }
+            auto label2_kdtree = label_to_kdtree[label2];
+            if (label2_kdtree == nullptr) { return std::numeric_limits<double>::infinity(); }
 
             /// label1 and label2 both exist.
             if (label1 == 0 || label2 == 0) { return 0.; }  // label 0 means all atomic propositions are evaluated false. Distance to label 0 is always 0.
 
+            if (label1_kdtree->GetDataMatrix().cols() > label2_kdtree->GetDataMatrix().cols()) {
+                std::swap(label1, label2);
+                std::swap(label1_kdtree, label2_kdtree);
+            }
             double min_d = std::numeric_limits<double>::infinity();
-            for (auto &state1: label1_states_it->second) {
-                for (auto &state2: label2_states_it->second) {
-                    double dx = state1[0] - state2[0];
-                    double dy = state1[1] - state2[1];
-                    double d = dx * dx + dy * dy;
-                    if (d < min_d) { min_d = d; }
-                }
+            auto &label1_states = label1_kdtree->GetDataMatrix();
+            long num_label1_states = label1_states.cols();
+            for (long i = 0; i < num_label1_states; ++i) {
+                Eigen::Vector2d &&state1 = label1_states.col(i);
+                int index = -1;
+                double min_d2 = std::numeric_limits<double>::infinity();
+                label2_kdtree->Knn(1, state1, index, min_d2);
+                if (min_d2 < min_d) { min_d = min_d2; }
             }
             return std::sqrt(min_d);
         };
@@ -136,30 +150,25 @@ namespace erl::search_planning {
     }
 
     double
-    LinearTemporalLogicHeuristic2D::operator()(const env::EnvironmentState &state) const {
-        if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
+    LinearTemporalLogicHeuristic2D::operator()(const env::EnvironmentState &env_state) const {
+        if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
         if (label_distance.size() == 0) { return 0.; }
         double h = std::numeric_limits<double>::infinity();
-        auto q = uint32_t(state.grid[2]);
+        auto q = uint32_t(env_state.grid[2]);
         if (fsa->IsSinkState(q)) { return h; }       // sink state, never reach the goal
         if (fsa->IsAcceptingState(q)) { return 0; }  // accepting state, goal
         // for each successor of q
         auto num_states = fsa->GetSetting()->num_states;
         for (uint32_t nq = 0; nq < num_states; ++nq) {
             if (q == nq) { continue; }
-            auto labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
+            std::vector<uint32_t> labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
             for (uint32_t &label: labels) {
+                auto label_kdtree = label_to_kdtree[label];
+                if (label_kdtree == nullptr) { continue; }
+                int index = -1;
                 double c = std::numeric_limits<double>::infinity();
-                auto itr = label_to_metric_states.find(label);
-                if (itr == label_to_metric_states.end()) { continue; }
-                for (const Eigen::Vector2d &metric_state: itr->second) {
-                    double dx = metric_state[0] - state.metric[0];
-                    double dy = metric_state[1] - state.metric[1];
-                    double d = dx * dx + dy * dy;
-                    if (d < c) { c = d; }
-                }
+                label_kdtree->Knn(1, env_state.metric.head<2>(), index, c);
                 c = std::sqrt(c);
-
                 double tentative_h = c + label_distance(label, nq);
                 if (tentative_h < h) { h = tentative_h; }
             }

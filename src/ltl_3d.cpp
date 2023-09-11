@@ -27,16 +27,25 @@ namespace erl::search_planning {
         auto num_fsa_states = fsa_setting->num_states;
 
         // compute label_to_grid_states
-        label_to_metric_states.resize(num_labels);
+        std::vector<std::vector<std::array<double, 3>>> label_to_metric_states(num_labels);
         for (int i = 0; i < grid_map_rows; ++i) {
             for (int j = 0; j < grid_map_cols; ++j) {
                 for (int k = 0; k < num_floors; ++k) {
                     double &&x = grid_map_info->GridToMeterForValue(i, 0);
                     double &&y = grid_map_info->GridToMeterForValue(j, 1);
                     double &&z = grid_map_info->GridToMeterForValue(k, 2);
-                    label_to_metric_states[label_maps_in.at(k)(i, j)].emplace_back(x, y, z);
+                    label_to_metric_states[label_maps_in.at(k)(i, j)].emplace_back(std::array<double, 3>{x, y, z});
                 }
             }
+        }
+        // construct kdtree
+        label_to_kdtree.resize(num_labels);
+        for (uint32_t label = 0; label < num_labels; ++label) {
+            auto &metric_states = label_to_metric_states[label];
+            auto num_states = long(metric_states.size());
+            if (!num_states) { continue; }
+            Eigen::Map<Eigen::Matrix3Xd> data_map(metric_states[0].data(), 3, num_states);
+            label_to_kdtree[label] = std::make_shared<KdTree>(data_map);
         }
 
         // compute label distances
@@ -83,23 +92,27 @@ namespace erl::search_planning {
         /// Dijkstra's algorithm
         auto compute_label_distance = [&](uint32_t label1, uint32_t label2) -> double {
             if (label1 == label2) { return 0.; }
-            auto &label1_states = label_to_metric_states[label1];
-            if (label1_states.empty()) { return std::numeric_limits<double>::infinity(); }
-            auto &label2_states = label_to_metric_states[label2];
-            if (label2_states.empty()) { return std::numeric_limits<double>::infinity(); }
+            auto label1_kdtree = label_to_kdtree[label1];
+            if (label1_kdtree == nullptr) { return std::numeric_limits<double>::infinity(); }
+            auto label2_kdtree = label_to_kdtree[label2];
+            if (label2_kdtree == nullptr) { return std::numeric_limits<double>::infinity(); }
 
             /// label1 and label2 both exist.
             if (label1 == 0 || label2 == 0) { return 0.; }  // label 0 means all atomic propositions are evaluated false. Distance to label 0 is always 0.
 
+            if (label1_kdtree->GetDataMatrix().cols() > label2_kdtree->GetDataMatrix().cols()) {
+                std::swap(label1, label2);
+                std::swap(label1_kdtree, label2_kdtree);
+            }
             double min_d = std::numeric_limits<double>::infinity();
-            for (auto &state1: label1_states) {
-                for (auto &state2: label2_states) {
-                    double dx = state1[0] - state2[0];
-                    double dy = state1[1] - state2[1];
-                    double dz = state1[2] - state2[2];
-                    double d = dx * dx + dy * dy + dz * dz;
-                    if (d < min_d) { min_d = d; }
-                }
+            auto &label1_states = label1_kdtree->GetDataMatrix();
+            long num_label1_states = label1_states.cols();
+            for (long i = 0; i < num_label1_states; ++i) {
+                Eigen::Vector3d &&state1 = label1_states.col(i);
+                int index = -1;
+                double min_d2 = std::numeric_limits<double>::infinity();
+                label2_kdtree->Knn(1, state1, index, min_d2);
+                if (min_d2 < min_d) { min_d = min_d2; }
             }
             return std::sqrt(min_d);
         };
@@ -144,11 +157,11 @@ namespace erl::search_planning {
     }
 
     double
-    LinearTemporalLogicHeuristic3D::operator()(const env::EnvironmentState &state) const {
-        if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
+    LinearTemporalLogicHeuristic3D::operator()(const env::EnvironmentState &env_state) const {
+        if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
         if (label_distance.size() == 0) { return 0.; }
         double h = std::numeric_limits<double>::infinity();
-        auto q = uint32_t(state.grid[3]);            // (x, y, z, q)
+        auto q = uint32_t(env_state.grid[3]);            // (x, y, z, q)
         if (fsa->IsSinkState(q)) { return h; }       // sink state, never reach the goal
         if (fsa->IsAcceptingState(q)) { return 0; }  // accepting state, goal
         // for each successor of q
@@ -157,18 +170,12 @@ namespace erl::search_planning {
             if (q == nq) { continue; }
             std::vector<uint32_t> labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
             for (uint32_t &label: labels) {
+                auto label_kdtree = label_to_kdtree[label];
+                if (label_kdtree == nullptr) { continue; }
+                int index = -1;
                 double c = std::numeric_limits<double>::infinity();
-                auto &metric_states = label_to_metric_states[label];
-                if (metric_states.empty()) { continue; }
-                for (const Eigen::Vector3d &metric_state: metric_states) {
-                    double dx = metric_state[0] - state.metric[0];
-                    double dy = metric_state[1] - state.metric[1];
-                    double dz = metric_state[2] - state.metric[2];
-                    double d = dx * dx + dy * dy + dz * dz;
-                    if (d < c) { c = d; }
-                }
+                label_kdtree->Knn(1, env_state.metric.head<3>(), index, c);
                 c = std::sqrt(c);
-
                 double tentative_h = c + label_distance(label, nq);
                 if (tentative_h < h) { h = tentative_h; }
             }
@@ -186,15 +193,12 @@ namespace erl::search_planning {
         if (fsa_setting->AsYamlString() != fsa->GetSetting()->AsYamlString()) { return false; }  // fsa setting is different
 
         uint32_t num_labels = fsa->GetAlphabetSize();
-        label_to_metric_states.resize(num_labels);
+        label_to_kdtree.resize(num_labels);
         for (uint32_t label = 0; label < num_labels; ++label) {
             auto file = cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin");
             if (!std::filesystem::exists(file)) { continue; }
             Eigen::Matrix3Xd data = erl::common::LoadEigenMatrixFromBinaryFile<double, 3, Eigen::Dynamic>(file);
-            long num_states = data.cols();
-            auto &metric_states = label_to_metric_states[label];
-            metric_states.reserve(num_states);
-            for (long i = 0; i < num_states; ++i) { metric_states.emplace_back(data.col(i)); }
+            label_to_kdtree[label] = std::make_shared<KdTree>(data);
         }
         label_distance = erl::common::LoadEigenMatrixFromBinaryFile<double, Eigen::Dynamic, Eigen::Dynamic>(cache_dir / "label_distance.bin");
 
@@ -209,11 +213,11 @@ namespace erl::search_planning {
         fsa->GetSetting()->AsYamlFile(cache_dir / "fsa_setting.yaml");
         uint32_t num_labels = fsa->GetAlphabetSize();
         for (uint32_t label = 0; label < num_labels; ++label) {
-            auto &metric_states = label_to_metric_states[label];
-            auto num_states = long(metric_states.size());
-            Eigen::Matrix3Xd data(3, num_states);
-            for (long i = 0; i < num_states; ++i) { data.col(i) = metric_states[i]; }
-            erl::common::SaveEigenMatrixToBinaryFile<double>(cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin"), data);
+            auto label_kdtree = label_to_kdtree[label];
+            if (label_kdtree == nullptr) { continue; }
+            erl::common::SaveEigenMatrixToBinaryFile<double>(
+                cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin"),
+                label_kdtree->GetDataMatrix());
         }
         erl::common::SaveEigenMatrixToBinaryFile<double>(cache_dir / "label_distance.bin", label_distance);
     }

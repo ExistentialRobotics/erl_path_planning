@@ -1,12 +1,12 @@
-2:
-  0:
-  - move(2, 14)
+2:  # uuid of the room
+  0:  # automaton state
+  - move(2, 14)  # move from room with uuid 2 to room with uuid 14
   - move(14, 9)
   - move(9, 17)
-  - move(17, 18)
-  - move(18, 10)
+  - move(17, 18)  # move to up stairs with uuid 18
+  - move(18, 10)  # move from up stairs with uuid 18 to room with uuid 10
   - move(10, 13)
-  - reach(13, 44)
+  - reach(13, 44)  # reach object with uuid 44 in room with uuid 13
   1:
   - move(2, 14)
   - move(14, 9)

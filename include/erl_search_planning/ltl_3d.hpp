@@ -1,14 +1,16 @@
 #pragma once
 
 #include <memory>
+#include "erl_geometry/kdtree_eigen_adaptor.hpp"
 #include "heuristic.hpp"
 
 namespace erl::search_planning {
 
     struct LinearTemporalLogicHeuristic3D : public HeuristicBase {
 
+        using KdTree = erl::geometry::KdTreeEigenAdaptor<double, 3>;
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa;
-        std::vector<std::vector<Eigen::Vector3d>> label_to_metric_states;
+        std::vector<std::shared_ptr<KdTree>> label_to_kdtree;
         Eigen::MatrixXd label_distance;
 
         /**
@@ -24,11 +26,11 @@ namespace erl::search_planning {
 
         /**
          * @brief Compute the heuristic value of the given state
-         * @param state metric state (x, y, z, q) and grid state (i, j, k, q)
+         * @param env_state metric state (x, y, z, q) and grid state (i, j, k, q)
          * @return
          */
         [[nodiscard]] double
-        operator()(const env::EnvironmentState &state) const override;
+        operator()(const env::EnvironmentState &env_state) const override;
 
     private:
         bool

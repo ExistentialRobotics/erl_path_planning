@@ -11,7 +11,7 @@ if (NOT COMMAND erl_project_setup)
 endif ()
 erl_project_setup(
         ${PROJECT_NAME}
-        ERL_PACKAGES erl_common erl_env
+        ERL_PACKAGES erl_common erl_env erl_geometry
 )
 erl_setup_ros(
         CATKIN_COMPONENTS ${${PROJECT_NAME}_CATKIN_COMPONENTS}
