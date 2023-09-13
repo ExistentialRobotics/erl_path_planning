@@ -267,7 +267,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);
-    Eigen::MatrixX<uint64_t> label_map = label_map_img_eigen.cast<uint64_t>();
+    Eigen::MatrixX<uint32_t> label_map = label_map_img_eigen.cast<uint32_t>();
 
     Eigen::Vector2i map_shape(251, 261);
     Eigen::Vector2d map_min(-5.05, -5.05);

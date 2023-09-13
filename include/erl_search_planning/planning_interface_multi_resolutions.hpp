@@ -84,7 +84,6 @@ namespace erl::search_planning {
             std::vector<bool> in_resolution_level_flags(num_resolution_levels, false);
             in_resolution_level_flags[0] = true;
             for (std::size_t i = 1; i < num_resolution_levels; ++i) {
-                // in_resolution_level_flags[i] = m_envs_[i]->InStateSpace(env_state);
                 in_resolution_level_flags[i] = m_environment_multi_resolution_->InStateSpaceAtLevel(env_state, i);
             }
             return in_resolution_level_flags;

@@ -21,7 +21,7 @@ namespace erl::search_planning {
          */
         LinearTemporalLogicHeuristic2D(
             std::shared_ptr<erl::env::FiniteStateAutomaton> fsa_in,
-            const Eigen::Ref<const Eigen::MatrixX<uint64_t>> &label_map,
+            const Eigen::Ref<const Eigen::MatrixX<uint32_t>> &label_map,
             const std::shared_ptr<erl::common::GridMapInfo2D> &grid_map_info);
 
         /**

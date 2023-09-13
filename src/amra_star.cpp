@@ -263,7 +263,7 @@ namespace erl::search_planning::amra_star {
             ERL_DEBUG_ASSERT(!parent->InClosed(0), "parent is already in anchor-level closed set.");
             parent->SetClosed(0, m_total_expand_itr_);  // anchor level, consistent heuristic
         } else {                                        // L5
-            ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in CLOSED of resolution level %d.", int(resolution_level));  // FIXME: this assertion fails when the heuristic is inconsistent
+            ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in CLOSED of resolution level %d.", int(resolution_level));
             ERL_DEBUG_ASSERT(parent->InOpened(heuristic_id, resolution_level), "parent is not in OPENED of heuristic %d.", int(heuristic_id));  // L6 to L8
             parent->SetClosed(resolution_level, m_total_expand_itr_);  // parent is also removed from other opened sets assigned to the same resolution level
         }

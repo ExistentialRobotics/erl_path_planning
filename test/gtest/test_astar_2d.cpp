@@ -4,6 +4,7 @@
 #include "erl_search_planning/astar.hpp"
 #include "erl_env/environment_2d.hpp"
 #include "erl_env/environment_ltl_2d.hpp"
+#include "erl_search_planning/ltl_2d.hpp"
 #include "erl_common/test_helper.hpp"
 
 TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithSingleGoal) {
@@ -136,7 +137,7 @@ TEST(ERL_SEARCH_PLANNING, AStar2D_LinearTemporalLogic2D) {
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);
-    Eigen::MatrixXi label_map = label_map_img_eigen.cast<int>();
+    Eigen::MatrixX<uint32_t> label_map = label_map_img_eigen.cast<uint32_t>();
 
     Eigen::Vector2i map_shape(251, 261);
     Eigen::Vector2d map_min(-5.05, -5.05);
