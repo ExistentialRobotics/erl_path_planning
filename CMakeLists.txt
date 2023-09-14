@@ -29,7 +29,7 @@ erl_catkin_package(
 ########################
 # define the libraries #
 ########################
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
+file(GLOB SRC_FILES src/*.cpp)
 add_library(${PROJECT_NAME} ${SRC_FILES})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
@@ -38,6 +38,12 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}>)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_ERL_PACKAGES} ${catkin_LIBRARIES})
+
+###################
+# add executables #
+###################
+add_executable(amra_ltl_scene_graph src/apps/amra_ltl_scene_graph.cpp)
+target_link_libraries(amra_ltl_scene_graph ${PROJECT_NAME}::${PROJECT_NAME})
 
 ###################
 # Python bindings #
