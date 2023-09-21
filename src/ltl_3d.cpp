@@ -6,10 +6,11 @@ namespace erl::search_planning {
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa_in,
         const std::unordered_map<int, Eigen::MatrixX<uint32_t>> &label_maps_in,
         const std::shared_ptr<erl::common::GridMapInfo3D> &grid_map_info)
-        : fsa(std::move(fsa_in)) {
+        : MultiGoalsHeuristic({}),
+          fsa(std::move(fsa_in)) {
 
-        auto cache_dir = std::filesystem::current_path() / "ltl_3d_cache";
-        if (LoadFromCache(cache_dir)) { return; }
+        // auto cache_dir = std::filesystem::current_path() / "ltl_3d_cache";
+        // if (LoadFromCache(cache_dir)) { return; }
 
         auto t0 = std::chrono::high_resolution_clock::now();
         ERL_ASSERTM(fsa != nullptr, "fsa is nullptr.");
@@ -153,7 +154,7 @@ namespace erl::search_planning {
         auto t1 = std::chrono::high_resolution_clock::now();
         ERL_INFO("LTL 3D heuristic computation time: %f ms.", std::chrono::duration<double, std::milli>(t1 - t0).count());
 
-        SaveToCache(cache_dir);
+        // SaveToCache(cache_dir);
     }
 
     double
@@ -161,7 +162,7 @@ namespace erl::search_planning {
         if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
         if (label_distance.size() == 0) { return 0.; }
         double h = std::numeric_limits<double>::infinity();
-        auto q = uint32_t(env_state.grid[3]);            // (x, y, z, q)
+        auto q = uint32_t(env_state.grid[3]);        // (x, y, z, q)
         if (fsa->IsSinkState(q)) { return h; }       // sink state, never reach the goal
         if (fsa->IsAcceptingState(q)) { return 0; }  // accepting state, goal
         // for each successor of q
@@ -183,43 +184,43 @@ namespace erl::search_planning {
         return h;
     }
 
-    bool
-    LinearTemporalLogicHeuristic3D::LoadFromCache(const std::filesystem::path &cache_dir) {
-        if (!std::filesystem::exists(cache_dir)) { return false; }
-        auto fsa_setting_file = cache_dir / "fsa_setting.yaml";
-        if (!std::filesystem::exists(fsa_setting_file)) { return false; }
-        auto fsa_setting = std::make_shared<erl::env::FiniteStateAutomaton::Setting>();
-        fsa_setting->FromYamlFile(fsa_setting_file);
-        if (fsa_setting->AsYamlString() != fsa->GetSetting()->AsYamlString()) { return false; }  // fsa setting is different
-
-        uint32_t num_labels = fsa->GetAlphabetSize();
-        label_to_kdtree.resize(num_labels);
-        for (uint32_t label = 0; label < num_labels; ++label) {
-            auto file = cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin");
-            if (!std::filesystem::exists(file)) { continue; }
-            Eigen::Matrix3Xd data = erl::common::LoadEigenMatrixFromBinaryFile<double, 3, Eigen::Dynamic>(file);
-            label_to_kdtree[label] = std::make_shared<KdTree>(data);
-        }
-        label_distance = erl::common::LoadEigenMatrixFromBinaryFile<double, Eigen::Dynamic, Eigen::Dynamic>(cache_dir / "label_distance.bin");
-
-        if (label_distance.rows() != num_labels) { return false; }
-        if (label_distance.cols() != fsa->GetSetting()->num_states) { return false; }
-        return true;
-    }
-
-    void
-    LinearTemporalLogicHeuristic3D::SaveToCache(const std::filesystem::path &cache_dir) const {
-        std::filesystem::create_directories(cache_dir);
-        fsa->GetSetting()->AsYamlFile(cache_dir / "fsa_setting.yaml");
-        uint32_t num_labels = fsa->GetAlphabetSize();
-        for (uint32_t label = 0; label < num_labels; ++label) {
-            auto label_kdtree = label_to_kdtree[label];
-            if (label_kdtree == nullptr) { continue; }
-            erl::common::SaveEigenMatrixToBinaryFile<double>(
-                cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin"),
-                label_kdtree->GetDataMatrix());
-        }
-        erl::common::SaveEigenMatrixToBinaryFile<double>(cache_dir / "label_distance.bin", label_distance);
-    }
+    // bool
+    // LinearTemporalLogicHeuristic3D::LoadFromCache(const std::filesystem::path &cache_dir) {
+    //     if (!std::filesystem::exists(cache_dir)) { return false; }
+    //     auto fsa_setting_file = cache_dir / "fsa_setting.yaml";
+    //     if (!std::filesystem::exists(fsa_setting_file)) { return false; }
+    //     auto fsa_setting = std::make_shared<erl::env::FiniteStateAutomaton::Setting>();
+    //     fsa_setting->FromYamlFile(fsa_setting_file);
+    //     if (fsa_setting->AsYamlString() != fsa->GetSetting()->AsYamlString()) { return false; }  // fsa setting is different
+    //
+    //     uint32_t num_labels = fsa->GetAlphabetSize();
+    //     label_to_kdtree.resize(num_labels);
+    //     for (uint32_t label = 0; label < num_labels; ++label) {
+    //         auto file = cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin");
+    //         if (!std::filesystem::exists(file)) { continue; }
+    //         Eigen::Matrix3Xd data = erl::common::LoadEigenMatrixFromBinaryFile<double, 3, Eigen::Dynamic>(file);
+    //         label_to_kdtree[label] = std::make_shared<KdTree>(data);
+    //     }
+    //     label_distance = erl::common::LoadEigenMatrixFromBinaryFile<double, Eigen::Dynamic, Eigen::Dynamic>(cache_dir / "label_distance.bin");
+    //
+    //     if (label_distance.rows() != num_labels) { return false; }
+    //     if (label_distance.cols() != fsa->GetSetting()->num_states) { return false; }
+    //     return true;
+    // }
+    //
+    // void
+    // LinearTemporalLogicHeuristic3D::SaveToCache(const std::filesystem::path &cache_dir) const {
+    //     std::filesystem::create_directories(cache_dir);
+    //     fsa->GetSetting()->AsYamlFile(cache_dir / "fsa_setting.yaml");
+    //     uint32_t num_labels = fsa->GetAlphabetSize();
+    //     for (uint32_t label = 0; label < num_labels; ++label) {
+    //         auto label_kdtree = label_to_kdtree[label];
+    //         if (label_kdtree == nullptr) { continue; }
+    //         erl::common::SaveEigenMatrixToBinaryFile<double>(
+    //             cache_dir / erl::common::AsString("label_to_metric_states_", label, ".bin"),
+    //             label_kdtree->GetDataMatrix());
+    //     }
+    //     erl::common::SaveEigenMatrixToBinaryFile<double>(cache_dir / "label_distance.bin", label_distance);
+    // }
 
 }  // namespace erl::search_planning

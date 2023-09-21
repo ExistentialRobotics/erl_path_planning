@@ -6,7 +6,8 @@ namespace erl::search_planning {
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa_in,
         const Eigen::Ref<const Eigen::MatrixX<uint32_t>> &label_map,
         const std::shared_ptr<erl::common::GridMapInfo2D> &grid_map_info)
-        : fsa(std::move(fsa_in)) {
+        : MultiGoalsHeuristic({}),
+          fsa(std::move(fsa_in)) {
 
         ERL_ASSERTM(fsa != nullptr, "fsa is nullptr.");
         ERL_ASSERTM(grid_map_info != nullptr, "grid_map_info is nullptr.");

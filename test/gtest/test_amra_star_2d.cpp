@@ -17,6 +17,11 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
+    std::string test_name = "AMRAStar2D_AStarConsistency";
+    std::filesystem::path data_dir = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
+
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
     // clang-format off
     grid_map_data <<
@@ -73,11 +78,8 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     long num_points = path.cols();
     for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
     EXPECT_NEAR(path_cost, 15.485281374238571, 1e-6);
+    if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 }
-
-std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
-std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
-std::filesystem::path result_dir = src_dir.parent_path() / "results";
 
 std::shared_ptr<erl::common::GridMapUnsigned2D>
 ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std::string &img_path = "") {
@@ -181,6 +183,10 @@ ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std
 
 void
 RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &start_grid, const Eigen::Vector2i &goal_grid, double expected_cost) {
+    std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
+    std::filesystem::path result_dir = src_dir / "results";
+
     std::string map_name = std::filesystem::relative(map_file, data_dir).string();
     std::string sep(map_name.size() + 2, '=');
     std::cout << sep << std::endl << ' ' << map_name << ' ' << std::endl << sep << std::endl;
@@ -189,10 +195,10 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
-    auto map_result_dir = result_dir / map_name;
+    auto map_result_dir = result_dir / "AMRAStar2D_MultiResolutions" / map_name;
     if (!std::filesystem::exists(map_result_dir)) { std::filesystem::create_directories(map_result_dir); }
     constexpr bool kDisplay = false;
-    std::string img_path = map_result_dir / (map_name + ".png");
+    std::string img_path = map_result_dir / "amra.png";
     auto grid_map = ReadAmraStarTestMap(map_file, kDisplay, img_path);
     auto grid_map_info = grid_map->info;
 
@@ -210,7 +216,6 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     auto env_low_res = std::make_shared<Environment2D>(grid_map, env_low_res_setting);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<2>>(envs, grid_map_info);
-    // std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
 
     Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(start_grid);
     Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(goal_grid);
@@ -237,10 +242,14 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     // long num_points = path.cols();
     // for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
 
-    if (setting->log) { result->Save(map_result_dir / (map_name + ".solution")); }
+    if (setting->log) { result->Save(map_result_dir / "amra.solution"); }
 }
 
 TEST(ERL_SEARCH_PLANNING, AMRAStar2D_MultiResolutions) {
+    std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
+    std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
+    std::filesystem::path result_dir = src_dir.parent_path() / "results";
+
     RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.1511709743168);
     RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1075.1796007476626);
     RunTestWithMap(data_dir / "Denver_0_1024.map", {306, 171}, {1008, 603}, 916.18768003761579);
@@ -258,6 +267,8 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
 
     std::filesystem::path path = __FILE__;
     path = path.parent_path();
+    auto output_dir = path / "results" / "AMRAStar2D_LinearTemporalLogic";
+    if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
 
     auto env_setting_yaml = path / "environment_ltl_2d.yaml";
     auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
@@ -290,14 +301,12 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     auto env_low_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_low_res_setting, cost_func);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<3>>(envs, env_high_res->GetGridMapInfo());
-    // std::vector<std::shared_ptr<EnvironmentBase>> all_envs = {env_anchor, env_high_res, env_mid_res, env_low_res};
 
     Eigen::VectorXd start(Eigen::Vector3d(-2, 3, env_setting->fsa->initial_state));
     Eigen::VectorXd goal(Eigen::Vector3d(0, 0, env_setting->fsa->accepting_states[0]));
     double inf = std::numeric_limits<double>::infinity();
     Eigen::VectorXd goal_tolerance(Eigen::Vector3d(inf, inf, 0));
 
-    // auto euclidean_heuristic = std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance);
     auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic2D>(env_high_res->GetFiniteStateAutomaton(), label_map, grid_map_info);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {ltl_heuristic, 0},
@@ -315,4 +324,5 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     std::cout << "Path cost: " << path_cost << std::endl;
 
     EXPECT_NEAR(path_cost, 20.417871555019111, 1e-12);  // 20.417871555018998, slightly larger than the A* result
+    if (setting->log) { result->Save(output_dir / "amra.solution"); }
 }

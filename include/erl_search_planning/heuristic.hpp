@@ -139,8 +139,7 @@ namespace erl::search_planning {
         std::vector<std::shared_ptr<HeuristicBase>> goal_heuristics;
 
         explicit MultiGoalsHeuristic(std::vector<std::shared_ptr<HeuristicBase>> goal_heuristics_in)
-            : goal_heuristics(std::move(goal_heuristics_in)) {
-            ERL_ASSERTM(!goal_heuristics.empty(), "goal_heuristics_in is empty.");
+            : goal_heuristics(std::move(goal_heuristics_in)) {  // may be empty
             std::size_t num_goals = goal_heuristics.size();
             for (std::size_t i = 0; i < num_goals; ++i) { ERL_ASSERTM(goal_heuristics[i] != nullptr, "goal_heuristics_in[%d] is nullptr.", int(i)); }
         }

@@ -32,7 +32,7 @@ namespace erl::search_planning::amra_star {
                 << "w2: " << w2_values.at(plan_itr) << std::endl
                 << "goal_index: " << goal_index << std::endl
                 << "cost: " << costs.at(plan_itr) << std::endl
-                << "num waypoints: " << n << std::endl
+                << "num_waypoints: " << n << std::endl
                 << "path: " << std::endl;
             ofs << "pos[0]";
             for (int i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
@@ -42,10 +42,13 @@ namespace erl::search_planning::amra_star {
                 for (int j = 1; j < d; ++j) { ofs << ", " << path(j, i); }
                 ofs << std::endl;
             }
-            ofs << "action_coords: " << std::endl;
+            ofs << "num_actions: " << action_coords.size() << std::endl << "action_coords: " << std::endl;
+            ofs << "coord[0]";
+            std::size_t m = action_coords.front().size();
+            ERL_ASSERTM(m > 0, "action_coord is empty");
+            for (std::size_t i = 1; i < m; ++i) { ofs << ", coord[" << i << "]"; }
+            ofs << std::endl;
             for (const auto &action_coord: action_coords) {
-                std::size_t m = action_coord.size();
-                ERL_ASSERTM(m > 0, "action_coord is empty");
                 ofs << action_coord[0];
                 for (std::size_t i = 1; i < m; ++i) { ofs << ", " << action_coord[i]; }
                 ofs << std::endl;
@@ -72,7 +75,7 @@ namespace erl::search_planning::amra_star {
 
         cnt = 1;
         for (const auto &[expand_itr, closed_states_at_expand_itr]: closed_states) { cnt += closed_states_at_expand_itr.size(); }
-        ofs << "closed_states: " << std::endl << cnt << std::endl << "expand_itr, action_resolution_level, pos[0]" << std::endl;
+        ofs << "closed_states: " << std::endl << cnt << std::endl << "expand_itr, action_resolution_level, pos[0]";
         for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
         ofs << std::endl;
         for (const auto &[expand_itr, closed_states_at_expand_itr]: closed_states) {
@@ -85,8 +88,9 @@ namespace erl::search_planning::amra_star {
 
         cnt = 1;
         for (const auto &[expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) { cnt += inconsistent_states_at_expand_itr.size(); }
-        ofs << "inconsistent_states: " << std::endl << cnt << std::endl << "expand_itr, pos[0]" << std::endl;
+        ofs << "inconsistent_states: " << std::endl << cnt << std::endl << "expand_itr, pos[0]";
         for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
+        ofs << std::endl;
         for (const auto &[expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) {
             for (const auto &state: inconsistent_states_at_expand_itr) {
                 ofs << expand_itr << ", " << state[0];
@@ -219,13 +223,14 @@ namespace erl::search_planning::amra_star {
     AMRAStar::ImprovePath(const std::chrono::system_clock::time_point &start_time, std::chrono::nanoseconds &elapsed_time) {
         elapsed_time = 0ns;
         std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
-        while (!m_open_queues_[0].empty() && (m_open_queues_[0].top()->f_value < std::numeric_limits<double>::infinity())) {  // L25
+        auto &open_anchor = m_open_queues_[0];
+        while (!open_anchor.empty() && (open_anchor.top()->f_value < std::numeric_limits<double>::infinity())) {  // L25
             elapsed_time = std::chrono::system_clock::now() - start_time;
             if (elapsed_time + m_search_time_ > m_setting_->time_limit) { return {nullptr, -1}; }
 
             for (std::size_t heuristic_id = 1; heuristic_id < num_heuristics; ++heuristic_id) {  // L26
-                if (m_open_queues_[0].empty()) { return {nullptr, -1}; }
-                double f_check = m_w2_ * m_open_queues_[0].top()->f_value;
+                if (open_anchor.empty()) { return {nullptr, -1}; }
+                double f_check = m_w2_ * open_anchor.top()->f_value;
                 auto min_goal_itr = std::min_element(  // get the goal of minimum g_value
                     m_goal_states_.begin(),
                     m_goal_states_.end(),
@@ -233,22 +238,31 @@ namespace erl::search_planning::amra_star {
                 double min_goal_g_value = (*min_goal_itr)->g_value;
                 if (f_check >= min_goal_g_value) { return {*min_goal_itr, int(std::distance(m_goal_states_.begin(), min_goal_itr))}; }
 
-                if (!m_open_queues_[heuristic_id].empty() && m_open_queues_[heuristic_id].top()->f_value <= f_check) {
-                    std::shared_ptr<State> state = m_open_queues_[heuristic_id].top()->state;
-                    int goal_index = m_planning_interface_->ReachGoal(state->env_state);
-                    if (goal_index >= 0) { return {state, goal_index}; }
-                    m_open_queues_[heuristic_id].pop();
-                    Expand(state, heuristic_id);
-                    m_expand_itr_[long(heuristic_id)]++;
-                    m_total_expand_itr_++;
-                } else {
-                    std::shared_ptr<State> state = m_open_queues_[0].top()->state;
-                    int goal_index = m_planning_interface_->ReachGoal(state->env_state);
-                    if (goal_index >= 0) { return {state, goal_index}; }
-                    m_open_queues_[0].pop();
-                    Expand(state, 0);
-                    m_expand_itr_[0]++;
-                    m_total_expand_itr_++;
+                // state in the open queue of heuristic_id may be invalid when it is moved to CLOSE by another heuristic
+
+                auto &open = m_open_queues_[heuristic_id];
+                while (!open.empty() || !open_anchor.empty()) {
+                    if (!open.empty() && open.top()->f_value <= f_check) {
+                        std::shared_ptr<State> state = open.top()->state;
+                        int goal_index = m_planning_interface_->ReachGoal(state->env_state);
+                        if (goal_index >= 0) { return {state, goal_index}; }
+                        open.pop();
+                        std::size_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
+                        if (!state->InOpened(heuristic_id, resolution_level)) { continue; }  // state is moved to CLOSED by another heuristic
+                        Expand(state, heuristic_id);
+                        m_expand_itr_[long(heuristic_id)]++;
+                        m_total_expand_itr_++;
+                        break;
+                    } else {
+                        std::shared_ptr<State> state = open_anchor.top()->state;
+                        int goal_index = m_planning_interface_->ReachGoal(state->env_state);
+                        if (goal_index >= 0) { return {state, goal_index}; }
+                        open_anchor.pop();
+                        Expand(state, 0);
+                        m_expand_itr_[0]++;
+                        m_total_expand_itr_++;
+                        break;
+                    }
                 }
             }
         }
@@ -260,10 +274,11 @@ namespace erl::search_planning::amra_star {
 
         std::size_t resolution_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);  // L4
         if (heuristic_id == 0) {
-            ERL_DEBUG_ASSERT(!parent->InClosed(0), "parent is already in anchor-level closed set.");
-            parent->SetClosed(0, m_total_expand_itr_);  // anchor level, consistent heuristic
-        } else {                                        // L5
-            ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in CLOSED of resolution level %d.", int(resolution_level));
+            ERL_DEBUG_ASSERT(!parent->InClosed(0), "parent is already in anchor-level closed set.");  // the heuristic for the anchor level must be consistent
+            parent->SetClosed(0, m_total_expand_itr_);                                                // anchor level, consistent heuristic
+        } else {                                                                                      // L5
+            // comment the following assert because the heuristic may be inconsistent
+            // ERL_DEBUG_ASSERT(!parent->InClosed(resolution_level), "parent is already in CLOSED of resolution level %d.", int(resolution_level));
             ERL_DEBUG_ASSERT(parent->InOpened(heuristic_id, resolution_level), "parent is not in OPENED of heuristic %d.", int(heuristic_id));  // L6 to L8
             parent->SetClosed(resolution_level, m_total_expand_itr_);  // parent is also removed from other opened sets assigned to the same resolution level
         }

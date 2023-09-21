@@ -6,7 +6,7 @@
 
 namespace erl::search_planning {
 
-    struct LinearTemporalLogicHeuristic3D : public HeuristicBase {
+    struct LinearTemporalLogicHeuristic3D : public MultiGoalsHeuristic {
 
         using KdTree = erl::geometry::KdTreeEigenAdaptor<double, 3>;
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa;
@@ -32,11 +32,11 @@ namespace erl::search_planning {
         [[nodiscard]] double
         operator()(const env::EnvironmentState &env_state) const override;
 
-    private:
-        bool
-        LoadFromCache(const std::filesystem::path &cache_dir);
-        void
-        SaveToCache(const std::filesystem::path &cache_dir) const;
+//    private:
+//        bool
+//        LoadFromCache(const std::filesystem::path &cache_dir);
+//        void
+//        SaveToCache(const std::filesystem::path &cache_dir) const;
     };
 
 }  // namespace erl::search_planning

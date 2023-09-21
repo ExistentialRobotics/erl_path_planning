@@ -6,7 +6,7 @@
 
 namespace erl::search_planning {
 
-    struct LinearTemporalLogicHeuristic2D : public HeuristicBase {
+    struct LinearTemporalLogicHeuristic2D : public MultiGoalsHeuristic {
 
         using KdTree = erl::geometry::KdTreeEigenAdaptor<double, 2>;
         std::shared_ptr<erl::env::FiniteStateAutomaton> fsa;

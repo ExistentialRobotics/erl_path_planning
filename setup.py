@@ -32,7 +32,7 @@ sys.argv = [sys.argv[0]] + unknown
 
 if os.path.exists(egg_info_dir):
     os.system(f"rm -rf {egg_info_dir}")
-erl_dependencies = ["erl_common", "erl_env"]
+erl_dependencies = ["erl_common", "erl_env", "erl_geometry"]
 temp_build_dir = os.path.join(project_dir, "build")
 temp_install_dir = os.path.join(project_dir, "build", "temp_install")
 n_proc = os.cpu_count()
@@ -78,8 +78,12 @@ class CMakeBuild(build_ext):
             os.remove(original_full_path)
 
         # ext_dir equals to build/lib.linux-$(architecture)-cpython-${python_version}
-        ext_dir: str = os.path.abspath(os.path.dirname(original_full_path))
-        ext_dir: str = os.path.join(ext_dir, self.distribution.get_name())
+        editable = os.path.dirname(original_full_path) == project_dir  # editable install
+        if editable:
+            ext_dir: str = src_python_dir
+        else:
+            ext_dir: str = os.path.abspath(os.path.dirname(original_full_path))
+            ext_dir: str = os.path.join(ext_dir, self.distribution.get_name())
         old_ext_path = os.path.join(ext_dir, os.path.basename(original_full_path))
         if os.path.exists(old_ext_path):
             os.remove(old_ext_path)

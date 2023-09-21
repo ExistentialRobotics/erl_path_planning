@@ -1,8 +1,8 @@
 from erl_common.yaml import YamlableBase
 from erl_search_planning.pyerl_search_planning import (
     HeuristicBase,
-    EuclideanDistanceHeuristic,
-    ManhattanDistanceHeuristic,
+    EuclideanDistanceHeuristic2D,
+    ManhattanDistanceHeuristic2D,
     DictionaryHeuristic,
     MultiGoalsHeuristic,
     PlanningInterface,
@@ -13,8 +13,8 @@ from . import amra_star
 
 __all__ = [
     "HeuristicBase",
-    "EuclideanDistanceHeuristic",
-    "ManhattanDistanceHeuristic",
+    "EuclideanDistanceHeuristic2D",
+    "ManhattanDistanceHeuristic2D",
     "DictionaryHeuristic",
     "MultiGoalsHeuristic",
     "PlanningInterface",

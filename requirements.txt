@@ -1,4 +1,11 @@
 matplotlib
 numpy
 pandas
-imageio
+imageio[tifffile]
+imageio[ffmpeg]
+opencv-python
+trimesh
+pyyaml
+vedo
+pyside2
+pyqt5

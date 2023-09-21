@@ -5,9 +5,9 @@
 #include "erl_search_planning/ltl_3d.hpp"
 #include "erl_search_planning/llm_scene_graph_heuristic.hpp"
 #include "erl_env/environment_ltl_scene_graph.hpp"
-#include "erl_common/test_helper.hpp"
+#include "erl_common/yaml.hpp"
 
-struct Options {
+struct Options : public erl::common::Yamlable<Options> {
     std::string output_dir = {};
     std::string scene_graph_file = {};
     std::string map_data_dir = {};
@@ -17,22 +17,33 @@ struct Options {
     int init_grid_x = -1;
     int init_grid_y = -1;
     int init_grid_z = -1;
-    bool occupancy_only = false;
-    bool use_llm_heuristic = false;
-    bool use_llm_heuristic_for_occupancy = true;
-    bool use_llm_heuristic_for_object = true;
-    bool use_llm_heuristic_for_room = true;
-    bool use_llm_heuristic_for_floor = true;
+    double robot_radius = 0.0;
+    double object_reach_radius = 0.6;
+    erl::env::scene_graph::Node::Type max_level = erl::env::scene_graph::Node::Type::kFloor;
+    std::string ltl_heuristic_layout = {};
+    std::string llm_heuristic_layout = {};
     int repeat = 1;
-    bool save_amra_log = true;
+    bool save_amra_log = false;
+    bool hold_for_visualization = false;
 };
+
+inline static const char *hierarchy_layout = R"(Hierarchical Planning Domain Layout:
+|  LEVEL  | Anchor | Occupancy | Object | Room | Floor |
+| ENABLED |   %c    |     %c     |   %c    |  %c   |   %c   |
+|   LTL   |   %c    |     %c     |   %c    |  %c   |   %c   |
+|   LLM   |   %c    |     %c     |   %c    |  %c   |   %c   |)";
 
 int
 main(int argc, char *argv[]) {
     using namespace erl::env;
     using namespace erl::search_planning;
 
+    std::string max_level_str;
     Options options;
+    bool use_llm_heuristic = false;
+    char level_enabled_chars[5] = {'1', '0', '0', '0', '0'};
+    char level_ltl_chars[5] = {'1', 'X', 'X', 'X', 'X'};
+    char level_llm_chars[5] = {'X', 'X', 'X', 'X', 'X'};
 
     try {
         namespace po = boost::program_options;
@@ -50,11 +61,14 @@ main(int argc, char *argv[]) {
             ("init_grid_x", po::value<int>(&options.init_grid_x), "initial x position in grids.")
             ("init_grid_y", po::value<int>(&options.init_grid_y), "initial y position in grids.")
             ("init_grid_z", po::value<int>(&options.init_grid_z), "initial z position in grids.")
-            ("occupancy_only", po::bool_switch(&options.occupancy_only)->default_value(options.occupancy_only), "only use occupancy information for planning.")
-            ("use_llm_heuristic", po::bool_switch(&options.use_llm_heuristic)->default_value(options.use_llm_heuristic), "use LLM heuristic.")
-            ("repeat", po::value<int>(&options.repeat), "repeat the experiment for multiple times.")
-            ("save_amra_log", po::bool_switch(&options.save_amra_log)->default_value(options.save_amra_log), "save AMRA* log");
-        // positional_options.add("tree-bt-file", 1);
+            ("robot_radius", po::value<double>(&options.robot_radius)->default_value(options.robot_radius), "robot radius.")
+            ("object_reach_radius", po::value<double>(&options.object_reach_radius)->default_value(options.object_reach_radius), "object reach radius.")
+            ("max_level", po::value<std::string>(&max_level_str), "maximum level to plan: kOcc, kObject, kRoom, kFloor, anchor cannot be disabled.")
+            ("ltl_heuristic_config", po::value<std::string>(&options.ltl_heuristic_layout), "a sequence of 0,1 to indicate whether to use LTL heuristic for each level up to the max_level: anchor, kOcc, kObject, kRoom, kFloor.")
+            ("llm_heuristic_config", po::value<std::string>(&options.llm_heuristic_layout), "a sequence of 0,1 to indicate whether to use LLM heuristic for each level up to the max_level: anchor, kOcc, kObject, kRoom, kFloor.")
+            ("repeat", po::value<int>(&options.repeat)->default_value(options.repeat), "repeat the experiment for multiple times.")
+            ("save_amra_log", po::bool_switch(&options.save_amra_log)->default_value(options.save_amra_log), "save AMRA* log")
+            ("hold_for_visualization", po::bool_switch(&options.hold_for_visualization)->default_value(options.hold_for_visualization), "pause for visualization");
         // clang-format on
 
         po::variables_map vm;
@@ -65,6 +79,10 @@ main(int argc, char *argv[]) {
             return 0;
         }
         po::notify(vm);
+        if (options.output_dir.empty()) {
+            std::cerr << "output_dir is not provided." << std::endl;
+            return 1;
+        }
         if (options.scene_graph_file.empty()) {
             std::cerr << "scene_graph_file is not provided." << std::endl;
             return 1;
@@ -81,10 +99,6 @@ main(int argc, char *argv[]) {
             std::cerr << "ap_file is not provided." << std::endl;
             return 1;
         }
-        if (options.use_llm_heuristic && options.llm_heuristic_file.empty()) {
-            std::cerr << "llm_heuristic_file is not provided." << std::endl;
-            return 1;
-        }
         if (options.init_grid_x < 0) {
             std::cerr << "init_grid_x is not provided." << std::endl;
             return 1;
@@ -95,6 +109,85 @@ main(int argc, char *argv[]) {
         }
         if (options.init_grid_z < 0) {
             std::cerr << "init_grid_z is not provided." << std::endl;
+            return 1;
+        }
+        if (options.object_reach_radius < options.robot_radius) {
+            std::cerr << "object_reach_radius should be at least robot_radius." << std::endl;
+            return 1;
+        }
+        if (max_level_str.empty()) {
+            std::cerr << "max_level is not provided." << std::endl;
+            return 1;
+        } else if (max_level_str == "kOcc") {
+            options.max_level = scene_graph::Node::Type::kOcc;
+        } else if (max_level_str == "kFloor") {
+            options.max_level = scene_graph::Node::Type::kFloor;
+        } else if (max_level_str == "kRoom") {
+            options.max_level = scene_graph::Node::Type::kRoom;
+        } else if (max_level_str == "kObject") {
+            options.max_level = scene_graph::Node::Type::kObject;
+        } else {
+            std::cerr << "max_level is not valid." << std::endl;
+            return 1;
+        }
+        for (int i = 0; i <= int(options.max_level); ++i) { level_enabled_chars[i + 1] = '1'; }
+        if (options.ltl_heuristic_layout.empty()) {
+            std::cerr << "ltl_heuristic_config is not provided." << std::endl;
+            return 1;
+        } else if (options.ltl_heuristic_layout.length() != std::size_t(options.max_level) + 2) {
+            std::cerr << "ltl_heuristic_config is not valid with max_level = " << max_level_str << std::endl;
+            return 1;
+        } else {
+            for (char c: options.ltl_heuristic_layout) {
+                if (c != '0' && c != '1') {
+                    std::cerr << "ltl_heuristic_config should only contain 0 or 1." << std::endl;
+                    return 1;
+                }
+            }
+            if (options.ltl_heuristic_layout[0] != '1') {
+                std::cerr << "ltl_heuristic_config should start with 1 to enable LTL heuristic for the anchor level." << std::endl;
+                return 1;
+            }
+            for (std::size_t i = 0; i < options.ltl_heuristic_layout.length(); ++i) {
+                if (options.ltl_heuristic_layout[i] == '1') {
+                    level_ltl_chars[i] = '1';
+                } else {
+                    level_ltl_chars[i] = '0';
+                }
+            }
+        }
+        if (options.llm_heuristic_layout.empty()) {
+            std::cerr << "llm_heuristic_config is not provided." << std::endl;
+            return 1;
+        } else if (options.llm_heuristic_layout.length() != std::size_t(options.max_level) + 2) {
+            std::cerr << "llm_heuristic_config is not valid with max_level = " << max_level_str << std::endl;
+            return 1;
+        } else {
+            for (char c: options.llm_heuristic_layout) {
+                if (c != '0' && c != '1') {
+                    std::cerr << "llm_heuristic_config should only contain 0 or 1." << std::endl;
+                    return 1;
+                }
+            }
+            if (options.llm_heuristic_layout[0] != '0') {
+                std::cerr << "llm_heuristic_layout should start with 0 because anchor level does not allow LLM heuristic." << std::endl;
+                return 1;
+            }
+            for (std::size_t i = 0; i < options.llm_heuristic_layout.length(); ++i) {
+                if (options.llm_heuristic_layout[i] == '1') {
+                    level_llm_chars[i] = '1';
+                } else {
+                    level_llm_chars[i] = '0';
+                }
+            }
+        }
+        use_llm_heuristic = std::any_of(options.ltl_heuristic_layout.begin(), options.ltl_heuristic_layout.end(), [](char c) { return c == '1'; });
+        if (use_llm_heuristic && options.llm_heuristic_file.empty()) {
+            std::cerr << "llm_heuristic_file is not provided." << std::endl;
+            return 1;
+        }
+        if (options.repeat < 1) {
+            std::cerr << "repeat should be at least 1." << std::endl;
             return 1;
         }
     } catch (std::exception &e) {
@@ -119,7 +212,17 @@ main(int argc, char *argv[]) {
     env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(options.automaton_file, AutFileType::kSpotHoa);
     env_setting->LoadAtomicPropositions(options.ap_file);
     // create the environment
-    if (options.occupancy_only) { env_setting->max_level = scene_graph::Node::Type::kNA; }
+    env_setting->max_level = options.max_level;
+    if (options.robot_radius > 0) {
+        long n = 360;
+        Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(n, 0, 2 * M_PI);
+        env_setting->shape.resize(2, n);
+        for (long i = 0; i < n; ++i) {
+            env_setting->shape(0, i) = options.robot_radius * cos(angles[i]);
+            env_setting->shape(1, i) = options.robot_radius * sin(angles[i]);
+        }
+    }
+    env_setting->object_reach_distance = options.object_reach_radius;
     auto env = std::make_shared<EnvironmentLTLSceneGraph>(scene_graph, env_setting);
     // get initial states, goal set and goal tolerance.
     auto init_q = int(env_setting->fsa->initial_state);
@@ -137,34 +240,36 @@ main(int argc, char *argv[]) {
     double inf = std::numeric_limits<double>::infinity();
     Eigen::VectorXd goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
     // get ltl heuristic and llm heuristic
+    ERL_INFO(
+        hierarchy_layout,
+        level_enabled_chars[0],
+        level_enabled_chars[1],
+        level_enabled_chars[2],
+        level_enabled_chars[3],
+        level_enabled_chars[4],
+        level_ltl_chars[0],
+        level_ltl_chars[1],
+        level_ltl_chars[2],
+        level_ltl_chars[3],
+        level_ltl_chars[4],
+        level_llm_chars[0],
+        level_llm_chars[1],
+        level_llm_chars[2],
+        level_llm_chars[3],
+        level_llm_chars[4]);
     auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic3D>(env->GetFiniteStateAutomaton(), env->GetLabelMaps(), env->GetGridMapInfo());
     std::shared_ptr<LLMSceneGraphHeuristic> llm_heuristic = nullptr;
-    if (options.use_llm_heuristic) {
+    if (use_llm_heuristic) {
         auto llm_heuristic_setting = std::make_shared<LLMSceneGraphHeuristic::Setting>();
         llm_heuristic_setting->FromYamlFile(options.llm_heuristic_file);
         llm_heuristic = std::make_shared<LLMSceneGraphHeuristic>(llm_heuristic_setting, env);
     }
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics;
-    if (options.occupancy_only) {
-        heuristics = {
-            {ltl_heuristic, 0},
-            {ltl_heuristic, 1},
-        };
-        if (options.use_llm_heuristic) { heuristics.push_back({llm_heuristic, 1}); }
-    } else {
-        heuristics = {
-            {ltl_heuristic, 0},
-            {ltl_heuristic, 1},  // occupancy
-            {ltl_heuristic, 2},  // object
-            {ltl_heuristic, 3},  // room
-            {ltl_heuristic, 4},  // floor
-        };
-        if (options.use_llm_heuristic) {
-            if (options.use_llm_heuristic_for_occupancy) { heuristics.push_back({llm_heuristic, 1}); }
-            if (options.use_llm_heuristic_for_object) { heuristics.push_back({llm_heuristic, 2}); }
-            if (options.use_llm_heuristic_for_room) { heuristics.push_back({llm_heuristic, 3}); }
-            if (options.use_llm_heuristic_for_floor) { heuristics.push_back({llm_heuristic, 4}); }
-        }
+    for (std::size_t i = 0; i < options.ltl_heuristic_layout.length(); ++i) {
+        if (options.ltl_heuristic_layout[i] == '1') { heuristics.emplace_back(ltl_heuristic, i); }
+    }
+    for (std::size_t i = 0; i < options.llm_heuristic_layout.length(); ++i) {
+        if (options.llm_heuristic_layout[i] == '1') { heuristics.emplace_back(llm_heuristic, i); }
     }
     // create the planner
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env, heuristics, start, goals, std::vector<Eigen::VectorXd>{goal_tolerance});
@@ -180,12 +285,16 @@ main(int argc, char *argv[]) {
         std::cout << "[" << i << "]Planner construction time: " << std::chrono::duration<double, std::micro>(t1 - t0).count() << " us." << std::endl;
         std::cout << "[" << i << "]Planning time: " << std::chrono::duration<double, std::micro>(t2 - t1).count() << " us." << std::endl;
     }
-    // save the result
+    // save the experiment setting
     std::filesystem::path output_dir = options.output_dir;
+    options.AsYamlFile(output_dir / "experiment_setting.yaml");
+    // save the result
     if (options.save_amra_log) {
+        std::cout << "Running AMRA* again with logging enabled." << std::endl;
         amra_setting->log = true;
         amra_star::AMRAStar planner(planning_interface, amra_setting);
         result = planner.Plan();
+        std::cout << "Saving AMRA* log..." << std::endl;
         result->Save(output_dir / "amra.solution");
     }
     // draw path
@@ -193,22 +302,116 @@ main(int argc, char *argv[]) {
         uint32_t plan_itr = itr.first;
         Eigen::Matrix4Xd amra_path = itr.second;
         long num_points = amra_path.cols();
-        std::unordered_map<int, std::vector<cv::Point2i>> cv_paths;  // floor -> path
-        cv_paths.reserve(num_points);
+        std::vector<cv::Point2i> cv_path;  // floor -> path
+        int img_idx = 0;
+        int cur_floor = -1;
         for (long i = 0; i < num_points; ++i) {
             Eigen::Vector4d p = amra_path.col(i);
             Eigen::Vector4i grid = env->MetricToGrid(p);
-            cv_paths[grid[2]].emplace_back(grid[1], grid[0]);
+            if (cur_floor < 0) { cur_floor = grid[2]; }
+            if (cur_floor != grid[2]) {
+                cv::Mat img;
+                img = erl::common::ColorGrayCustom(scene_graph->LoadCatMap(options.map_data_dir, cur_floor));
+                cv::polylines(img, cv_path, false, cv::Scalar(0, 0, 0), 2);
+                // draw start and goal
+                cv::circle(img, cv_path.front(), 10, cv::Scalar(0, 0, 255), -1);
+                cv::circle(img, cv_path.back(), 10, cv::Scalar(0, 255, 0), -1);
+                std::string img_name = erl::common::AsString("plan_", plan_itr, "_img_", img_idx, "_floor_", cur_floor);
+                if (options.hold_for_visualization) { cv::imshow(img_name, img); }
+                cv::imwrite(output_dir / (img_name + ".png"), img);
+                img_idx++;
+                cur_floor = grid[2];
+                cv_path.clear();
+            }
+            cv_path.emplace_back(grid[1], grid[0]);
         }
-        std::unordered_map<int, cv::Mat> cat_maps;  // floor -> map
-        for (auto &[floor_num, cv_path]: cv_paths) {
-            auto &cat_map = cat_maps[floor_num];
-            cat_map = erl::common::ColorGrayCustom(scene_graph->LoadCatMap(options.map_data_dir, floor_num));
-            cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
-            cv::imshow(erl::common::AsString("plan_", plan_itr, "_floor_", floor_num), cat_map);
-            cv::imwrite(output_dir / erl::common::AsString("plan_", plan_itr, "_floor_", floor_num, ".png"), cat_map);
-        }
+        cv::Mat img;
+        img = erl::common::ColorGrayCustom(scene_graph->LoadCatMap(options.map_data_dir, cur_floor));
+        cv::polylines(img, cv_path, false, cv::Scalar(0, 0, 0), 2);
+        // draw start and goal
+        cv::circle(img, cv_path.front(), 10, cv::Scalar(0, 0, 255), -1);
+        cv::circle(img, cv_path.back(), 10, cv::Scalar(0, 255, 0), -1);
+        std::string img_name = erl::common::AsString("plan_", plan_itr, "_img_", img_idx, "_floor_", cur_floor);
+        if (options.hold_for_visualization) { cv::imshow(img_name, img); }
+        cv::imwrite(output_dir / (img_name + ".png"), img);
     }
+    // hold for visualization
+    if (options.hold_for_visualization) { cv::waitKey(0); }
 
     return 0;
 }
+
+namespace YAML {
+    template<>
+    struct convert<Options> {
+        inline static Node
+        encode(const Options &rhs) {
+            Node node;
+            node["output_dir"] = rhs.output_dir;
+            node["scene_graph_file"] = rhs.scene_graph_file;
+            node["map_data_dir"] = rhs.map_data_dir;
+            node["automaton_file"] = rhs.automaton_file;
+            node["ap_file"] = rhs.ap_file;
+            node["llm_heuristic_file"] = rhs.llm_heuristic_file;
+            node["init_grid_x"] = rhs.init_grid_x;
+            node["init_grid_y"] = rhs.init_grid_y;
+            node["init_grid_z"] = rhs.init_grid_z;
+            node["robot_radius"] = rhs.robot_radius;
+            node["object_reach_radius"] = rhs.object_reach_radius;
+            node["max_level"] = rhs.max_level;
+            node["ltl_heuristic_layout"] = rhs.ltl_heuristic_layout;
+            node["llm_heuristic_layout"] = rhs.llm_heuristic_layout;
+            node["repeat"] = rhs.repeat;
+            node["save_amra_log"] = rhs.save_amra_log;
+            node["hold_for_visualization"] = rhs.hold_for_visualization;
+            return node;
+        }
+
+        inline static bool
+        decode(const Node &node, Options &rhs) {
+            if (!node.IsMap()) { return false; }
+            rhs.output_dir = node["output_dir"].as<std::string>();
+            rhs.scene_graph_file = node["scene_graph_file"].as<std::string>();
+            rhs.map_data_dir = node["map_data_dir"].as<std::string>();
+            rhs.automaton_file = node["automaton_file"].as<std::string>();
+            rhs.ap_file = node["ap_file"].as<std::string>();
+            rhs.llm_heuristic_file = node["llm_heuristic_file"].as<std::string>();
+            rhs.init_grid_x = node["init_grid_x"].as<int>();
+            rhs.init_grid_y = node["init_grid_y"].as<int>();
+            rhs.init_grid_z = node["init_grid_z"].as<int>();
+            rhs.robot_radius = node["robot_radius"].as<double>();
+            rhs.object_reach_radius = node["object_reach_radius"].as<double>();
+            rhs.max_level = node["max_level"].as<erl::env::scene_graph::Node::Type>();
+            rhs.ltl_heuristic_layout = node["ltl_heuristic_layout"].as<std::string>();
+            rhs.llm_heuristic_layout = node["llm_heuristic_layout"].as<std::string>();
+            rhs.repeat = node["repeat"].as<int>();
+            rhs.save_amra_log = node["save_amra_log"].as<bool>();
+            rhs.hold_for_visualization = node["hold_for_visualization"].as<bool>();
+            return true;
+        }
+    };
+
+    inline Emitter &
+    operator<<(Emitter &out, const Options &rhs) {
+        out << BeginMap;
+        out << Key << "output_dir" << Value << rhs.output_dir;
+        out << Key << "scene_graph_file" << Value << rhs.scene_graph_file;
+        out << Key << "map_data_dir" << Value << rhs.map_data_dir;
+        out << Key << "automaton_file" << Value << rhs.automaton_file;
+        out << Key << "ap_file" << Value << rhs.ap_file;
+        out << Key << "llm_heuristic_file" << Value << rhs.llm_heuristic_file;
+        out << Key << "init_grid_x" << Value << rhs.init_grid_x;
+        out << Key << "init_grid_y" << Value << rhs.init_grid_y;
+        out << Key << "init_grid_z" << Value << rhs.init_grid_z;
+        out << Key << "robot_radius" << Value << rhs.robot_radius;
+        out << Key << "object_reach_radius" << Value << rhs.object_reach_radius;
+        out << Key << "max_level" << Value << rhs.max_level;
+        out << Key << "ltl_heuristic_layout" << Value << rhs.ltl_heuristic_layout;
+        out << Key << "llm_heuristic_layout" << Value << rhs.llm_heuristic_layout;
+        out << Key << "repeat" << Value << rhs.repeat;
+        out << Key << "save_amra_log" << Value << rhs.save_amra_log;
+        out << Key << "hold_for_visualization" << Value << rhs.hold_for_visualization;
+        out << EndMap;
+        return out;
+    }
+}  // namespace YAML

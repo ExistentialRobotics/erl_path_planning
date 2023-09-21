@@ -16,6 +16,10 @@ namespace erl::search_planning {
                     m_heuristic_cache_[room_uuid][fsa_state] = 0.0;
                     continue;
                 }
+                if (m_env_->m_fsa_->IsSinkState(fsa_state)) {
+                    m_heuristic_cache_[room_uuid][fsa_state] = std::numeric_limits<double>::infinity();
+                    continue;
+                }
 
                 auto &llm_path = m_setting_->llm_paths.at(room_uuid).at(fsa_state);
                 if (llm_path.size() <= 1) {

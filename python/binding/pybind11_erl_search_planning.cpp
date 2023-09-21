@@ -26,13 +26,13 @@ BindHeuristics(py::module &m) {
         .def(py::init_alias<Eigen::VectorXd, Eigen::VectorXd, double>(), py::arg("goal"), py::arg("goal_tolerance"), py::arg("terminal_cost") = 0.0)
         .def("__call__", &HeuristicBase::operator(), py::arg("env_state"));
 
-    py::class_<EuclideanDistanceHeuristic, HeuristicBase, PyHeuristic<EuclideanDistanceHeuristic>, std::shared_ptr<EuclideanDistanceHeuristic>>(
+    py::class_<EuclideanDistanceHeuristic<2>, HeuristicBase, PyHeuristic<EuclideanDistanceHeuristic<2>>, std::shared_ptr<EuclideanDistanceHeuristic<2>>>(
         m,
-        ERL_AS_STRING(EuclideanDistanceHeuristic))
+        "EuclideanDistanceHeuristic2D")
         .def(py::init<Eigen::VectorXd, Eigen::VectorXd, double>(), py::arg("goal"), py::arg("goal_tolerance"), py::arg("terminal_cost") = 0.0);
-    py::class_<ManhattanDistanceHeuristic, HeuristicBase, PyHeuristic<ManhattanDistanceHeuristic>, std::shared_ptr<ManhattanDistanceHeuristic>>(
+    py::class_<ManhattanDistanceHeuristic<2>, HeuristicBase, PyHeuristic<ManhattanDistanceHeuristic<2>>, std::shared_ptr<ManhattanDistanceHeuristic<2>>>(
         m,
-        ERL_AS_STRING(ManhattanDistanceHeuristic))
+        "ManhattanDistanceHeuristic2D")
         .def(py::init<Eigen::VectorXd, Eigen::VectorXd, double>(), py::arg("goal"), py::arg("goal_tolerance"), py::arg("terminal_cost") = 0.0);
     py::class_<DictionaryHeuristic, HeuristicBase, PyHeuristic<DictionaryHeuristic>, std::shared_ptr<DictionaryHeuristic>>(
         m,
@@ -117,13 +117,13 @@ BindPlanningInterfaceMultiResolutions(py::module &m) {
     py::class_<PlanningInterfaceMultiResolutions, std::shared_ptr<PlanningInterfaceMultiResolutions>>(m, ERL_AS_STRING(PlanningInterfaceMultiResolutions))
         .def(
             py::init<
-                std::vector<std::shared_ptr<EnvironmentBase>>,
+                std::shared_ptr<EnvironmentMultiResolution>,
                 std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>>,
                 Eigen::VectorXd,
                 const std::vector<Eigen::VectorXd>,
                 std::vector<Eigen::VectorXd>,
                 std::vector<double>>(),
-            py::arg("environments"),
+            py::arg("environment_multi_resolution"),
             py::arg("heuristics"),
             py::arg("metric_start_coords"),
             py::arg("metric_goals_coords"),
@@ -131,12 +131,12 @@ BindPlanningInterfaceMultiResolutions(py::module &m) {
             py::arg("terminal_costs") = std::vector<double>{0.})
         .def(
             py::init<
-                std::vector<std::shared_ptr<EnvironmentBase>>,
+                std::shared_ptr<EnvironmentMultiResolution>,
                 std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>>,
                 Eigen::VectorXd,
                 Eigen::VectorXd,
                 Eigen::VectorXd>(),
-            py::arg("environments"),
+            py::arg("environment_multi_resolution"),
             py::arg("heuristics"),
             py::arg("metric_start_coords"),
             py::arg("metric_goal_coords"),

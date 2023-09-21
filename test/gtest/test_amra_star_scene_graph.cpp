@@ -50,14 +50,14 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleFloor) {
         std::vector<Eigen::VectorXd>{goal},
         std::vector<Eigen::VectorXd>{goal_tolerance});
     auto amra_setting = std::make_shared<amra_star::AMRAStar::Setting>();
-    amra_setting->log = false;
+    amra_setting->log = true;
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 8.545273, 1e-6);
+    EXPECT_NEAR(path_cost, 8.701223, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
@@ -123,14 +123,14 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_CrossFloor) {
         std::vector<Eigen::VectorXd>{goal},
         std::vector<Eigen::VectorXd>{goal_tolerance});
     auto amra_setting = std::make_shared<amra_star::AMRAStar::Setting>();
-    amra_setting->log = false;
+    amra_setting->log = true;
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 16.411250, 1e-6);
+    EXPECT_NEAR(path_cost, 15.485639, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
@@ -213,14 +213,14 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_LinearTemporalLogic) {
         std::vector<Eigen::VectorXd>{goal},
         std::vector<Eigen::VectorXd>{goal_tolerance});
     auto amra_setting = std::make_shared<amra_star::AMRAStar::Setting>();
-    amra_setting->log = false;
+    amra_setting->log = true;
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.579450, 1e-6);
+    EXPECT_NEAR(path_cost, 18.446473, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
@@ -278,7 +278,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleLayer) {
     env_setting->LoadAtomicPropositions(data_dir / "ap_desc.yaml");
 
     // create the environment
-    env_setting->max_level = erl::env::scene_graph::Node::Type::kNA;
+    env_setting->max_level = erl::env::scene_graph::Node::Type::kOcc;
     auto environment_ltl_scene_graph = std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
 
     Eigen::VectorXd start = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(100, 200, 0, int(env_setting->fsa->initial_state)));
@@ -302,14 +302,14 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleLayer) {
         std::vector<Eigen::VectorXd>{goal},
         std::vector<Eigen::VectorXd>{goal_tolerance});
     auto amra_setting = std::make_shared<amra_star::AMRAStar::Setting>();
-    amra_setting->log = false;
+    amra_setting->log = true;
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.579450, 1e-6);
+    EXPECT_NEAR(path_cost, 18.446473, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
@@ -354,6 +354,7 @@ TEST(ERL_SEARCH_PLANNING, LLMSceneGraphHeuristic) {
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
     env_setting->data_dir = data_dir.string();
+    env_setting->object_reach_distance = 0.6;
     env_setting->shape = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     double r = 0.1;
@@ -402,14 +403,14 @@ TEST(ERL_SEARCH_PLANNING, LLMSceneGraphHeuristic) {
         std::vector<Eigen::VectorXd>{goal},
         std::vector<Eigen::VectorXd>{goal_tolerance});
     auto amra_setting = std::make_shared<amra_star::AMRAStar::Setting>();
-    amra_setting->log = false;
+    amra_setting->log = true;
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.579450, 1e-6);
+    EXPECT_NEAR(path_cost, 18.446473, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path

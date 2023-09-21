@@ -30,7 +30,6 @@ namespace erl::search_planning {
 
     public:
         PlanningInterfaceMultiResolutions(
-            // std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
             std::shared_ptr<env::EnvironmentMultiResolution> environment_multi_resolution,
             std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
@@ -39,14 +38,12 @@ namespace erl::search_planning {
             std::vector<double> terminal_costs = std::vector<double>{0.0});
 
         PlanningInterfaceMultiResolutions(
-            // std::vector<std::shared_ptr<env::EnvironmentBase>> environments,
             std::shared_ptr<env::EnvironmentMultiResolution> environment_multi_resolution,
             std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics,
             Eigen::VectorXd metric_start_coords,
             Eigen::VectorXd metric_goal_coords,
             Eigen::VectorXd metric_goal_tolerance)
             : PlanningInterfaceMultiResolutions(
-                  // std::move(environments),
                   std::move(environment_multi_resolution),
                   std::move(heuristics),
                   std::move(metric_start_coords),
