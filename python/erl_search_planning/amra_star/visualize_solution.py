@@ -274,8 +274,8 @@ def main(args=None):
         assert args.scene_graph_data_dir is not None, "--scene-graph-data-dir must be specified"
         assert args.mesh_filepath is not None, "--mesh-filepath must be specified"
         sol = VisualizationFor3DSceneGraph(args.filename, args.sol_name, args.scene_graph_data_dir, args.mesh_filepath)
-        # sol.visualize_path_animation_2d()
-        # sol.visualize_path_animation_3d()
+        sol.visualize_path_animation_2d()
+        sol.visualize_path_animation_3d()
         sol.visualize_closed_states()
         sol.visualize_opened_states()
         sol.visualize_inconsistent_states()

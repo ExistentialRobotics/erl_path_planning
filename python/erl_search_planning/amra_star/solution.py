@@ -338,19 +338,19 @@ class VisualizationFor3DSceneGraph:
         y = self.metric_to_grid_y(path["pos[1]"])
         z = self.metric_to_grid_z(path["pos[2]"])
 
-        axes["room_maps"][z[0]].plot(y[0], x[0], c=COLOR_MAP[n_used_colors], marker="o", markersize=5)
-        axes["cat_maps"][z[0]].plot(y[0], x[0], c=COLOR_MAP[n_used_colors], marker="o", markersize=5)
+        axes["room_maps"][z[0]].plot(y[0], x[0], c=COLOR_MAP[n_used_colors], marker="o", markersize=8)
+        axes["cat_maps"][z[0]].plot(y[0], x[0], c=COLOR_MAP[n_used_colors], marker="o", markersize=8)
         n_used_colors += 1
 
-        axes["room_maps"][z[-1]].plot(y[-1], x[-1], c=COLOR_MAP[n_used_colors], marker="*", markersize=5)
-        axes["cat_maps"][z[-1]].plot(y[-1], x[-1], c=COLOR_MAP[n_used_colors], marker="*", markersize=5)
+        axes["room_maps"][z[-1]].plot(y[-1], x[-1], c=COLOR_MAP[n_used_colors], marker="*", markersize=8)
+        axes["cat_maps"][z[-1]].plot(y[-1], x[-1], c=COLOR_MAP[n_used_colors], marker="*", markersize=8)
         n_used_colors += 1
 
         z_changes = np.abs(np.diff(z))  # how many times z changes
         cur_floor = z[0]
         i0 = 0
-        cur_line_in_cat_map = axes["cat_maps"][cur_floor].plot(y[i0:1], x[i0:1], c=COLOR_MAP[n_used_colors], lw=1)[0]
-        cur_line_in_room_map = axes["room_maps"][cur_floor].plot(y[i0:1], x[i0:1], c=COLOR_MAP[n_used_colors], lw=1)[0]
+        cur_line_in_cat_map = axes["cat_maps"][cur_floor].plot(y[i0:1], x[i0:1], c=COLOR_MAP[n_used_colors], lw=2)[0]
+        cur_line_in_room_map = axes["room_maps"][cur_floor].plot(y[i0:1], x[i0:1], c=COLOR_MAP[n_used_colors], lw=2)[0]
         n_used_colors += 1
         stride = 1
         video_path = os.path.join(self.output_video_dir, f"path_2d.mp4")
@@ -361,10 +361,10 @@ class VisualizationFor3DSceneGraph:
                     i0 = i - 1
                     cur_floor = z[i]
                     cur_line_in_cat_map = axes["cat_maps"][cur_floor].plot(
-                        y[i0:i], x[i0:i], c=COLOR_MAP[n_used_colors], lw=1
+                        y[i0:i], x[i0:i], c=COLOR_MAP[n_used_colors], lw=2
                     )[0]
                     cur_line_in_room_map = axes["room_maps"][cur_floor].plot(
-                        y[i0:i], x[i0:i], c=COLOR_MAP[n_used_colors], lw=1
+                        y[i0:i], x[i0:i], c=COLOR_MAP[n_used_colors], lw=2
                     )[0]
                     n_used_colors += 1
                 else:
@@ -377,6 +377,7 @@ class VisualizationFor3DSceneGraph:
                 img = img.reshape(fig.canvas.get_width_height()[::-1] + (4,))
                 writer.append_data(img)
         plt.close(fig)
+        plt.imsave(os.path.join(self.output_image_dir, f"path_2d.png"), img)
 
     def visualize_path_animation_3d(self):
         plotter = self.visualize_mesh()
@@ -400,7 +401,7 @@ class VisualizationFor3DSceneGraph:
                         cur_robot_yaw = self.robot_mesh.GetOrientation()[2]
                         for j in range(1, len(seg)):
                             self.set_robot_mesh_pose(seg[j][0], seg[j][1], seg[j][2], cur_robot_yaw)
-                            plotter += vedo.Line(seg[j - 1], seg[j]).lw(4).c("red")
+                            plotter += vedo.Line(seg[j - 1], seg[j]).lw(16).c("red")
                             plotter.render()
                             # get the image as a numpy array
                             img = plotter.screenshot(asarray=True)
@@ -415,6 +416,7 @@ class VisualizationFor3DSceneGraph:
                 img = plotter.screenshot(asarray=True)
                 writer.append_data(img)
         plotter.close()
+        plt.imsave(os.path.join(self.output_image_dir, f"path_3d.png"), img)
 
     def visualize_opened_states(self, duration=100, fps=30):
         vedo.settings.immediate_rendering = False
@@ -464,7 +466,7 @@ class VisualizationFor3DSceneGraph:
                     writer.append_data(img)
                     frame_cnt += 1
                 plotter += vedo.Sphere([x[-1], y[-1], z[-1]], r=0.1).c("cyan")
-                plotter += vedo.Lines(path[:-1], path[1:]).lw(8).c("red")
+                plotter += vedo.Lines(path[:-1], path[1:]).lw(16).c("red")
                 plotter.render()
                 # get the image as a numpy array
                 img = plotter.screenshot(asarray=True)
@@ -472,6 +474,7 @@ class VisualizationFor3DSceneGraph:
                     writer.append_data(img)
                     frame_cnt += 1
                 plotter.close()
+                plt.imsave(os.path.join(self.output_image_dir, f"opened_states_{heuristic_id}.png"), img)
 
     def visualize_closed_states(self, duration=100, fps=30):
         vedo.settings.immediate_rendering = False
@@ -483,7 +486,7 @@ class VisualizationFor3DSceneGraph:
         path = np.array([x, y, z]).T
         num_frames = (duration - 2) * fps
         num_expansions = self.amra_sol.num_expansions
-        print(self.amra_sol.num_heuristics, " heuristics")
+        print(self.amra_sol.num_heuristics, " levels")
         for heuristic_id in range(self.amra_sol.num_heuristics):
             closed_states_by_expand_itr = closed_states_by_heuristic_id.get_group(heuristic_id).groupby("expand_itr")
             # if heuristic_id == 0:
@@ -521,7 +524,7 @@ class VisualizationFor3DSceneGraph:
                     writer.append_data(img)
                     frame_cnt += 1
                 plotter += vedo.Sphere([x[-1], y[-1], z[-1]], r=0.1).c("cyan")
-                plotter += vedo.Lines(path[:-1], path[1:]).lw(8).c("red")
+                plotter += vedo.Lines(path[:-1], path[1:]).lw(16).c("red")
                 plotter.render()
                 # get the image as a numpy array
                 img = plotter.screenshot(asarray=True)
@@ -529,6 +532,7 @@ class VisualizationFor3DSceneGraph:
                     writer.append_data(img)
                     frame_cnt += 1
                 plotter.close()
+                plt.imsave(os.path.join(self.output_image_dir, f"closed_states_{heuristic_id}.png"), img)
 
     def visualize_inconsistent_states(self, duration=100, fps=30):
         vedo.settings.immediate_rendering = False
@@ -575,7 +579,7 @@ class VisualizationFor3DSceneGraph:
                 writer.append_data(img)
                 frame_cnt += 1
             plotter += vedo.Sphere([x[-1], y[-1], z[-1]], r=0.1).c("cyan")
-            plotter += vedo.Lines(path[:-1], path[1:]).lw(8).c("red")
+            plotter += vedo.Lines(path[:-1], path[1:]).lw(16).c("red")
             plotter.render()
             # get the image as a numpy array
             img = plotter.screenshot(asarray=True)
@@ -583,6 +587,4 @@ class VisualizationFor3DSceneGraph:
                 writer.append_data(img)
                 frame_cnt += 1
             plotter.close()
-
-
-# TODO: display number of expansions
+            plt.imsave(os.path.join(self.output_image_dir, "inconsistent_states.png"), img)
