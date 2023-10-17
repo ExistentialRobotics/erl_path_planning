@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>erl_search_planning</name>
+    <version>0.1.0</version>
+    <description>erl_search_planning is a C++ library of search-based path planning algorithm.</description>
+    <author email="daizhirui@hotmail.com">Zhirui Dai</author>
+    <maintainer email="daizhirui@hotmail.com">Zhirui Dai</maintainer>
+    <license>MIT</license>
+    <url type="repository">https://github.com/ExistentialRobotics/erl_search_planning.git</url>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <build_depend>erl_common</build_depend>
+    <build_depend>erl_env</build_depend>
+    <build_depend>erl_geometry</build_depend>
+
+    <build_export_depend>erl_common</build_export_depend>
+    <build_export_depend>erl_env</build_export_depend>
+    <build_export_depend>erl_geometry</build_export_depend>
+
+</package>
