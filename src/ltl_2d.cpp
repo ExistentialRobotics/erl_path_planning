@@ -43,8 +43,7 @@ namespace erl::search_planning {
             auto &metric_states = label_to_metric_states[label];
             auto num_states = long(metric_states.size());
             if (!num_states) { continue; }
-            Eigen::Map<Eigen::Matrix2Xd> data_map(metric_states[0].data(), 2, num_states);
-            label_to_kdtree[label] = std::make_shared<KdTree>(data_map);
+            label_to_kdtree[label] = std::make_shared<geometry::KdTree2d>(metric_states[0].data(), num_states);
         }
 
         // compute label distances
@@ -108,7 +107,7 @@ namespace erl::search_planning {
             long num_label1_states = label1_states.cols();
             for (long i = 0; i < num_label1_states; ++i) {
                 Eigen::Vector2d &&state1 = label1_states.col(i);
-                int index = -1;
+                long index = -1;
                 double min_d2 = std::numeric_limits<double>::infinity();
                 label2_kdtree->Knn(1, state1, index, min_d2);
                 if (min_d2 < min_d) { min_d = min_d2; }
@@ -166,7 +165,7 @@ namespace erl::search_planning {
             for (uint32_t &label: labels) {
                 auto label_kdtree = label_to_kdtree[label];
                 if (label_kdtree == nullptr) { continue; }
-                int index = -1;
+                long index = -1;
                 double c = std::numeric_limits<double>::infinity();
                 label_kdtree->Knn(1, env_state.metric.head<2>(), index, c);
                 c = std::sqrt(c);

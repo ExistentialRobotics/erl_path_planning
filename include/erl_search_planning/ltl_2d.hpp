@@ -8,10 +8,9 @@ namespace erl::search_planning {
 
     struct LinearTemporalLogicHeuristic2D : public MultiGoalsHeuristic {
 
-        using KdTree = erl::geometry::KdTreeEigenAdaptor<double, 2>;
-        std::shared_ptr<erl::env::FiniteStateAutomaton> fsa;
-        std::vector<std::shared_ptr<KdTree>> label_to_kdtree;
-        Eigen::MatrixXd label_distance;
+        std::shared_ptr<erl::env::FiniteStateAutomaton> fsa = nullptr;
+        std::vector<std::shared_ptr<geometry::KdTree2d>> label_to_kdtree = {};
+        Eigen::MatrixXd label_distance = {};
 
         /**
          * @brief Construct a new Linear Temporal Logic Heuristic 3D object

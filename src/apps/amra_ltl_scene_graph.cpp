@@ -215,7 +215,7 @@ main(int argc, char *argv[]) {
     env_setting->max_level = options.max_level;
     if (options.robot_radius > 0) {
         long n = 360;
-        Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(n, 0, 2 * M_PI);
+        Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(n, 0, 2 * M_PI - 2 * M_PI / n);
         env_setting->shape.resize(2, n);
         for (long i = 0; i < n; ++i) {
             env_setting->shape(0, i) = options.robot_radius * cos(angles[i]);
