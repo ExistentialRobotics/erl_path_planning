@@ -1,7 +1,7 @@
 @PACKAGE_INIT@
 
 # resolve dependencies
-foreach(package erl_env)
+foreach(package erl_common erl_env erl_geometry)
     if (NOT TARGET ${package})
         message(STATUS "Looking for ${package}")
         find_package(${package} REQUIRED)
