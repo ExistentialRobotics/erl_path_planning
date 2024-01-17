@@ -1,6 +1,13 @@
-allow_diagonal: true
-step_size: 1
-down_sampled: false
+motions:
+  - [ 1, 0 ]
+  - [ 0, 1 ]
+  - [ -1, 0 ]
+  - [ 0, -1 ]
+  - [ 1, 1 ]
+  - [ -1, 1 ]
+  - [ -1, -1 ]
+  - [ 1, -1 ]
+grid_stride: 1
 obstacle_threshold: 1
 add_map_cost: false
 map_cost_factor: 1.

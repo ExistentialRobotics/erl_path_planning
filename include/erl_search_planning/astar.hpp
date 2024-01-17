@@ -1,13 +1,15 @@
 #pragma once
 
 #include <boost/heap/d_ary_heap.hpp>
+//#include <boost/heap/pairing_heap.hpp>
+// #include <boost/heap/binomial_heap.hpp>  // slower than d_ary_heap
+// #include <boost/heap/fibonacci_heap.hpp>  // slower than d_ary_heap
 #include <limits>
 #include <unordered_map>
 #include <utility>
 #include <memory>
 
 #include "planning_interface.hpp"
-#include "erl_common/hash_map.hpp"
 #include "erl_common/yaml.hpp"
 
 namespace erl::search_planning::astar {
@@ -27,7 +29,7 @@ namespace erl::search_planning::astar {
 
     template<typename T>
     struct Greater {
-        bool
+        inline bool
         operator()(const std::shared_ptr<T>& s1, const std::shared_ptr<T>& s2) const {
             if (std::abs(s1->f_value - s2->f_value) < 1.e-6) {
                 // f value is too close, compare g value
@@ -37,8 +39,6 @@ namespace erl::search_planning::astar {
         }
     };
 
-    using HashMap = std::unordered_map<long, std::shared_ptr<State>>;
-
     // min-heap because we use Greater as a comparer instead
     // clang-format off
     using PriorityQueue = boost::heap::d_ary_heap<
@@ -46,7 +46,6 @@ namespace erl::search_planning::astar {
         boost::heap::mutable_<true>,
         boost::heap::arity<8>,
         boost::heap::compare<Greater<PriorityQueueItem>>>;
-
     // clang-format on
 
     struct State {
@@ -114,7 +113,7 @@ namespace erl::search_planning::astar {
         std::shared_ptr<State> m_current_ = nullptr;
         std::shared_ptr<PlanningInterface> m_planning_interface_ = nullptr;
         PriorityQueue m_priority_queue_;
-        HashMap m_states_hash_map_;  // faster than std::unordered_map
+        std::unordered_map<long, std::shared_ptr<State>> m_astar_states_;
         std::size_t m_iterations_ = 0;
         bool m_planned_ = false;
         std::shared_ptr<Output> m_output_ = nullptr;
@@ -129,7 +128,7 @@ namespace erl::search_planning::astar {
         inline std::shared_ptr<State>&
         GetState(const std::shared_ptr<env::EnvironmentState>& env_state) {
             long hashing = m_planning_interface_->StateHashing(env_state);
-            return m_states_hash_map_[hashing];
+            return m_astar_states_[hashing];
         }
 
         void
@@ -146,7 +145,7 @@ namespace erl::search_planning::astar {
 namespace YAML {
     template<>
     struct convert<erl::search_planning::astar::AStar::Setting> {
-        static Node
+        inline static Node
         encode(const erl::search_planning::astar::AStar::Setting& rhs) {
             Node node;
             node["eps"] = rhs.eps;
@@ -156,7 +155,7 @@ namespace YAML {
             return node;
         }
 
-        static bool
+        inline static bool
         decode(const Node& node, erl::search_planning::astar::AStar::Setting& rhs) {
             rhs.eps = node["eps"].as<double>();
             rhs.max_num_iterations = node["max_num_iterations"].as<long>();

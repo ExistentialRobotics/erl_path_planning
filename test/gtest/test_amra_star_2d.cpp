@@ -9,7 +9,7 @@
 #include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/planning_interface_multi_resolutions.hpp"
 #include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/ltl_2d.hpp"
+#include "erl_search_planning/ltl_2d_heuristic.hpp"
 
 TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     using namespace erl::common;
@@ -45,10 +45,8 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, grid_map_data);
 
     auto env_2d_setting = std::make_shared<Environment2D::Setting>();
-    env_2d_setting->allow_diagonal = true;
-    env_2d_setting->step_size = 1;
-    env_2d_setting->down_sampled = false;
-    std::shared_ptr<CostBase> cost_func = nullptr;
+    env_2d_setting->SetGridMotionPrimitive(1, true);
+    std::shared_ptr<CostBase> cost_func = std::make_shared<EuclideanDistanceCost>();
     auto env = std::make_shared<Environment2D>(grid_map, env_2d_setting, cost_func);
     Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
     Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 10});
@@ -77,7 +75,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
     auto &path = result->paths[result->latest_plan_itr];
     long num_points = path.cols();
     for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
-    EXPECT_NEAR(path_cost, 15.485281374238571, 1e-6);
+    EXPECT_DOUBLE_EQ(path_cost, 16.071067811865476);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 }
 
@@ -203,16 +201,16 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     auto grid_map_info = grid_map->info;
 
     auto env_high_res_setting = std::make_shared<Environment2D::Setting>();
-    env_high_res_setting->step_size = 1.0;
-    env_high_res_setting->down_sampled = false;
+    env_high_res_setting->SetGridMotionPrimitive(1, true);
+    env_high_res_setting->grid_stride = 1;
     auto env_high_res = std::make_shared<Environment2D>(grid_map, env_high_res_setting);
     auto env_mid_res_setting = std::make_shared<Environment2D::Setting>();
-    env_mid_res_setting->step_size = 3.0;
-    env_mid_res_setting->down_sampled = true;
+    env_mid_res_setting->motions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {3, 3}, {3, -3}, {-3, 3}, {-3, -3}};
+    env_mid_res_setting->grid_stride = 3;
     auto env_mid_res = std::make_shared<Environment2D>(grid_map, env_mid_res_setting);
     auto env_low_res_setting = std::make_shared<Environment2D::Setting>();
-    env_low_res_setting->step_size = 9.0;
-    env_low_res_setting->down_sampled = true;
+    env_low_res_setting->motions = {{9, 0}, {-9, 0}, {0, 9}, {0, -9}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
+    env_low_res_setting->grid_stride = 9;
     auto env_low_res = std::make_shared<Environment2D>(grid_map, env_low_res_setting);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<2>>(envs, grid_map_info);
@@ -250,11 +248,11 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_MultiResolutions) {
     std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
     std::filesystem::path result_dir = src_dir.parent_path() / "results";
 
-    RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.1511709743168);
-    RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1075.1796007476626);
-    RunTestWithMap(data_dir / "Denver_0_1024.map", {306, 171}, {1008, 603}, 916.18768003761579);
-    RunTestWithMap(data_dir / "Expedition.map", {720, 423}, {198, 891}, 766.06725471071707);
-    RunTestWithMap(data_dir / "NewYork_0_1024.map", {0, 171}, {612, 882}, 999.25583708915997);
+    RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.7363859129694);
+    RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1076.9352455636508);
+    RunTestWithMap(data_dir / "Denver_0_1024.map", {306, 171}, {1008, 603}, 916.77289497627919);
+    RunTestWithMap(data_dir / "Expedition.map", {720, 423}, {198, 891}, 766.65246964938046);
+    RunTestWithMap(data_dir / "NewYork_0_1024.map", {0, 171}, {612, 882}, 1000.4262669664867);
     RunTestWithMap(data_dir / "Octopus.map", {549, 837}, {639, 279}, 644.11319062351083);
     RunTestWithMap(data_dir / "TheFrozenSea.map", {288, 414}, {207, 990}, 649.50994061340202);
 }
@@ -288,16 +286,16 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     auto cost_func = std::make_shared<EuclideanDistanceCost>();
 
     auto env_high_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
-    env_high_res_setting->step_size = 1.0;
-    env_high_res_setting->down_sampled = false;
+    env_high_res_setting->SetGridMotionPrimitive(1, true);
+    env_high_res_setting->grid_stride = 1;
     auto env_high_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_high_res_setting, cost_func);
     auto env_mid_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
-    env_mid_res_setting->step_size = 3.0;
-    env_mid_res_setting->down_sampled = true;
+    env_mid_res_setting->motions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {3, 3}, {3, -3}, {-3, 3}, {-3, -3}};
+    env_mid_res_setting->grid_stride = 3;
     auto env_mid_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_mid_res_setting, cost_func);
     auto env_low_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
-    env_low_res_setting->step_size = 9.0;
-    env_low_res_setting->down_sampled = true;
+    env_low_res_setting->motions = {{9, 0}, {-9, 0}, {0, 9}, {0, -9}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
+    env_low_res_setting->grid_stride = 9;
     auto env_low_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_low_res_setting, cost_func);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
     auto env_anchor = std::make_shared<EnvironmentGridAnchor<3>>(envs, env_high_res->GetGridMapInfo());
@@ -323,6 +321,6 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
 
-    EXPECT_NEAR(path_cost, 20.417871555019111, 1e-12);  // 20.417871555018998, slightly larger than the A* result
+    EXPECT_DOUBLE_EQ(path_cost, 20.417871555019033);  // 20.417871555019136, slightly lower than the A* result
     if (setting->log) { result->Save(output_dir / "amra.solution"); }
 }

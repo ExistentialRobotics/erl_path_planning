@@ -7,5 +7,3 @@ opencv-python
 trimesh
 pyyaml
 vedo
-pyside2
-pyqt5

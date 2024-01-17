@@ -3,13 +3,13 @@ import unittest
 
 import matplotlib.pyplot as plt
 import numpy as np
-from erl_search_planning.common.storage import GridMapInfo2D
-from erl_search_planning.common.storage import GridMapUnsigned2D
-from erl_search_planning.env import load_ddc_motion_primitives_from_yaml
-from erl_search_planning.env.data.house_expo import HouseExpoMap
-from erl_search_planning.env.data.house_expo.list_data import get_map_and_traj_files
-from erl_search_planning.search_planning import AStar
-from erl_search_planning.search_planning import PlanningGridSe2
+from erl_common.storage import GridMapInfo2D
+from erl_common.storage import GridMapUnsigned2D
+from erl_env import load_ddc_motion_primitives_from_yaml
+from erl_geometry.house_expo import HouseExpoMap
+from erl_geometry.house_expo.list_data import get_map_and_traj_files
+from erl_search_planning.astar import AStar
+from erl_search_planning import PlanningInterface
 
 
 class TestAStarSe2(unittest.TestCase):
@@ -62,15 +62,17 @@ class TestAStarSe2(unittest.TestCase):
         #     inflate_scale=1.0,
         #     shape_metric_vertices=triangle_vertices,
         # )
-        planning_grid_se2 = PlanningGridSe2(
+
+        # step_size = (1,)
+        # grid_map = (grid_map,)
+        # num_orientations = (num_orientations,)
+        # inflate_scale = (1.0,)
+        # shape_metric_vertices = (triangle_vertices,)
+
+        planning_grid_se2 = PlanningInterface(
             metric_goals_coords=metric_goal_coords,
-            metric_goals_tolerance=metric_goal_tolerance,
+            metric_goals_tolerances=metric_goal_tolerance,
             terminal_costs=terminal_cost,
-            step_size=1,
-            grid_map=grid_map,
-            num_orientations=num_orientations,
-            inflate_scale=1.0,
-            shape_metric_vertices=triangle_vertices,
         )
         t0 = time.time()
         for _ in range(1):

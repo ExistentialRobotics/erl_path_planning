@@ -41,13 +41,14 @@ namespace erl::search_planning {
             Eigen::VectorXd metric_start_coords,
             Eigen::VectorXd metric_goal_coords,
             Eigen::VectorXd metric_goal_tolerance,
+            double terminal_cost = 0.,
             std::shared_ptr<HeuristicBase> heuristic = nullptr)
             : PlanningInterface(
                   std::move(env),
                   std::move(metric_start_coords),
                   std::vector({std::move(metric_goal_coords)}),
                   std::vector({std::move(metric_goal_tolerance)}),
-                  {0.},
+                  {terminal_cost},
                   std::move(heuristic)) {}
 
         [[nodiscard]] inline std::shared_ptr<env::EnvironmentBase>

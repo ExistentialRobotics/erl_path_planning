@@ -4,7 +4,7 @@
 #include "erl_env/environment_ltl_scene_graph.hpp"
 #include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/ltl_3d.hpp"
+#include "erl_search_planning/ltl_3d_heuristic.hpp"
 #include "erl_search_planning/llm_scene_graph_heuristic.hpp"
 
 TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleFloor) {
@@ -220,7 +220,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_LinearTemporalLogic) {
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.446473, 1e-6);
+    EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
@@ -309,7 +309,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleLayer) {
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.446473, 1e-6);
+    EXPECT_NEAR(path_cost, 18.562500852413102, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
@@ -410,7 +410,7 @@ TEST(ERL_SEARCH_PLANNING, LLMSceneGraphHeuristic) {
     erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.446473, 1e-6);
+    EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path

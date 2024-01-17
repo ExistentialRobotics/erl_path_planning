@@ -66,11 +66,13 @@ BindPlanningInterfaces(py::module &m) {
             py::arg("terminal_costs") = std::vector<double>({0.}),
             py::arg("heuristic") = nullptr)
         .def(
-            py::init<std::shared_ptr<EnvironmentBase>, Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd>(),
+            py::init<std::shared_ptr<EnvironmentBase>, Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd, double, std::shared_ptr<HeuristicBase>>(),
             py::arg("env").none(false),
             py::arg("metric_start_coords"),
             py::arg("metric_goal_coords"),
-            py::arg("metric_goal_tolerance"))
+            py::arg("metric_goal_tolerance"),
+            py::arg("terminal_cost") = 0.,
+            py::arg("heuristic") = nullptr)
         .def_property_readonly("environment", &PlanningInterface::GetEnvironment)
         .def("get_heuristic", &PlanningInterface::GetHeuristic, py::arg("env_state"))
         .def("get_successors", &PlanningInterface::GetSuccessors, py::arg("env_state"))
@@ -98,8 +100,9 @@ BindAStar(py::module &m) {
         .def_readwrite("inconsistent_list", &astar::Output::inconsistent_list);
 
     // Astar
-    py::class_<astar::AStar> astar(astar_module, "ReverseAStar");
+    py::class_<astar::AStar> astar(astar_module, "AStar");
     py::class_<astar::AStar::Setting, YamlableBase, std::shared_ptr<astar::AStar::Setting>>(astar, "Setting")
+        .def(py::init<>())
         .def_readwrite("eps", &astar::AStar::Setting::eps)
         .def_readwrite("max_num_iterations", &astar::AStar::Setting::max_num_iterations)
         .def_readwrite("log", &astar::AStar::Setting::log)
@@ -114,7 +117,7 @@ BindAStar(py::module &m) {
 
 static void
 BindPlanningInterfaceMultiResolutions(py::module &m) {
-    py::class_<PlanningInterfaceMultiResolutions, std::shared_ptr<PlanningInterfaceMultiResolutions>>(m, ERL_AS_STRING(PlanningInterfaceMultiResolutions))
+    py::class_<PlanningInterfaceMultiResolutions, std::shared_ptr<PlanningInterfaceMultiResolutions>>(m, "PlanningInterfaceMultiResolutions")
         .def(
             py::init<
                 std::shared_ptr<EnvironmentMultiResolution>,

@@ -1,0 +1,23 @@
+controls:
+    - linear_v: 1.000
+      angular_v: 0.000
+durations:
+    - 1.0
+costs:
+    - 0.1
+---
+controls:
+    - linear_v: 1.000
+      angular_v: -1.000
+durations:
+    - 0.5
+costs:
+    - 0.2
+---
+controls:
+    - linear_v: 1.000
+      angular_v: 1.000
+durations:
+    - 0.5
+costs:
+    - 0.2

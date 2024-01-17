@@ -2,7 +2,7 @@
 #include <filesystem>
 #include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/planning_interface_multi_resolutions.hpp"
-#include "erl_search_planning/ltl_3d.hpp"
+#include "erl_search_planning/ltl_3d_heuristic.hpp"
 #include "erl_search_planning/llm_scene_graph_heuristic.hpp"
 #include "erl_env/environment_ltl_scene_graph.hpp"
 #include "erl_common/yaml.hpp"

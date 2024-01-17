@@ -7,7 +7,7 @@ from erl_common.yaml import YamlableBase
 from .. import PlanningInterface
 
 class Output:
-    paths: npt.NDArray[np.float64]
+    path: npt.NDArray[np.float64]
     action_coords: List[int]
     cost: float
     opened_list: Dict[int, List[npt.NDArray[np.int32]]]

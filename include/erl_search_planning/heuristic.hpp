@@ -38,7 +38,7 @@ namespace erl::search_planning {
 
         EuclideanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
             : HeuristicBase(std::move(goal), std::move(goal_tolerance), terminal_cost) {
-            if (Dim != Eigen::Dynamic) { ERL_ASSERTM(m_goal_.size() == Dim, "goal dimension is not equal to %ld.", Dim); }
+            if (Dim != Eigen::Dynamic) { ERL_ASSERTM(m_goal_.size() >= Dim, "goal dimension is fewer than %ld.", Dim); }
         }
 
         inline double

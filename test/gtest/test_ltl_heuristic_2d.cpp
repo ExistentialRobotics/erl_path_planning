@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 #include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/ltl_2d.hpp"
+#include "erl_search_planning/ltl_2d_heuristic.hpp"
 
 TEST(ERL_SEARCH_PLANNING, LinearTemporalLogicHeuristic2D) {
     std::filesystem::path path = __FILE__;

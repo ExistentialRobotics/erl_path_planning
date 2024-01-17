@@ -8,7 +8,7 @@ namespace erl::search_planning::astar {
           m_output_(std::make_shared<Output>()) {
 
         if (!m_setting_) { m_setting_ = std::make_shared<Setting>(); }
-
+        ERL_ASSERTM(m_setting_->eps > 0., "eps must be positive.");
         // initialize start node
         auto start_env_state = m_planning_interface_->GetStartState();
         double h = m_planning_interface_->GetHeuristic(start_env_state);
@@ -22,15 +22,38 @@ namespace erl::search_planning::astar {
     AStar::Plan() {
         if (m_planned_) { return m_output_; }
 
+        // double t_reach_goal = 0;
+        // int n_reach_goal = 0;
+        // double t_expand = 0;
+        // int n_expand = 0;
+        // double t_pop = 0;
+        // int n_pop = 0;
+
         while (m_setting_->max_num_iterations < 0 || long(m_iterations_) < m_setting_->max_num_iterations) {
+            // auto t0 = std::chrono::high_resolution_clock::now();
             // check if done
             int reached_goal_index = m_planning_interface_->ReachGoal(m_current_->env_state);
             if (reached_goal_index >= 0) {
                 RecoverPath(m_current_, reached_goal_index);
                 LogStates();
                 m_planned_ = true;
+
+                // t_reach_goal /= double(n_reach_goal);
+                // t_expand /= double(n_expand);
+                // t_pop /= double(n_pop);
+                // std::cout << "reach_goal: " << t_reach_goal << " us" << std::endl
+                //           << "expand: " << t_expand << " us" << std::endl
+                //           << "pop: " << t_pop << " us" << std::endl
+                //           << "n_reach_goal: " << n_reach_goal << std::endl
+                //           << "n_expand: " << n_expand << std::endl
+                //           << "n_pop: " << n_pop << std::endl
+                //           << std::endl;
+
                 return m_output_;
             }
+            // auto t1 = std::chrono::high_resolution_clock::now();
+            // t_reach_goal += std::chrono::duration<double, std::micro>(t1 - t0).count();
+            // n_reach_goal++;
 
             // increase the number of iterations
             m_iterations_++;
@@ -38,19 +61,39 @@ namespace erl::search_planning::astar {
             // add current node to closed set
             m_current_->iteration_closed = m_iterations_;
 
+            // t0 = std::chrono::high_resolution_clock::now();
             // perform the expansion of current iteration
             Expand();
+            // t1 = std::chrono::high_resolution_clock::now();
+            // t_expand += std::chrono::duration<double, std::micro>(t1 - t0).count();
+            // n_expand++;
 
+            // t0 = std::chrono::high_resolution_clock::now();
             // Remove the node with the smallest cost
             if (m_priority_queue_.empty()) { break; }
             m_current_ = m_priority_queue_.top()->state;
             m_priority_queue_.pop();
+            // t1 = std::chrono::high_resolution_clock::now();
+            // t_pop += std::chrono::duration<double, std::micro>(t1 - t0).count();
+            // n_pop++;
         }
+
+        // t_reach_goal /= double(n_reach_goal);
+        // t_expand /= double(n_expand);
+        // t_pop /= double(n_pop);
+        // std::cout << "reach_goal: " << t_reach_goal << " us" << std::endl
+        //           << "expand: " << t_expand << " us" << std::endl
+        //           << "pop: " << t_pop << " us" << std::endl
+        //           << "n_reach_goal: " << n_reach_goal << std::endl
+        //           << "n_expand: " << n_expand << std::endl
+        //           << "n_pop: " << n_pop << std::endl
+        //           << std::endl;
 
         // infeasible problem
         ERL_INFO("Reached maximum number of iterations.");
         LogStates();
         m_planned_ = true;
+
         return m_output_;
     }
 
@@ -68,6 +111,7 @@ namespace erl::search_planning::astar {
             }
 
             double tentative_g_value = m_current_->g_value + successor.cost;
+            double old_g_value = child->g_value;
             if (tentative_g_value < child->g_value) {
 
                 child->parent = m_current_;
@@ -85,7 +129,10 @@ namespace erl::search_planning::astar {
                         child->heap_key = m_priority_queue_.push(std::make_shared<PriorityQueueItem>(f_value, child));
                         child->iteration_closed = 0;
                     } else {
-                        ERL_WARN_ONCE("Inconsistent heuristic function is detected! (m_reopen_inconsistent_ is false).\n");
+                        ERL_WARN_ONCE(
+                            "Inconsistent heuristic function is detected! (m_reopen_inconsistent_ is false). g_value changes from %f to %f\n",
+                            old_g_value,
+                            tentative_g_value);
                         if (m_setting_->log) { m_output_->inconsistent_list[m_iterations_].push_back(child->env_state->metric); }
                     }
                 } else {
@@ -98,7 +145,7 @@ namespace erl::search_planning::astar {
     }
 
     void
-    AStar::RecoverPath(const std::shared_ptr<State>& goal_state, int goal_index) {
+    AStar::RecoverPath(const std::shared_ptr<State> &goal_state, int goal_index) {
         // std::shared_ptr<State> goal_state = GetState(m_planning_interface_->GetGoalState(goal_index));
         // If there is multiple goals with nonzero terminal costs, the planning interface will handle it to make g_value include the terminal cost.
         m_output_->cost = goal_state->g_value;
@@ -149,13 +196,21 @@ namespace erl::search_planning::astar {
     void
     AStar::LogStates() const {
         if (!m_setting_->log) { return; }
-        for (auto &[state_hashing, astar_state]: m_states_hash_map_) {
-            if (astar_state->IsOpened()) {
-                m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->metric);
-            } else if (astar_state->IsClosed()) {
-                m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->metric;
-            }
-        }
-    }
+         for (auto &[state_hashing, astar_state]: m_astar_states_) {
+             if (astar_state->IsOpened()) {
+                 m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->metric);
+             } else if (astar_state->IsClosed()) {
+                 m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->metric;
+             }
+         }
 
+        // for (auto &astar_state: m_astar_states_) {
+        //     if (astar_state == nullptr) { continue; }
+        //     if (astar_state->IsOpened()) {
+        //         m_output_->opened_list[astar_state->iteration_opened].push_back(astar_state->env_state->metric);
+        //     } else if (astar_state->IsClosed()) {
+        //         m_output_->closed_list[astar_state->iteration_closed] = astar_state->env_state->metric;
+        //     }
+        // }
+    }
 }  // namespace erl::search_planning::astar
