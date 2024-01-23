@@ -7,7 +7,7 @@
 #include "erl_search_planning/ltl_3d_heuristic.hpp"
 #include "erl_search_planning/llm_scene_graph_heuristic.hpp"
 
-TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleFloor) {
+TEST(AMRAStarSceneGraph, SingleFloor) {
     std::string test_name = "AMRAStarSceneGraph_SingleFloor";
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -80,7 +80,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleFloor) {
     cv::waitKey(1000);
 }
 
-TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_CrossFloor) {
+TEST(AMRAStarSceneGraph, CrossFloor) {
     std::string test_name = "AMRAStarSceneGraph_CrossFloor";
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -157,7 +157,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_CrossFloor) {
     cv::waitKey(1000);  // wait 1s
 }
 
-TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_LinearTemporalLogic) {
+TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     std::string test_name = "AMRAStarSceneGraph_LinearTemporalLogic";
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -247,7 +247,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_LinearTemporalLogic) {
     cv::waitKey(1000);  // wait 1s
 }
 
-TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleLayer) {
+TEST(AMRAStarSceneGraph, SingleLayer) {
     std::string test_name = "AMRAStarSceneGraph_SingleLayer";
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -336,7 +336,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStarSceneGraph_SingleLayer) {
     cv::waitKey(1000);  // wait 1s
 }
 
-TEST(ERL_SEARCH_PLANNING, LLMSceneGraphHeuristic) {
+TEST(LLMSceneGraph, Heuristic) {
     std::string test_name = "LLMSceneGraphHeuristic";
     using namespace erl::env;
     using namespace erl::search_planning;

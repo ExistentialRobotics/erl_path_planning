@@ -125,7 +125,7 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
     cv::imshow(app_data->window_name, app_data->canvas);
 }
 
-TEST(ERL_SEARCH_PLANNING, DubinsPath) {
+TEST(HybridAStar, DubinsPath) {
     AppData app_data;
     cv::imshow(app_data.window_name, app_data.canvas);
     cv::setMouseCallback(app_data.window_name, OnMouse, &app_data);

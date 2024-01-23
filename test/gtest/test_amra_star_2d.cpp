@@ -11,7 +11,7 @@
 #include "erl_search_planning/heuristic.hpp"
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
 
-TEST(ERL_SEARCH_PLANNING, AMRAStar2D_AStarConsistency) {
+TEST(AMRAStar2D, AStarConsistency) {
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -243,7 +243,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     if (setting->log) { result->Save(map_result_dir / "amra.solution"); }
 }
 
-TEST(ERL_SEARCH_PLANNING, AMRAStar2D_MultiResolutions) {
+TEST(AMRAStar2D, MultiResolutions) {
     std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
     std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
     std::filesystem::path result_dir = src_dir.parent_path() / "results";
@@ -257,7 +257,7 @@ TEST(ERL_SEARCH_PLANNING, AMRAStar2D_MultiResolutions) {
     RunTestWithMap(data_dir / "TheFrozenSea.map", {288, 414}, {207, 990}, 649.50994061340202);
 }
 
-TEST(ERL_SEARCH_PLANNING, AMRAStar2D_LinearTemporalLogic) {
+TEST(AMRAStar2D, LinearTemporalLogic) {
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;

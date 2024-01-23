@@ -7,7 +7,7 @@
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
 #include "erl_common/test_helper.hpp"
 
-TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithSingleGoal) {
+TEST(AStar2D, PlanWithSingleGoal) {
 
     using namespace erl::common;
     using namespace erl::search_planning;
@@ -54,7 +54,7 @@ TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithSingleGoal) {
     EXPECT_EQ(result->action_coords.size(), 14);
 }
 
-TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithFourGoals) {
+TEST(AStar2D, PlanWithFourGoals) {
 
     using namespace erl::common;
     using namespace erl::search_planning;
@@ -116,7 +116,7 @@ TEST(ERL_SEARCH_PLANNING, AStar2D_PlanWithFourGoals) {
     ofs << out.c_str();
 }
 
-TEST(ERL_SEARCH_PLANNING, AStar2D_LargeMap_Step1) {
+TEST(AStar2D, LargeMap_Step1) {
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -176,7 +176,7 @@ TEST(ERL_SEARCH_PLANNING, AStar2D_LargeMap_Step1) {
     EXPECT_EQ(result->action_coords.size(), 890);
 }
 
-TEST(ERL_SEARCH_PLANNING, AStar2D_LargeMap_Step2) {
+TEST(AStar2D, LargeMap_Step2) {
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -236,7 +236,7 @@ TEST(ERL_SEARCH_PLANNING, AStar2D_LargeMap_Step2) {
     EXPECT_EQ(result->action_coords.size(), 489);
 }
 
-TEST(ERL_SEARCH_PLANNING, AStar2D_LargeMap_Step3) {
+TEST(AStar2D, LargeMap_Step3) {
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -296,7 +296,7 @@ TEST(ERL_SEARCH_PLANNING, AStar2D_LargeMap_Step3) {
     EXPECT_EQ(result->action_coords.size(), 400);
 }
 
-TEST(ERL_SEARCH_PLANNING, AStar2D_LinearTemporalLogic2D) {
+TEST(AStar2D, LinearTemporalLogic2D) {
     using namespace erl::common;
     using namespace erl::search_planning;
     using namespace erl::env;
