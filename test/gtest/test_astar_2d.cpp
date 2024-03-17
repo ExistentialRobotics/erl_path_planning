@@ -1,5 +1,3 @@
-#include <gtest/gtest.h>
-
 #include "erl_env/cost.hpp"
 #include "erl_search_planning/astar.hpp"
 #include "erl_env/environment_2d.hpp"
@@ -47,7 +45,7 @@ TEST(AStar2D, PlanWithSingleGoal) {
     auto env = std::make_shared<Environment2D>(grid_map, setting, cost_func);
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal, metric_goal_tolerance);
     std::shared_ptr<astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithSingleGoal", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
+    ReportTime<std::chrono::microseconds>("AStar2D::PlanWithSingleGoal", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     EXPECT_DOUBLE_EQ(result->cost, 16.071067811865476);
@@ -55,7 +53,7 @@ TEST(AStar2D, PlanWithSingleGoal) {
 }
 
 TEST(AStar2D, PlanWithFourGoals) {
-
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::search_planning;
     using namespace erl::env;
@@ -98,11 +96,11 @@ TEST(AStar2D, PlanWithFourGoals) {
     Eigen::Vector2d metric_start_coords = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goals, metric_goals_tolerance, terminal_cost);
     std::shared_ptr<astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2DTest::PlanWithFourGoals", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
+    ReportTime<std::chrono::microseconds>("AStar2D::PlanWithFourGoals", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     cv::Mat img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}}, false);
-    cv::imwrite("AStar2DTest-PlanWithFourGoals.png", img);
+    cv::imwrite(test_output_dir / "result.png", img);
 
     EXPECT_DOUBLE_EQ(result->cost, 1016.0710678118655);
     EXPECT_EQ(result->action_coords.size(), 14);
@@ -112,11 +110,12 @@ TEST(AStar2D, PlanWithFourGoals) {
     out << YAML::BeginSeq;
     for (long i = 0; i < num_points; ++i) { out << YAML::Flow << Eigen::Vector2d(result->path.col(i)); }
     out << YAML::EndSeq;
-    std::ofstream ofs("AStar2DTest-LinearTemporalLogic2D.yaml");
+    std::ofstream ofs(test_output_dir / "path.yaml");
     ofs << out.c_str();
 }
 
 TEST(AStar2D, LargeMap_Step1) {
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -130,8 +129,7 @@ TEST(AStar2D, LargeMap_Step1) {
     Eigen::Vector2d map_max = Eigen::Vector2d::Constant(100.0);  // resolution = 0.1
     auto grid_map_info = std::make_shared<GridMapInfo2D>(map_shape, map_min, map_max);
 
-    auto data_dir = std::filesystem::path(__FILE__).parent_path();
-    Eigen::MatrixX8U map_data = LoadEigenMatrixFromTextFile<uint8_t>((data_dir / "circles_map_1001x1001.txt").string());
+    Eigen::MatrixX8U map_data = LoadEigenMatrixFromTextFile<uint8_t>((gtest_src_dir / "circles_map_1001x1001.txt").string());
     Eigen::VectorX8U data = map_data.transpose().reshaped(map_shape.prod(), 1);  // row-major order
     auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, std::move(data));
 
@@ -167,16 +165,17 @@ TEST(AStar2D, LargeMap_Step1) {
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal_coords, metric_goal_tolerance, 0, heuristic);
 
     std::shared_ptr<astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2DTest::LargeMap::Step1", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
+    ReportTime<std::chrono::microseconds>("AStar2D::LargeMap::Step1", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}}, false);
-    cv::imwrite("AStar2DTest-LargeMap-Step1.png", img);
+    cv::imwrite(test_output_dir / "result.png", img);
     EXPECT_DOUBLE_EQ(result->cost, 105.46307941550766);
     EXPECT_EQ(result->action_coords.size(), 890);
 }
 
 TEST(AStar2D, LargeMap_Step2) {
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -190,8 +189,7 @@ TEST(AStar2D, LargeMap_Step2) {
     Eigen::Vector2d map_max = Eigen::Vector2d::Constant(100.0);  // resolution = 0.1
     auto grid_map_info = std::make_shared<GridMapInfo2D>(map_shape, map_min, map_max);
 
-    auto data_dir = std::filesystem::path(__FILE__).parent_path();
-    Eigen::MatrixX8U map_data = LoadEigenMatrixFromTextFile<uint8_t>((data_dir / "circles_map_1001x1001.txt").string());
+    Eigen::MatrixX8U map_data = LoadEigenMatrixFromTextFile<uint8_t>((gtest_src_dir / "circles_map_1001x1001.txt").string());
     Eigen::VectorX8U data = map_data.transpose().reshaped(map_shape.prod(), 1);  // row-major order
     auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, std::move(data));
 
@@ -227,16 +225,17 @@ TEST(AStar2D, LargeMap_Step2) {
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal_coords, metric_goal_tolerance, 0, heuristic);
 
     std::shared_ptr<astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2DTest::LargeMap::Step2", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
+    ReportTime<std::chrono::microseconds>("AStar2D::LargeMap::Step2", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}}, false);
-    cv::imwrite("AStar2DTest-LargeMap-Step2.png", img);
+    cv::imwrite(test_output_dir / "result.png", img);
     EXPECT_DOUBLE_EQ(result->cost, 98.344374725266363);
     EXPECT_EQ(result->action_coords.size(), 489);
 }
 
 TEST(AStar2D, LargeMap_Step3) {
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
@@ -250,8 +249,7 @@ TEST(AStar2D, LargeMap_Step3) {
     Eigen::Vector2d map_max = Eigen::Vector2d::Constant(100.0);  // resolution = 0.1
     auto grid_map_info = std::make_shared<GridMapInfo2D>(map_shape, map_min, map_max);
 
-    auto data_dir = std::filesystem::path(__FILE__).parent_path();
-    Eigen::MatrixX8U map_data = LoadEigenMatrixFromTextFile<uint8_t>((data_dir / "circles_map_1001x1001.txt").string());
+    Eigen::MatrixX8U map_data = LoadEigenMatrixFromTextFile<uint8_t>((gtest_src_dir / "circles_map_1001x1001.txt").string());
     Eigen::VectorX8U data = map_data.transpose().reshaped(map_shape.prod(), 1);  // row-major order
     auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, std::move(data));
 
@@ -287,28 +285,26 @@ TEST(AStar2D, LargeMap_Step3) {
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal_coords, metric_goal_tolerance, 0, heuristic);
 
     std::shared_ptr<astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2DTest::LargeMap::Step3", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
+    ReportTime<std::chrono::microseconds>("AStar2D::LargeMap::Step3", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}}, false);
-    cv::imwrite("AStar2DTest-LargeMap-Step3.png", img);
+    cv::imwrite(test_output_dir / "result.png", img);
     EXPECT_DOUBLE_EQ(result->cost, 97.680925318690171);
     EXPECT_EQ(result->action_coords.size(), 400);
 }
 
 TEST(AStar2D, LinearTemporalLogic2D) {
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::search_planning;
     using namespace erl::env;
 
-    std::filesystem::path path = __FILE__;
-    path = path.parent_path();
-
-    auto env_setting_yaml = path / "environment_ltl_2d.yaml";
+    auto env_setting_yaml = gtest_src_dir / "environment_ltl_2d.yaml";
     auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
     env_setting->FromYamlFile(env_setting_yaml);
 
-    auto label_map_png = path / "label_map.png";
+    auto label_map_png = gtest_src_dir / "label_map.png";
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);
@@ -338,12 +334,12 @@ TEST(AStar2D, LinearTemporalLogic2D) {
         std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goals_coords, metric_goal_tolerance, std::vector{0.}, heuristic);
     std::shared_ptr<astar::Output> result;
     astar::AStar astar(planning_interface);
-    ReportTime<std::chrono::microseconds>("AStar2DTest::LinearTemporalLogic2D", 0, true, [&]() { result = astar.Plan(); });
+    ReportTime<std::chrono::microseconds>("AStar2D::LinearTemporalLogic2D", 0, true, [&]() { result = astar.Plan(); });
 
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     cv::Mat img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}}, false);
-    cv::imwrite("AStar2DTest-LinearTemporalLogic2D.png", img);
+    cv::imwrite(test_output_dir / "result.png", img);
 
     EXPECT_DOUBLE_EQ(result->cost, 20.417871555019136);
     EXPECT_EQ(result->path.cols(), 165);
@@ -353,6 +349,6 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     out << YAML::BeginSeq;
     for (long i = 0; i < num_points; ++i) { out << YAML::Flow << Eigen::Vector3d(result->path.col(i)); }
     out << YAML::EndSeq;
-    std::ofstream ofs("AStar2DTest-LinearTemporalLogic2D.yaml");
+    std::ofstream ofs(test_output_dir / "path.yaml");
     ofs << out.c_str();
 }

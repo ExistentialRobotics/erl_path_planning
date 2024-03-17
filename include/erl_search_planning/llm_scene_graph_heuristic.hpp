@@ -24,7 +24,6 @@ namespace erl::search_planning {
     private:
         std::shared_ptr<Setting> m_setting_ = nullptr;
         std::shared_ptr<env::EnvironmentLTLSceneGraph> m_env_ = nullptr;
-//        std::unordered_map<int, std::unordered_map<int, std::vector<int>>> m_room_to_room_paths_ = {};
         std::unordered_map<int, std::vector<double>> m_heuristic_cache_ = {};
 
     public:

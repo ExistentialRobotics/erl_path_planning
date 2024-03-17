@@ -8,21 +8,19 @@
 #include "erl_search_planning/llm_scene_graph_heuristic.hpp"
 
 TEST(AMRAStarSceneGraph, SingleFloor) {
-    std::string test_name = "AMRAStarSceneGraph_SingleFloor";
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::env;
     using namespace erl::search_planning;
 
     // load environment
-    std::filesystem::path path = __FILE__;
-    auto data_dir = path.parent_path();
-    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    std::filesystem::path path = gtest_src_dir / "building.yaml";
+    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
-    path = data_dir / "building.yaml";
     auto building = std::make_shared<scene_graph::Building>();
     building->FromYamlFile(path.string());
 
     auto env_setting = std::make_shared<EnvironmentSceneGraph::Setting>();
-    env_setting->data_dir = data_dir.string();
+    env_setting->data_dir = gtest_src_dir.string();
     env_setting->shape = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     double r = 0.1;
@@ -54,7 +52,7 @@ TEST(AMRAStarSceneGraph, SingleFloor) {
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, 8.701223, 1e-6);
@@ -65,7 +63,7 @@ TEST(AMRAStarSceneGraph, SingleFloor) {
         uint32_t plan_itr = itr.first;
         Eigen::Matrix3Xd amra_path = itr.second;
         long num_points = amra_path.cols();
-        cv::Mat cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, 1));
+        cv::Mat cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, 1));
         std::vector<cv::Point2i> cv_path;
         cv_path.reserve(num_points);
         for (long i = 0; i < num_points; ++i) {
@@ -81,21 +79,19 @@ TEST(AMRAStarSceneGraph, SingleFloor) {
 }
 
 TEST(AMRAStarSceneGraph, CrossFloor) {
-    std::string test_name = "AMRAStarSceneGraph_CrossFloor";
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::env;
     using namespace erl::search_planning;
 
     // load environment
-    std::filesystem::path path = __FILE__;
-    auto data_dir = path.parent_path();
-    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    std::filesystem::path building_path = gtest_src_dir / "building.yaml";
+    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
-    path = data_dir / "building.yaml";
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(path.string());
+    building->FromYamlFile(building_path.string());
 
     auto env_setting = std::make_shared<EnvironmentSceneGraph::Setting>();
-    env_setting->data_dir = data_dir.string();
+    env_setting->data_dir = gtest_src_dir.string();
     env_setting->shape = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     double r = 0.1;
@@ -127,7 +123,7 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, 15.485639, 1e-6);
@@ -148,7 +144,7 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
         std::unordered_map<int, cv::Mat> cat_maps;  // floor -> map
         for (auto &[floor_num, cv_path]: cv_paths) {
             auto &cat_map = cat_maps[floor_num];
-            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, floor_num));
+            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(erl::common::AsString("plan_", plan_itr, "_floor_", floor_num), cat_map);
             cv::imwrite(output_dir / erl::common::AsString("plan_", plan_itr, "_floor_", floor_num, ".png"), cat_map);
@@ -158,23 +154,21 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
 }
 
 TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
-    std::string test_name = "AMRAStarSceneGraph_LinearTemporalLogic";
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::env;
     using namespace erl::search_planning;
 
-    std::filesystem::path path = __FILE__;
-    auto data_dir = path.parent_path();
-    path = data_dir / "building.yaml";
-    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    std::filesystem::path building_path = gtest_src_dir / "building.yaml";
+    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(path.string());
+    building->FromYamlFile(building_path.string());
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
-    env_setting->data_dir = data_dir.string();
+    env_setting->data_dir = gtest_src_dir.string();
     env_setting->shape = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     double r = 0.1;
@@ -183,9 +177,9 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
         env_setting->shape(1, i) = r * sin(angles[i]);
     }
     // load the finite state automaton setting from spot hoa file
-    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(data_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
+    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(gtest_src_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
     // load the atomic propositions
-    env_setting->LoadAtomicPropositions(data_dir / "ap_desc.yaml");
+    env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
     auto environment_ltl_scene_graph = std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
@@ -217,7 +211,7 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
@@ -238,7 +232,7 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
         std::unordered_map<int, cv::Mat> cat_maps;  // floor -> map
         for (auto &[floor_num, cv_path]: cv_paths) {
             auto &cat_map = cat_maps[floor_num];
-            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, floor_num));
+            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(erl::common::AsString("plan_", plan_itr, "_floor_", floor_num), cat_map);
             cv::imwrite(output_dir / erl::common::AsString("plan_", plan_itr, "_floor_", floor_num, ".png"), cat_map);
@@ -248,23 +242,21 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
 }
 
 TEST(AMRAStarSceneGraph, SingleLayer) {
-    std::string test_name = "AMRAStarSceneGraph_SingleLayer";
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::env;
     using namespace erl::search_planning;
 
-    std::filesystem::path path = __FILE__;
-    auto data_dir = path.parent_path();
-    path = data_dir / "building.yaml";
-    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    std::filesystem::path building_path =  gtest_src_dir / "building.yaml";
+    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(path.string());
+    building->FromYamlFile(building_path.string());
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
-    env_setting->data_dir = data_dir.string();
+    env_setting->data_dir = gtest_src_dir.string();
     env_setting->shape = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     double r = 0.1;
@@ -273,9 +265,9 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
         env_setting->shape(1, i) = r * sin(angles[i]);
     }
     // load the finite state automaton setting from spot hoa file
-    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(data_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
+    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(gtest_src_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
     // load the atomic propositions
-    env_setting->LoadAtomicPropositions(data_dir / "ap_desc.yaml");
+    env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
     env_setting->max_level = erl::env::scene_graph::Node::Type::kOcc;
@@ -306,7 +298,7 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, 18.562500852413102, 1e-6);
@@ -327,7 +319,7 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
         std::unordered_map<int, cv::Mat> cat_maps;  // floor -> map
         for (auto &[floor_num, cv_path]: cv_paths) {
             auto &cat_map = cat_maps[floor_num];
-            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, floor_num));
+            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(erl::common::AsString("plan_", plan_itr, "_floor_", floor_num), cat_map);
             cv::imwrite(output_dir / erl::common::AsString("plan_", plan_itr, "_floor_", floor_num, ".png"), cat_map);
@@ -337,23 +329,21 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
 }
 
 TEST(LLMSceneGraph, Heuristic) {
-    std::string test_name = "LLMSceneGraphHeuristic";
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::env;
     using namespace erl::search_planning;
 
-    std::filesystem::path path = __FILE__;
-    auto data_dir = path.parent_path();
-    path = data_dir / "building.yaml";
-    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    std::filesystem::path building_path = gtest_src_dir / "building.yaml";
+    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(path.string());
+    building->FromYamlFile(building_path.string());
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
-    env_setting->data_dir = data_dir.string();
+    env_setting->data_dir = gtest_src_dir.string();
     env_setting->object_reach_distance = 0.6;
     env_setting->shape = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
@@ -363,9 +353,9 @@ TEST(LLMSceneGraph, Heuristic) {
         env_setting->shape(1, i) = r * sin(angles[i]);
     }
     // load the finite state automaton setting from spot hoa file
-    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(data_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
+    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(gtest_src_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
     // load the atomic propositions
-    env_setting->LoadAtomicPropositions(data_dir / "ap_desc.yaml");
+    env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
     auto environment_ltl_scene_graph = std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
@@ -379,7 +369,7 @@ TEST(LLMSceneGraph, Heuristic) {
         environment_ltl_scene_graph->GetLabelMaps(),
         environment_ltl_scene_graph->GetGridMapInfo());
 
-    auto gpt4_heuristic_file = data_dir / "gpt4_path_v2.yaml";
+    auto gpt4_heuristic_file = gtest_src_dir / "gpt4_path_v2.yaml";
     auto gpt4_heuristic_setting = std::make_shared<LLMSceneGraphHeuristic::Setting>();
     gpt4_heuristic_setting->FromYamlFile(gpt4_heuristic_file.string());
     auto gpt4_heuristic = std::make_shared<LLMSceneGraphHeuristic>(gpt4_heuristic_setting, environment_ltl_scene_graph);
@@ -407,7 +397,7 @@ TEST(LLMSceneGraph, Heuristic) {
     amra_star::AMRAStar planner(planning_interface, amra_setting);
 
     std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_name.c_str(), 0, true, [&]() { result = planner.Plan(); });
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
@@ -428,7 +418,7 @@ TEST(LLMSceneGraph, Heuristic) {
         std::unordered_map<int, cv::Mat> cat_maps;  // floor -> map
         for (auto &[floor_num, cv_path]: cv_paths) {
             auto &cat_map = cat_maps[floor_num];
-            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, floor_num));
+            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(erl::common::AsString("plan_", plan_itr, "_floor_", floor_num), cat_map);
             cv::imwrite(output_dir / erl::common::AsString("plan_", plan_itr, "_floor_", floor_num, ".png"), cat_map);

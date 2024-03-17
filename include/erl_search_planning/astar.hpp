@@ -1,11 +1,8 @@
 #pragma once
 
 #include <boost/heap/d_ary_heap.hpp>
-//#include <boost/heap/pairing_heap.hpp>
-// #include <boost/heap/binomial_heap.hpp>  // slower than d_ary_heap
-// #include <boost/heap/fibonacci_heap.hpp>  // slower than d_ary_heap
 #include <limits>
-#include <unordered_map>
+#include <absl/container/flat_hash_map.h>
 #include <utility>
 #include <memory>
 
@@ -113,7 +110,7 @@ namespace erl::search_planning::astar {
         std::shared_ptr<State> m_current_ = nullptr;
         std::shared_ptr<PlanningInterface> m_planning_interface_ = nullptr;
         PriorityQueue m_priority_queue_;
-        std::unordered_map<long, std::shared_ptr<State>> m_astar_states_;
+        absl::flat_hash_map<long, std::shared_ptr<State>> m_astar_states_;
         std::size_t m_iterations_ = 0;
         bool m_planned_ = false;
         std::shared_ptr<Output> m_output_ = nullptr;

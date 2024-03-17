@@ -31,12 +31,6 @@ namespace erl::search_planning {
          */
         [[nodiscard]] double
         operator()(const env::EnvironmentState &env_state) const override;
-
-//    private:
-//        bool
-//        LoadFromCache(const std::filesystem::path &cache_dir);
-//        void
-//        SaveToCache(const std::filesystem::path &cache_dir) const;
     };
 
 }  // namespace erl::search_planning

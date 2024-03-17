@@ -12,14 +12,13 @@
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
 
 TEST(AMRAStar2D, AStarConsistency) {
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
-    std::string test_name = "AMRAStar2D_AStarConsistency";
-    std::filesystem::path data_dir = std::filesystem::path(__FILE__).parent_path();
-    std::filesystem::path output_dir = data_dir / "results" / test_name;
+    std::filesystem::path output_dir = gtest_src_dir / test_output_dir;
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
 
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
@@ -53,7 +52,6 @@ TEST(AMRAStar2D, AStarConsistency) {
     Eigen::VectorXd goal_tolerance = Eigen::Vector2d::Zero();
 
     auto anchor_env = std::make_shared<EnvironmentGridAnchor<2>>(std::vector<std::shared_ptr<EnvironmentBase>>{env}, grid_map_info);
-    // std::vector<std::shared_ptr<EnvironmentBase>> environments = {anchor_env, env};
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 0},
         {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 1}};
@@ -193,7 +191,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
-    auto map_result_dir = result_dir / "AMRAStar2D_MultiResolutions" / map_name;
+    auto map_result_dir = result_dir / "AMRAStar2D" / "MultiResolutions" / map_name;
     if (!std::filesystem::exists(map_result_dir)) { std::filesystem::create_directories(map_result_dir); }
     constexpr bool kDisplay = false;
     std::string img_path = map_result_dir / "amra.png";
@@ -235,18 +233,12 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, expected_cost, 1.e-6);
 
-    // std::cout << "Path: " << std::endl
-    // auto &path = result->path;
-    // long num_points = path.cols();
-    // for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
-
     if (setting->log) { result->Save(map_result_dir / "amra.solution"); }
 }
 
 TEST(AMRAStar2D, MultiResolutions) {
-    std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
-    std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
-    std::filesystem::path result_dir = src_dir.parent_path() / "results";
+    GTEST_PREPARE_OUTPUT_DIR();
+    std::filesystem::path data_dir = gtest_src_dir.parent_path() / "amra/dat";
 
     RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.7363859129694);
     RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1076.9352455636508);
@@ -258,21 +250,20 @@ TEST(AMRAStar2D, MultiResolutions) {
 }
 
 TEST(AMRAStar2D, LinearTemporalLogic) {
+    GTEST_PREPARE_OUTPUT_DIR();
     using namespace erl::common;
     using namespace erl::env;
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
-    std::filesystem::path path = __FILE__;
-    path = path.parent_path();
-    auto output_dir = path / "results" / "AMRAStar2D_LinearTemporalLogic";
+    auto output_dir = gtest_src_dir / "results" / test_output_dir;
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
 
-    auto env_setting_yaml = path / "environment_ltl_2d.yaml";
+    auto env_setting_yaml = gtest_src_dir / "environment_ltl_2d.yaml";
     auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
     env_setting->FromYamlFile(env_setting_yaml);
 
-    auto label_map_png = path / "label_map.png";
+    auto label_map_png = gtest_src_dir / "label_map.png";
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);

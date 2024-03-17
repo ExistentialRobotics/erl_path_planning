@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <memory>
 #include <boost/heap/d_ary_heap.hpp>
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 #include "erl_common/yaml.hpp"
 #include "erl_common/eigen.hpp"
 #include "heuristic.hpp"
@@ -181,8 +183,8 @@ namespace erl::search_planning::amra_star {
         std::chrono::nanoseconds m_search_time_ = 0ns;
 
         std::vector<PriorityQueue> m_open_queues_ = {};
-        std::unordered_map<std::size_t, std::shared_ptr<State>> m_states_hash_map_ = {};
-        std::unordered_set<std::shared_ptr<State>> m_inconsistent_states_ = {};
+        absl::flat_hash_map<std::size_t, std::shared_ptr<State>> m_states_hash_map_ = {};
+        absl::flat_hash_set<std::shared_ptr<State>> m_inconsistent_states_ = {};
         std::shared_ptr<State> m_start_state_ = nullptr;
         std::vector<std::shared_ptr<State>> m_goal_states_ = {};
         std::shared_ptr<Output> m_output_ = nullptr;

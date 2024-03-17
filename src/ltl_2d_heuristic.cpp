@@ -1,3 +1,4 @@
+#include <absl/container/flat_hash_map.h>
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
 
 namespace erl::search_planning {

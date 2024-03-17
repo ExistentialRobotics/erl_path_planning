@@ -22,7 +22,7 @@ namespace erl::search_planning {
                 }
 
                 auto &llm_path = m_setting_->llm_paths.at(room_uuid).at(fsa_state);
-                if (llm_path.size() <= 1) {
+                if (llm_path.size() <= 1) {  // LLM suggests only one step, which will be used when operator() is called.
                     m_heuristic_cache_[room_uuid][fsa_state] = 0.0;
                     continue;
                 }
