@@ -108,7 +108,7 @@ TEST(AStar2D, PlanWithFourGoals) {
     long num_points = result->path.cols();
     YAML::Emitter out;
     out << YAML::BeginSeq;
-    for (long i = 0; i < num_points; ++i) { out << YAML::Flow << Eigen::Vector2d(result->path.col(i)); }
+    for (long i = 0; i < num_points; ++i) { out << YAML::Flow << YAML::convert<Eigen::Vector2d>::encode(Eigen::Vector2d(result->path.col(i))); }
     out << YAML::EndSeq;
     std::ofstream ofs(test_output_dir / "path.yaml");
     ofs << out.c_str();
@@ -347,7 +347,7 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     long num_points = result->path.cols();
     YAML::Emitter out;
     out << YAML::BeginSeq;
-    for (long i = 0; i < num_points; ++i) { out << YAML::Flow << Eigen::Vector3d(result->path.col(i)); }
+    for (long i = 0; i < num_points; ++i) { out << YAML::Flow << YAML::convert<Eigen::Vector3d>::encode(Eigen::Vector3d(result->path.col(i))); }
     out << YAML::EndSeq;
     std::ofstream ofs(test_output_dir / "path.yaml");
     ofs << out.c_str();

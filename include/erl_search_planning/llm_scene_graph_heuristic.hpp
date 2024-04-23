@@ -85,23 +85,6 @@ namespace YAML {
         }
     };
 
-    inline Emitter &
-    operator<<(Emitter &out, const erl::search_planning::LLMSceneGraphHeuristic::Setting::LLMWaypoint &rhs) {
-        switch (rhs.type) {
-            case erl::env::AtomicProposition::Type::kEnterRoom: {
-                out << erl::common::AsString("move(", rhs.uuid1, ", ", rhs.uuid2, ")");
-                break;
-            }
-            case erl::env::AtomicProposition::Type::kReachObject: {
-                out << erl::common::AsString("reach(", rhs.uuid1, ", ", rhs.uuid2, ")");
-                break;
-            }
-            default:
-                throw std::runtime_error("Unknown LLMWaypoint type.");
-        }
-        return out;
-    }
-
     template<>
     struct convert<erl::search_planning::LLMSceneGraphHeuristic::Setting> {
         inline static Node
@@ -120,10 +103,4 @@ namespace YAML {
             return true;
         }
     };
-
-    inline Emitter &
-    operator<<(Emitter &out, const erl::search_planning::LLMSceneGraphHeuristic::Setting &rhs) {
-        out << rhs.llm_paths;
-        return out;
-    }
 }  // namespace YAML

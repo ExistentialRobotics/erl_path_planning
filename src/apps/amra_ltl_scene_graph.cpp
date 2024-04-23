@@ -390,28 +390,4 @@ namespace YAML {
             return true;
         }
     };
-
-    inline Emitter &
-    operator<<(Emitter &out, const Options &rhs) {
-        out << BeginMap;
-        out << Key << "output_dir" << Value << rhs.output_dir;
-        out << Key << "scene_graph_file" << Value << rhs.scene_graph_file;
-        out << Key << "map_data_dir" << Value << rhs.map_data_dir;
-        out << Key << "automaton_file" << Value << rhs.automaton_file;
-        out << Key << "ap_file" << Value << rhs.ap_file;
-        out << Key << "llm_heuristic_file" << Value << rhs.llm_heuristic_file;
-        out << Key << "init_grid_x" << Value << rhs.init_grid_x;
-        out << Key << "init_grid_y" << Value << rhs.init_grid_y;
-        out << Key << "init_grid_z" << Value << rhs.init_grid_z;
-        out << Key << "robot_radius" << Value << rhs.robot_radius;
-        out << Key << "object_reach_radius" << Value << rhs.object_reach_radius;
-        out << Key << "max_level" << Value << rhs.max_level;
-        out << Key << "ltl_heuristic_layout" << Value << rhs.ltl_heuristic_layout;
-        out << Key << "llm_heuristic_layout" << Value << rhs.llm_heuristic_layout;
-        out << Key << "repeat" << Value << rhs.repeat;
-        out << Key << "save_amra_log" << Value << rhs.save_amra_log;
-        out << Key << "hold_for_visualization" << Value << rhs.hold_for_visualization;
-        out << EndMap;
-        return out;
-    }
 }  // namespace YAML

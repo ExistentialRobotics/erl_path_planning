@@ -297,19 +297,4 @@ namespace YAML {
             return true;
         }
     };
-
-    inline Emitter&
-    operator<<(Emitter& out, const erl::search_planning::amra_star::AMRAStar::Setting& rhs) {
-        out << BeginMap;
-        out << Key << "time_limit" << Value << double(rhs.time_limit.count()) / 1.e9;
-        out << Key << "w1_init" << Value << rhs.w1_init;
-        out << Key << "w2_init" << Value << rhs.w2_init;
-        out << Key << "w1_final" << Value << rhs.w1_final;
-        out << Key << "w2_final" << Value << rhs.w2_final;
-        out << Key << "w1_decay_factor" << Value << rhs.w1_decay_factor;
-        out << Key << "w2_decay_factor" << Value << rhs.w2_decay_factor;
-        out << Key << "log" << Value << rhs.log;
-        out << EndMap;
-        return out;
-    }
 }  // namespace YAML

@@ -161,15 +161,4 @@ namespace YAML {
             return true;
         }
     };
-
-    inline Emitter&
-    operator<<(Emitter& out, const erl::search_planning::astar::AStar::Setting& rhs) {
-        out << BeginMap;
-        out << Key << "eps" << Value << rhs.eps;
-        out << Key << "max_num_iterations" << Value << rhs.max_num_iterations;
-        out << Key << "log" << Value << rhs.log;
-        out << Key << "reopen_inconsistent" << Value << rhs.reopen_inconsistent;
-        out << EndMap;
-        return out;
-    }
 }  // namespace YAML

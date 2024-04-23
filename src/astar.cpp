@@ -22,38 +22,15 @@ namespace erl::search_planning::astar {
     AStar::Plan() {
         if (m_planned_) { return m_output_; }
 
-        // double t_reach_goal = 0;
-        // int n_reach_goal = 0;
-        // double t_expand = 0;
-        // int n_expand = 0;
-        // double t_pop = 0;
-        // int n_pop = 0;
-
         while (m_setting_->max_num_iterations < 0 || long(m_iterations_) < m_setting_->max_num_iterations) {
-            // auto t0 = std::chrono::high_resolution_clock::now();
             // check if done
             int reached_goal_index = m_planning_interface_->ReachGoal(m_current_->env_state);
             if (reached_goal_index >= 0) {
                 RecoverPath(m_current_, reached_goal_index);
                 LogStates();
                 m_planned_ = true;
-
-                // t_reach_goal /= double(n_reach_goal);
-                // t_expand /= double(n_expand);
-                // t_pop /= double(n_pop);
-                // std::cout << "reach_goal: " << t_reach_goal << " us" << std::endl
-                //           << "expand: " << t_expand << " us" << std::endl
-                //           << "pop: " << t_pop << " us" << std::endl
-                //           << "n_reach_goal: " << n_reach_goal << std::endl
-                //           << "n_expand: " << n_expand << std::endl
-                //           << "n_pop: " << n_pop << std::endl
-                //           << std::endl;
-
                 return m_output_;
             }
-            // auto t1 = std::chrono::high_resolution_clock::now();
-            // t_reach_goal += std::chrono::duration<double, std::micro>(t1 - t0).count();
-            // n_reach_goal++;
 
             // increase the number of iterations
             m_iterations_++;
@@ -61,33 +38,14 @@ namespace erl::search_planning::astar {
             // add current node to closed set
             m_current_->iteration_closed = m_iterations_;
 
-            // t0 = std::chrono::high_resolution_clock::now();
             // perform the expansion of current iteration
             Expand();
-            // t1 = std::chrono::high_resolution_clock::now();
-            // t_expand += std::chrono::duration<double, std::micro>(t1 - t0).count();
-            // n_expand++;
 
-            // t0 = std::chrono::high_resolution_clock::now();
             // Remove the node with the smallest cost
             if (m_priority_queue_.empty()) { break; }
             m_current_ = m_priority_queue_.top()->state;
             m_priority_queue_.pop();
-            // t1 = std::chrono::high_resolution_clock::now();
-            // t_pop += std::chrono::duration<double, std::micro>(t1 - t0).count();
-            // n_pop++;
         }
-
-        // t_reach_goal /= double(n_reach_goal);
-        // t_expand /= double(n_expand);
-        // t_pop /= double(n_pop);
-        // std::cout << "reach_goal: " << t_reach_goal << " us" << std::endl
-        //           << "expand: " << t_expand << " us" << std::endl
-        //           << "pop: " << t_pop << " us" << std::endl
-        //           << "n_reach_goal: " << n_reach_goal << std::endl
-        //           << "n_expand: " << n_expand << std::endl
-        //           << "n_pop: " << n_pop << std::endl
-        //           << std::endl;
 
         // infeasible problem
         ERL_INFO("Reached maximum number of iterations.");
@@ -177,8 +135,8 @@ namespace erl::search_planning::astar {
         std::vector<std::vector<std::shared_ptr<env::EnvironmentState>>> path_segments;
         long num_path_states = 0;
         auto state = GetState(m_start_state_->env_state)->env_state;
-        for (auto &action_id: m_output_->action_coords) {
-            auto path_segment = m_planning_interface_->GetPath(state, action_id);
+        for (auto &action_coords: m_output_->action_coords) {
+            auto path_segment = m_planning_interface_->GetPath(state, action_coords);
             if (path_segment.empty()) { continue; }
             path_segments.push_back(path_segment);
             num_path_states += long(path_segment.size());
