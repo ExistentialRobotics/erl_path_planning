@@ -1,10 +1,8 @@
 #pragma once
 
-#include <boost/heap/d_ary_heap.hpp>
-#include "erl_common/assert.hpp"
-#include "erl_common/eigen.hpp"
 #include "erl_common/csv.hpp"
-#include "erl_common/grid_map.hpp"
+#include "erl_common/eigen.hpp"
+#include "erl_common/logging.hpp"
 #include "erl_env/environment_state.hpp"
 #include "erl_env/finite_state_automaton.hpp"
 
@@ -19,7 +17,7 @@ namespace erl::search_planning {
     public:
         HeuristicBase() = default;
 
-        HeuristicBase(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
+        HeuristicBase(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, const double terminal_cost = 0.0)
             : m_goal_(std::move(goal)),
               m_goal_tolerance_(std::move(goal_tolerance)),
               m_terminal_cost_(terminal_cost) {
@@ -36,15 +34,16 @@ namespace erl::search_planning {
     template<long Dim>
     struct EuclideanDistanceHeuristic : public HeuristicBase {
 
-        EuclideanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
+        EuclideanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, const double terminal_cost = 0.0)
             : HeuristicBase(std::move(goal), std::move(goal_tolerance), terminal_cost) {
-            if (Dim != Eigen::Dynamic) { ERL_ASSERTM(m_goal_.size() >= Dim, "goal dimension is fewer than %ld.", Dim); }
+            if (Dim != Eigen::Dynamic) { ERL_ASSERTM(m_goal_.size() >= Dim, "goal dimension is fewer than {}.", Dim); }
         }
 
-        inline double
+        double
         operator()(const env::EnvironmentState &state) const override {
+            if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
             ERL_ASSERTM(state.metric.size() == m_goal_.size(), "state dimension is not equal to goal dimension.");
-            long n = Dim == Eigen::Dynamic ? state.metric.size() : Dim;
+            const long n = Dim == Eigen::Dynamic ? state.metric.size() : Dim;
             double distance = 0.0;
             for (long i = 0; i < n; ++i) {
                 double diff = std::abs(state.metric[i] - m_goal_[i]);
@@ -59,15 +58,16 @@ namespace erl::search_planning {
     template<long Dim>
     struct ManhattanDistanceHeuristic : public HeuristicBase {
 
-        ManhattanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, double terminal_cost = 0.0)
+        ManhattanDistanceHeuristic(Eigen::VectorXd goal, Eigen::VectorXd goal_tolerance, const double terminal_cost = 0.0)
             : HeuristicBase(std::move(goal), std::move(goal_tolerance), terminal_cost) {
-            if (Dim != Eigen::Dynamic) { ERL_ASSERTM(m_goal_.size() == Dim, "goal dimension is not equal to %ld.", Dim); }
+            if (Dim != Eigen::Dynamic) { ERL_ASSERTM(m_goal_.size() == Dim, "goal dimension is not equal to {}.", Dim); }
         }
 
-        inline double
+        double
         operator()(const env::EnvironmentState &state) const override {
+            if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
             ERL_ASSERTM(state.metric.size() == m_goal_.size(), "state dimension is not equal to goal dimension.");
-            long n = Dim == Eigen::Dynamic ? state.metric.size() : Dim;
+            const long n = Dim == Eigen::Dynamic ? state.metric.size() : Dim;
             double distance = 0.0;
             for (long i = 0; i < n; ++i) {
                 double diff = std::abs(state.metric[i] - m_goal_[i]);
@@ -112,18 +112,18 @@ namespace erl::search_planning {
                 } catch (const std::invalid_argument &e) {
                     ERL_FATAL("%s. Failed to convert %s to a double number.", e.what(), line[1].c_str());
                 } catch (const std::out_of_range &e) { ERL_FATAL("%s. The number, %s, is out of the range of double.", e.what(), line[1].c_str()); }
-                ERL_ASSERTM(heuristic_dictionary.insert({state_hashing, heuristic_value}).second, "Duplicated state hashing %ld.", state_hashing);
+                ERL_ASSERTM(heuristic_dictionary.insert({state_hashing, heuristic_value}).second, "Duplicated state hashing {}.", state_hashing);
             }
         }
 
         double
         operator()(const env::EnvironmentState &state) const override {
+            if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
             long state_hashing = state_hashing_func(state);
-            auto it = heuristic_dictionary.find(state_hashing);
-            if (it == heuristic_dictionary.end()) {
+            if (const auto it = heuristic_dictionary.find(state_hashing); it == heuristic_dictionary.end()) {
                 if (assert_on_missing) {
                     ERL_FATAL(
-                        "The state (metric: %s, grid: %s, hashing: %ld) is not found in the dictionary.",
+                        "The state (metric: {}, grid: {}, hashing: {}) is not found in the dictionary.",
                         common::EigenToNumPyFmtString(state.metric).c_str(),
                         common::EigenToNumPyFmtString(state.grid).c_str(),
                         state_hashing);
@@ -140,8 +140,9 @@ namespace erl::search_planning {
 
         explicit MultiGoalsHeuristic(std::vector<std::shared_ptr<HeuristicBase>> goal_heuristics_in)
             : goal_heuristics(std::move(goal_heuristics_in)) {  // may be empty
-            std::size_t num_goals = goal_heuristics.size();
-            for (std::size_t i = 0; i < num_goals; ++i) { ERL_ASSERTM(goal_heuristics[i] != nullptr, "goal_heuristics_in[%d] is nullptr.", int(i)); }
+            for (std::size_t i = 0; i < goal_heuristics.size(); ++i) {
+                ERL_ASSERTM(goal_heuristics[i] != nullptr, "goal_heuristics_in[%d] is nullptr.", static_cast<int>(i));
+            }
         }
 
         double
@@ -149,8 +150,7 @@ namespace erl::search_planning {
             if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
             double min_h = std::numeric_limits<double>::infinity();
             for (auto &heuristic: goal_heuristics) {
-                double h = (*heuristic)(state);
-                if (h < min_h) { min_h = h; }
+                if (const double h = (*heuristic)(state); h < min_h) { min_h = h; }
             }
             return min_h;
         }

@@ -256,15 +256,15 @@ namespace erl::search_planning {
                 phi = phi_base;
                 ERL_DEBUG_ASSERT(
                     std::fabs(x_base * m_tuning_radius_ + m_start_[0] - m_goal_[0]) < 1.e-6,
-                    "x_base = %f, m_goal_[0] = %f before interpolation ends.",
+                    "x_base = {}, m_goal_[0] = {} before interpolation ends.",
                     x_base,
                     m_goal_[0]);
                 ERL_DEBUG_ASSERT(
                     std::fabs(y_base * m_tuning_radius_ + m_start_[1] - m_goal_[1]) < 1.e-6,
-                    "y_base = %f, m_goal_[1] = %f before interpolation ends.",
+                    "y_base = {}, m_goal_[1] = {} before interpolation ends.",
                     y_base,
                     m_goal_[1]);
-                ERL_DEBUG_ASSERT(std::fabs(phi_base - m_goal_[2]) < 1.e-6, "phi_base = %f, m_goal_[2] = %f before interpolation ends.", phi_base, m_goal_[2]);
+                ERL_DEBUG_ASSERT(std::fabs(phi_base - m_goal_[2]) < 1.e-6, "phi_base = {}, m_goal_[2] = {} before interpolation ends.", phi_base, m_goal_[2]);
             } else if (m_length_[seg_index] >= 0) {
                 step(s, x, y, phi);
             } else {

@@ -38,12 +38,12 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
         app_data->phi0 = std::atan2(double(y - app_data->y0), double(x - app_data->x0));
         app_data->start_set = true;
         app_data->l_button_down = false;
-        ERL_INFO("set start: (%f, %f, %f)", app_data->x0, app_data->y0, app_data->phi0);
+        ERL_INFO("set start: ({}, {}, {})", app_data->x0, app_data->y0, app_data->phi0);
     } else if (event == cv::EVENT_MBUTTONUP) {
         app_data->phi1 = std::atan2(double(y - app_data->y1), double(x - app_data->x1));
         app_data->goal_set = true;
         app_data->m_button_down = false;
-        ERL_INFO("set goal: (%f, %f, %f)", app_data->x1, app_data->y1, app_data->phi1);
+        ERL_INFO("set goal: ({}, {}, {})", app_data->x1, app_data->y1, app_data->phi1);
     } else if (event == cv::EVENT_MOUSEMOVE) {
         if (!app_data->l_button_down && !app_data->m_button_down) { return; }
     }
@@ -99,7 +99,7 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
         app_data->phi1,
         app_data->turning_radius);
     ERL_INFO(
-        "dubins path: %s, length: %f (t=%f, u=%f, v=%f, w=%f, z=%f)",
+        "dubins path: {}, length: {} (t={}, u={}, v={}, w={}, z={})",
         app_data->reeds_shepp_path->GetReedsSheppPathType().c_str(),
         app_data->reeds_shepp_path->GetLength(),
         app_data->reeds_shepp_path->GetSegmentLength(0),

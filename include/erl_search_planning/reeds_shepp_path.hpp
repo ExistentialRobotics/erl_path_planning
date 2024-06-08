@@ -1,6 +1,6 @@
 #pragma once
 
-#include "erl_common/assert.hpp"
+#include "erl_common/logging.hpp"
 #include "erl_common/template_helper.hpp"
 
 namespace erl::search_planning {
@@ -40,50 +40,48 @@ namespace erl::search_planning {
         Interpolate(double t, double &x, double &y, double &phi) const;
 
         void
-        InterpolateNPoints(std::size_t v, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const;
+        InterpolateNPoints(std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const;
 
-        [[nodiscard]] inline double
+        [[nodiscard]] double
         GetLength() const {
             return m_total_length_ * m_tuning_radius_;
         }
 
-        [[nodiscard]] inline double
+        [[nodiscard]] double
         GetSegmentLength(int i) const {
             ERL_ASSERTM(i >= 0 && i < 5, "i = %d should be in [0, 5).", i);
             return m_length_[i] * m_tuning_radius_;
         }
 
-        [[nodiscard]] inline double
+        [[nodiscard]] double
         GetTurningRadius() const {
             return m_tuning_radius_;
         }
 
-        [[nodiscard]] inline std::string
+        [[nodiscard]] std::string
         GetReedsSheppPathType() const {
-            static const char* table = "NLSR";
-            std::string type = "     ";
-            for (int i = 0; i < 5; ++i) {
-                type[i] = table[m_type_[i]];
-            }
+            static auto *table = "NLSR";
+            char type[5] = {0, 0, 0, 0, 0};
+            for (int i = 0; i < 5; ++i) { type[i] = table[m_type_[i]]; }
             return type;
         }
 
     private:
         explicit ReedsSheppPath(
-            double x0,
-            double y0,
-            double phi0,
-            double x1,
-            double y1,
-            double phi1,
+            const double x0,
+            const double y0,
+            const double phi0,
+            const double x1,
+            const double y1,
+            const double phi1,
             const ReedsSheppPathSegmentType *type = nullptr,
-            double t = std::numeric_limits<double>::max(),
-            double u = std::numeric_limits<double>::max(),
-            double v = std::numeric_limits<double>::max(),
-            double w = std::numeric_limits<double>::max(),
-            double z = std::numeric_limits<double>::max(),
-            double total_length = std::numeric_limits<double>::max(),
-            double turning_radius = 1.0)
+            const double t = std::numeric_limits<double>::max(),
+            const double u = std::numeric_limits<double>::max(),
+            const double v = std::numeric_limits<double>::max(),
+            const double w = std::numeric_limits<double>::max(),
+            const double z = std::numeric_limits<double>::max(),
+            const double total_length = std::numeric_limits<double>::max(),
+            const double turning_radius = 1.0)
             : m_type_(type),
               m_total_length_(total_length),
               m_tuning_radius_(turning_radius) {

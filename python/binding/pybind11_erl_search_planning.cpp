@@ -1,8 +1,8 @@
 #include "erl_common/pybind11.hpp"
+#include "erl_search_planning/amra_star.hpp"
 #include "erl_search_planning/astar.hpp"
 #include "erl_search_planning/planning_interface.hpp"
 #include "erl_search_planning/planning_interface_multi_resolutions.hpp"
-#include "erl_search_planning/amra_star.hpp"
 
 using namespace erl::common;
 using namespace erl::search_planning;
@@ -20,8 +20,8 @@ public:
 };
 
 static void
-BindHeuristics(py::module &m) {
-    py::class_<HeuristicBase, PyHeuristic<>, std::shared_ptr<HeuristicBase>>(m, ERL_AS_STRING(HeuristicBase))
+BindHeuristics(const py::module &m) {
+    py::class_<HeuristicBase, PyHeuristic<>, std::shared_ptr<HeuristicBase>>(m, "HeuristicBase")
         .def(py::init_alias<>())
         .def(py::init_alias<Eigen::VectorXd, Eigen::VectorXd, double>(), py::arg("goal"), py::arg("goal_tolerance"), py::arg("terminal_cost") = 0.0)
         .def("__call__", &HeuristicBase::operator(), py::arg("env_state"));
@@ -34,23 +34,19 @@ BindHeuristics(py::module &m) {
         m,
         "ManhattanDistanceHeuristic2D")
         .def(py::init<Eigen::VectorXd, Eigen::VectorXd, double>(), py::arg("goal"), py::arg("goal_tolerance"), py::arg("terminal_cost") = 0.0);
-    py::class_<DictionaryHeuristic, HeuristicBase, PyHeuristic<DictionaryHeuristic>, std::shared_ptr<DictionaryHeuristic>>(
-        m,
-        ERL_AS_STRING(DictionaryHeuristic))
+    py::class_<DictionaryHeuristic, HeuristicBase, PyHeuristic<DictionaryHeuristic>, std::shared_ptr<DictionaryHeuristic>>(m, "DictionaryHeuristic")
         .def(
             py::init<const std::string &, std::function<long(const erl::env::EnvironmentState &)>, bool>(),
             py::arg("csv_path"),
             py::arg("state_hashing_func"),
             py::arg("assert_on_missing") = true);
-    py::class_<MultiGoalsHeuristic, HeuristicBase, PyHeuristic<MultiGoalsHeuristic>, std::shared_ptr<MultiGoalsHeuristic>>(
-        m,
-        ERL_AS_STRING(MultiGoalsHeuristic))
+    py::class_<MultiGoalsHeuristic, HeuristicBase, PyHeuristic<MultiGoalsHeuristic>, std::shared_ptr<MultiGoalsHeuristic>>(m, "MultiGoalsHeuristic")
         .def(py::init<std::vector<std::shared_ptr<HeuristicBase>>>(), py::arg("heuristics"));
 }
 
 static void
-BindPlanningInterfaces(py::module &m) {
-    py::class_<PlanningInterface, std::shared_ptr<PlanningInterface>>(m, ERL_AS_STRING(PlanningInterface))
+BindPlanningInterfaces(const py::module &m) {
+    py::class_<PlanningInterface, std::shared_ptr<PlanningInterface>>(m, "PlanningInterface")
         .def(
             py::init<
                 std::shared_ptr<EnvironmentBase>,
@@ -89,7 +85,7 @@ BindPlanningInterfaces(py::module &m) {
 static void
 BindAStar(py::module &m) {
 
-    auto astar_module = m.def_submodule("astar");
+    const auto astar_module = m.def_submodule("astar");
     // Output
     py::class_<astar::Output, std::shared_ptr<astar::Output>>(astar_module, "Output")
         .def_readwrite("path", &astar::Output::path)
@@ -116,7 +112,7 @@ BindAStar(py::module &m) {
 }
 
 static void
-BindPlanningInterfaceMultiResolutions(py::module &m) {
+BindPlanningInterfaceMultiResolutions(const py::module &m) {
     py::class_<PlanningInterfaceMultiResolutions, std::shared_ptr<PlanningInterfaceMultiResolutions>>(m, "PlanningInterfaceMultiResolutions")
         .def(
             py::init<
@@ -162,8 +158,8 @@ BindPlanningInterfaceMultiResolutions(py::module &m) {
 }
 
 static void
-BindAMRAStar(py::module &m) {
-    auto amra_star_module = m.def_submodule("amra_star");
+BindAmraStar(py::module &m) {
+    const auto amra_star_module = m.def_submodule("amra_star");
     // Output
     py::class_<amra_star::Output, std::shared_ptr<amra_star::Output>>(amra_star_module, "Output")
         .def_readwrite("latest_plan_itr", &amra_star::Output::latest_plan_itr)
@@ -185,22 +181,22 @@ BindAMRAStar(py::module &m) {
         .def("save", &amra_star::Output::Save, py::arg("file_path").none(false));
 
     // AMRA*
-    py::class_<amra_star::AMRAStar> amra_star(amra_star_module, "AMRAStar");
-    py::class_<amra_star::AMRAStar::Setting, YamlableBase, std::shared_ptr<amra_star::AMRAStar::Setting>>(amra_star, "Setting")
-        .def_readwrite("time_limit", &amra_star::AMRAStar::Setting::time_limit)
-        .def_readwrite("w1_init", &amra_star::AMRAStar::Setting::w1_init)
-        .def_readwrite("w2_init", &amra_star::AMRAStar::Setting::w2_init)
-        .def_readwrite("w1_final", &amra_star::AMRAStar::Setting::w1_final)
-        .def_readwrite("w2_final", &amra_star::AMRAStar::Setting::w2_final)
-        .def_readwrite("w1_decay_factor", &amra_star::AMRAStar::Setting::w1_decay_factor)
-        .def_readwrite("w2_decay_factor", &amra_star::AMRAStar::Setting::w2_decay_factor)
-        .def_readwrite("log", &amra_star::AMRAStar::Setting::log);
+    py::class_<amra_star::AmraStar> amra_star(amra_star_module, "AmraStar");
+    py::class_<amra_star::AmraStar::Setting, YamlableBase, std::shared_ptr<amra_star::AmraStar::Setting>>(amra_star, "Setting")
+        .def_readwrite("time_limit", &amra_star::AmraStar::Setting::time_limit)
+        .def_readwrite("w1_init", &amra_star::AmraStar::Setting::w1_init)
+        .def_readwrite("w2_init", &amra_star::AmraStar::Setting::w2_init)
+        .def_readwrite("w1_final", &amra_star::AmraStar::Setting::w1_final)
+        .def_readwrite("w2_final", &amra_star::AmraStar::Setting::w2_final)
+        .def_readwrite("w1_decay_factor", &amra_star::AmraStar::Setting::w1_decay_factor)
+        .def_readwrite("w2_decay_factor", &amra_star::AmraStar::Setting::w2_decay_factor)
+        .def_readwrite("log", &amra_star::AmraStar::Setting::log);
     amra_star
         .def(
-            py::init<std::shared_ptr<PlanningInterfaceMultiResolutions>, std::shared_ptr<amra_star::AMRAStar::Setting>>(),
+            py::init<std::shared_ptr<PlanningInterfaceMultiResolutions>, std::shared_ptr<amra_star::AmraStar::Setting>>(),
             py::arg("planning_interface").none(false),
             py::arg("setting") = nullptr)
-        .def("plan", &amra_star::AMRAStar::Plan);
+        .def("plan", &amra_star::AmraStar::Plan);
 }
 
 PYBIND11_MODULE(PYBIND_MODULE_NAME, m) {
@@ -210,5 +206,5 @@ PYBIND11_MODULE(PYBIND_MODULE_NAME, m) {
     BindPlanningInterfaces(m);
     BindAStar(m);
     BindPlanningInterfaceMultiResolutions(m);
-    BindAMRAStar(m);
+    BindAmraStar(m);
 }

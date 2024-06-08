@@ -1,9 +1,9 @@
+#include "erl_common/test_helper.hpp"
 #include "erl_env/cost.hpp"
-#include "erl_search_planning/astar.hpp"
 #include "erl_env/environment_2d.hpp"
 #include "erl_env/environment_ltl_2d.hpp"
+#include "erl_search_planning/astar.hpp"
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
-#include "erl_common/test_helper.hpp"
 
 TEST(AStar2D, PlanWithSingleGoal) {
 
@@ -34,7 +34,6 @@ TEST(AStar2D, PlanWithSingleGoal) {
     auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, grid_map_data);
     Eigen::Vector2d metric_goal = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 10});
     Eigen::Vector2d metric_goal_tolerance = Eigen::Vector2d::Zero();
-    Eigen::Scalard terminal_cost(0);
     Eigen::Vector2d metric_start_coords = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
 
     std::shared_ptr<CostBase> cost_func = std::make_shared<EuclideanDistanceCost>();
@@ -43,12 +42,12 @@ TEST(AStar2D, PlanWithSingleGoal) {
     // setting->allow_diagonal = true;
     // setting->max_axis_step = 1;
     auto env = std::make_shared<Environment2D>(grid_map, setting, cost_func);
-    auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal, metric_goal_tolerance);
+    const auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goal, metric_goal_tolerance, /*terminal_cost*/ 10.0);
     std::shared_ptr<astar::Output> result;
     ReportTime<std::chrono::microseconds>("AStar2D::PlanWithSingleGoal", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
-    EXPECT_DOUBLE_EQ(result->cost, 16.071067811865476);
+    EXPECT_DOUBLE_EQ(result->cost - 10.0, 16.071067811865476);
     EXPECT_EQ(result->action_coords.size(), 14);
 }
 
@@ -96,10 +95,29 @@ TEST(AStar2D, PlanWithFourGoals) {
     Eigen::Vector2d metric_start_coords = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
     auto planning_interface = std::make_shared<PlanningInterface>(env, metric_start_coords, metric_goals, metric_goals_tolerance, terminal_cost);
     std::shared_ptr<astar::Output> result;
-    ReportTime<std::chrono::microseconds>("AStar2D::PlanWithFourGoals", 0, true, [&]() { result = astar::AStar(planning_interface).Plan(); });
+    auto astar_setting = std::make_shared<astar::AStar::Setting>();
+    astar_setting->log = true;
+    astar::AStar astar_planner(planning_interface, astar_setting);
+    ReportTime<std::chrono::microseconds>("AStar2D::PlanWithFourGoals", 0, true, [&]() { result = astar_planner.Plan(); });
+    std::cout << "Number of iterations: " << astar_planner.GetIterations() << std::endl;
     std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost << ", number of controls: " << result->action_coords.size() << std::endl;
 
     cv::Mat img = planning_interface->GetEnvironment()->ShowPaths({{result->goal_index, result->path}}, false);
+    if (astar_setting->log) {
+        for (auto &[itr, closed_state]: result->closed_list) {
+            Eigen::Vector2i grid_coords = grid_map_info->MeterToGridForPoints(closed_state);
+            img.at<cv::Vec3b>(grid_coords[0], grid_coords[1]) = cv::Vec3b(0, 255, 0);
+            // cv::circle(img, cv::Point(grid_coords[1], grid_coords[0]), 1, cv::Scalar(0, 255, 0), -1);
+        }
+        for (auto &[itr, opened_states]: result->opened_list) {
+            for (auto &opened_state: opened_states) {
+                if (opened_state.size() == 0) { continue; }
+                Eigen::Vector2i grid_coords = grid_map_info->MeterToGridForPoints(opened_state);
+                img.at<cv::Vec3b>(grid_coords[0], grid_coords[1]) = cv::Vec3b(0, 0, 255);
+                // cv::circle(img, cv::Point(grid_coords[1], grid_coords[0]), 1, cv::Scalar(0, 0, 255), -1);
+            }
+        }
+    }
     cv::imwrite(test_output_dir / "result.png", img);
 
     EXPECT_DOUBLE_EQ(result->cost, 1016.0710678118655);
@@ -112,6 +130,12 @@ TEST(AStar2D, PlanWithFourGoals) {
     out << YAML::EndSeq;
     std::ofstream ofs(test_output_dir / "path.yaml");
     ofs << out.c_str();
+
+    // continue planning to find path to the next goal
+    for (int i = 1; i < 4; ++i) {
+        result = astar_planner.Plan();
+        std::cout << "cost to goal " << result->goal_index << ": " << result->cost << std::endl;
+    }
 }
 
 TEST(AStar2D, LargeMap_Step1) {
@@ -123,7 +147,7 @@ TEST(AStar2D, LargeMap_Step1) {
     Eigen::Vector2d metric_start_coords(90, 10);
     Eigen::Vector2d metric_goal_coords(1, 50);
     Eigen::Vector2d metric_goal_tolerance(0., 0.);
-    Eigen::Scalard terrain_cost(0.);
+    // Eigen::Scalard terrain_cost(0.);
     Eigen::Vector2i map_shape = Eigen::Vector2i(1001, 1001);
     Eigen::Vector2d map_min = Eigen::Vector2d::Zero();
     Eigen::Vector2d map_max = Eigen::Vector2d::Constant(100.0);  // resolution = 0.1
@@ -183,7 +207,7 @@ TEST(AStar2D, LargeMap_Step2) {
     Eigen::Vector2d metric_start_coords(90, 10);
     Eigen::Vector2d metric_goal_coords(1, 50);
     Eigen::Vector2d metric_goal_tolerance(0., 0.);
-    Eigen::Scalard terrain_cost(0.);
+    // Eigen::Scalard terrain_cost(0.);
     Eigen::Vector2i map_shape = Eigen::Vector2i(1001, 1001);
     Eigen::Vector2d map_min = Eigen::Vector2d::Zero();
     Eigen::Vector2d map_max = Eigen::Vector2d::Constant(100.0);  // resolution = 0.1
@@ -243,7 +267,7 @@ TEST(AStar2D, LargeMap_Step3) {
     Eigen::Vector2d metric_start_coords(90, 10);
     Eigen::Vector2d metric_goal_coords(1, 50);
     Eigen::Vector2d metric_goal_tolerance(0., 0.);
-    Eigen::Scalard terrain_cost(0.);
+    // Eigen::Scalard terrain_cost(0.);
     Eigen::Vector2i map_shape = Eigen::Vector2i(1001, 1001);
     Eigen::Vector2d map_min = Eigen::Vector2d::Zero();
     Eigen::Vector2d map_max = Eigen::Vector2d::Constant(100.0);  // resolution = 0.1

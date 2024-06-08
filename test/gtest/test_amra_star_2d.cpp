@@ -1,15 +1,16 @@
-#include <gtest/gtest.h>
-#include <fstream>
-
 #include "erl_common/grid_map.hpp"
 #include "erl_common/test_helper.hpp"
 #include "erl_env/environment_2d.hpp"
-#include "erl_env/environment_ltl_2d.hpp"
 #include "erl_env/environment_grid_anchor.hpp"
+#include "erl_env/environment_ltl_2d.hpp"
 #include "erl_search_planning/amra_star.hpp"
-#include "erl_search_planning/planning_interface_multi_resolutions.hpp"
 #include "erl_search_planning/heuristic.hpp"
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
+#include "erl_search_planning/planning_interface_multi_resolutions.hpp"
+
+#include <gtest/gtest.h>
+
+#include <fstream>
 
 TEST(AMRAStar2D, AStarConsistency) {
     GTEST_PREPARE_OUTPUT_DIR();
@@ -17,9 +18,6 @@ TEST(AMRAStar2D, AStarConsistency) {
     using namespace erl::env;
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
-
-    std::filesystem::path output_dir = gtest_src_dir / test_output_dir;
-    if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
 
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
     // clang-format off
@@ -56,16 +54,18 @@ TEST(AMRAStar2D, AStarConsistency) {
         {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 0},
         {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 1}};
 
+    constexpr double terminal_cost = 10.0;
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
         // environments,
         anchor_env,
         heuristics,
         start,
         std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<AMRAStar::Setting>();
+        std::vector<Eigen::VectorXd>{goal_tolerance},
+        std::vector<double>{terminal_cost});
+    auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
-    AMRAStar planner(planning_interface, amra_setting);
+    AmraStar planner(planning_interface, amra_setting);
     std::shared_ptr<Output> result;
     ReportTime<std::chrono::microseconds>("AMRAStar2D::AStarConsistency", 0, true, [&]() { result = planner.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
@@ -73,14 +73,14 @@ TEST(AMRAStar2D, AStarConsistency) {
     auto &path = result->paths[result->latest_plan_itr];
     long num_points = path.cols();
     for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
-    EXPECT_DOUBLE_EQ(path_cost, 16.071067811865476);
-    if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
+    EXPECT_DOUBLE_EQ(path_cost - terminal_cost, 16.071067811865476);
+    if (amra_setting->log) { result->Save(test_output_dir / "amra.solution"); }
 }
 
 std::shared_ptr<erl::common::GridMapUnsigned2D>
 ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std::string &img_path = "") {
     std::ifstream file(filepath);
-    std::string line, word, temp;
+    std::string line, word;
     std::stringstream ss;
 
     auto reset = [](std::stringstream &ss) {
@@ -112,14 +112,14 @@ ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std
     std::getline(file, line);
     EXPECT_EQ(line, "map");
 
-    const std::map<char, int> kMovingAiDict = {
-        {'.', 1},   // free
-        {'G', 1},   // free
-        {'@', -1},  // obstacle
-        {'O', -1},  // obstacle
-        {'T', 0},   // obstacle
-        {'S', 1},
-        {'W', 2},     // water is only traversible from water
+    const std::map<char, int> moving_ai_dict = {
+        {'.', 1},     // free
+        {'G', 1},     // free
+        {'@', -1},    // obstacle
+        {'O', -1},    // obstacle
+        {'T', 0},     // obstacle
+        {'S', 1},     // swamp (passable from regular terrain)
+        {'W', 2},     // water (traversable, but not passable from terrain)
         {'(', 1000},  // start
         {'*', 1001},  // path
         {')', 1002},  // goal
@@ -131,14 +131,14 @@ ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std
     for (int r = 0; r < height; ++r) {
         std::getline(file, line);
         for (int c = 0; c < width; ++c) {
-            auto itr = kMovingAiDict.find(line[c]);
+            auto itr = moving_ai_dict.find(line[c]);
 
             int &map_val = map(r, c);
 
-            if (itr != kMovingAiDict.end()) {
-                map_val = kMovingAiDict.find(line[c])->second;
+            if (itr != moving_ai_dict.end()) {
+                map_val = moving_ai_dict.find(line[c])->second;
             } else {
-                int val = int(line[c]) - int('a') + 1;
+                int val = static_cast<int>(line[c]) - static_cast<int>('a') + 1;
                 map_val = val * 10;
             }
 
@@ -193,9 +193,9 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
 
     auto map_result_dir = result_dir / "AMRAStar2D" / "MultiResolutions" / map_name;
     if (!std::filesystem::exists(map_result_dir)) { std::filesystem::create_directories(map_result_dir); }
-    constexpr bool kDisplay = false;
+    constexpr bool display = false;
     std::string img_path = map_result_dir / "amra.png";
-    auto grid_map = ReadAmraStarTestMap(map_file, kDisplay, img_path);
+    auto grid_map = ReadAmraStarTestMap(map_file, display, img_path);
     auto grid_map_info = grid_map->info;
 
     auto env_high_res_setting = std::make_shared<Environment2D::Setting>();
@@ -224,10 +224,10 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
         {euclidean_heuristic, 3}};
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
-    auto setting = std::make_shared<AMRAStar::Setting>();
+    auto setting = std::make_shared<AmraStar::Setting>();
     setting->log = true;
     std::shared_ptr<Output> result;
-    AMRAStar amra_star(planning_interface, setting);
+    AmraStar amra_star(planning_interface, setting);
     ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() { result = amra_star.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
@@ -238,7 +238,7 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
 
 TEST(AMRAStar2D, MultiResolutions) {
     GTEST_PREPARE_OUTPUT_DIR();
-    std::filesystem::path data_dir = gtest_src_dir.parent_path() / "amra/dat";
+    const std::filesystem::path data_dir = gtest_src_dir.parent_path() / "amra/dat";
 
     RunTestWithMap(data_dir / "Boston_0_1024.map", {100, 100}, {1008, 756}, 1229.7363859129694);
     RunTestWithMap(data_dir / "Cauldron.map", {100, 800}, {950, 400}, 1076.9352455636508);
@@ -304,10 +304,10 @@ TEST(AMRAStar2D, LinearTemporalLogic) {
         {ltl_heuristic, 3}};
 
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
-    auto setting = std::make_shared<AMRAStar::Setting>();
+    auto setting = std::make_shared<AmraStar::Setting>();
     setting->log = true;
     std::shared_ptr<Output> result;
-    AMRAStar amra_star(planning_interface, setting);
+    AmraStar amra_star(planning_interface, setting);
     ReportTime<std::chrono::milliseconds>("AMRA* 2D LTL", 0, true, [&]() { result = amra_star.Plan(); });
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;

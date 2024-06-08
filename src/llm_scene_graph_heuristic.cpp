@@ -2,7 +2,7 @@
 
 namespace erl::search_planning {
 
-    LLMSceneGraphHeuristic::LLMSceneGraphHeuristic(std::shared_ptr<Setting> setting, std::shared_ptr<env::EnvironmentLTLSceneGraph> env)
+    LlmSceneGraphHeuristic::LlmSceneGraphHeuristic(std::shared_ptr<Setting> setting, std::shared_ptr<env::EnvironmentLTLSceneGraph> env)
         : m_setting_(std::move(setting)),
           m_env_(std::move(env)) {
         ERL_ASSERTM(m_setting_ != nullptr, "setting is nullptr.");
@@ -45,7 +45,7 @@ namespace erl::search_planning {
                             break;
                         }
                         default:
-                            throw std::runtime_error("Unknown LLMWaypoint type.");
+                            throw std::runtime_error("Unknown LlmWaypoint type.");
                     }
                 }
                 m_heuristic_cache_[room_uuid][fsa_state] = h;
@@ -54,7 +54,7 @@ namespace erl::search_planning {
     }
 
     double
-    LLMSceneGraphHeuristic::operator()(const env::EnvironmentState &env_state) const {
+    LlmSceneGraphHeuristic::operator()(const env::EnvironmentState &env_state) const {
         if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
 
         auto &scene_graph = m_env_->m_scene_graph_;
@@ -89,7 +89,7 @@ namespace erl::search_planning {
                 break;
             }
             default:
-                throw std::runtime_error("Unknown LLMWaypoint type.");
+                throw std::runtime_error("Unknown LlmWaypoint type.");
         }
 
         return h;
@@ -115,7 +115,7 @@ namespace erl::search_planning {
         // int q = env_state.grid[3];
         // if (fsa->IsAcceptingState(q)) { return 0.0; }  // accepting state
         // int room_id = room_maps.at(z).at<int>(x, y);
-        // ERL_DEBUG("room_id = %d, room_uuid = %d, fsa_state = %d", room_id, scene_graph->id_to_room.at(room_id)->uuid, q);
+        // ERL_DEBUG("room_id = {}, room_uuid = {}, fsa_state = {}", room_id, scene_graph->id_to_room.at(room_id)->uuid, q);
         // auto floor = scene_graph->floors.at(z);
         //
         // auto &cached_h = const_cast<double &>(m_heuristic_cache_.at(room_id).at(q));
@@ -133,7 +133,7 @@ namespace erl::search_planning {
         //                 // just go down/up stairs
         //                 ERL_ASSERTM(
         //                     room_id == room2->id,
-        //                     "llm path is wrong, expecting room(id %d, uuid %d), got room(id %d, uuid %d).",
+        //                     "llm path is wrong, expecting room(id {}, uuid {}), got room(id {}, uuid {}).",
         //                     room2->id,
         //                     room2->uuid,
         //                     room_id,
@@ -167,7 +167,7 @@ namespace erl::search_planning {
         //                 room_id = room_maps.at(z).at<int>(x, y);
         //                 ERL_ASSERTM(
         //                     room_id == room2->id,
-        //                     "llm path is wrong, expecting room(id %d, uuid %d), got room(id %d, uuid %d).",
+        //                     "llm path is wrong, expecting room(id {}, uuid {}), got room(id {}, uuid {}).",
         //                     room2->id,
         //                     room2->uuid,
         //                     room_id,
@@ -181,7 +181,7 @@ namespace erl::search_planning {
         //             auto object = scene_graph->GetNode<erl::env::scene_graph::Object>(waypoint.uuid2);
         //             ERL_ASSERTM(
         //                 object->parent_id == room->id,
-        //                 "llm path is wrong, expecting object(id %d, uuid %d) in room(id %d, uuid %d), got room(id %d, uuid %d).",
+        //                 "llm path is wrong, expecting object(id {}, uuid {}) in room(id {}, uuid {}), got room(id {}, uuid {}).",
         //                 object->id,
         //                 object->uuid,
         //                 room->id,
@@ -202,7 +202,7 @@ namespace erl::search_planning {
         //             break;
         //         }
         //         default:
-        //             throw std::runtime_error("Unknown LLMWaypoint type.");
+        //             throw std::runtime_error("Unknown LlmWaypoint type.");
         //     }
         // }
         // cached_h = cost;

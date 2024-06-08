@@ -1,14 +1,15 @@
 #include "erl_search_planning/reeds_shepp_path.hpp"
+
 #include "erl_common/angle_utils.hpp"
 #include "erl_common/polar_coords.hpp"
 
 namespace erl::search_planning {
 
-    const double kZero = -10 * std::numeric_limits<double>::epsilon();
+    constexpr double kZero = -10 * std::numeric_limits<double>::epsilon();
 
     // 8.1
-    inline static bool
-    LpSpLp(double x, double y, double phi, double &t, double &u, double &v) {  // left forward, straight forward, left forward
+    static bool
+    LpSpLp(const double x, const double y, const double phi, double &t, double &u, double &v) {  // left forward, straight forward, left forward
         common::CartesianToPolar(x - std::sin(phi), y - 1. + std::cos(phi), u, t);
         // path is not optimal if t or v is outside [0, pi]
         if (t >= kZero) {
@@ -19,14 +20,13 @@ namespace erl::search_planning {
     }
 
     // 8.2
-    inline static bool
-    LpSpRp(double x, double y, double phi, double &t, double &u, double &v) {  // left forward, straight forward, right forward
-        double xi = x + std::sin(phi);
-        double eta = y - 1. - std::cos(phi);
-        double u1 = xi * xi + eta * eta;
-        if (u1 >= 4.0) {
+    static bool
+    LpSpRp(const double x, const double y, const double phi, double &t, double &u, double &v) {  // left forward, straight forward, right forward
+        const double xi = x + std::sin(phi);
+        const double eta = y - 1. - std::cos(phi);
+        if (const double u1 = xi * xi + eta * eta; u1 >= 4.0) {
             u = std::sqrt(u1 - 4.0);
-            double theta = std::atan2(2.0, u);
+            const double theta = std::atan2(2.0, u);
             t = common::WrapAnglePi(std::atan2(eta, xi) + theta);
             v = common::WrapAnglePi(t - phi);
             return t >= kZero && v >= kZero;
@@ -35,9 +35,10 @@ namespace erl::search_planning {
     }
 
     void
-    CSC(double x,
-        double y,
-        double phi,
+    // ReSharper disable once CppInconsistentNaming
+    CSC(const double x,
+        const double y,
+        const double phi,
         const ReedsSheppPath::ReedsSheppPathSegmentType *&sol_type,
         double &sol_t,
         double &sol_u,
@@ -104,14 +105,13 @@ namespace erl::search_planning {
     }
 
     // 8.3, 8.4
-    inline static bool
-    LpRmL(double x, double y, double phi, double &t, double &u, double &v) {  // left forward, right backward, left forward/backward
-        double xi = x - std::sin(phi);
-        double eta = y - 1. + std::cos(phi);
-        double u1 = xi * xi + eta * eta;
-        if (u1 <= 16.0) {
+    static bool
+    LpRmL(const double x, const double y, const double phi, double &t, double &u, double &v) {  // left forward, right backward, left forward/backward
+        const double xi = x - std::sin(phi);
+        const double eta = y - 1. + std::cos(phi);
+        if (const double u1 = xi * xi + eta * eta; u1 <= 16.0) {
             u = -2.0 * std::asin(0.25 * std::sqrt(u1));
-            double theta = std::atan2(eta, xi);
+            const double theta = std::atan2(eta, xi);
             t = common::WrapAnglePi(theta + 0.5 * u + M_PI);
             v = common::WrapAnglePi(phi - t + u);
             return t >= kZero && u <= kZero;
@@ -120,9 +120,10 @@ namespace erl::search_planning {
     }
 
     void
-    CCC(double x,
-        double y,
-        double phi,
+    // ReSharper disable once CppInconsistentNaming
+    CCC(const double x,
+        const double y,
+        const double phi,
         const ReedsSheppPath::ReedsSheppPathSegmentType *&sol_type,
         double &sol_t,
         double &sol_u,
@@ -162,8 +163,8 @@ namespace erl::search_planning {
         // (x, y, phi) to (0, 0, 0)
         // (0, 0, 0) to (x', y', -phi), x'=-x*cos(phi)-y*sin(phi), y'=x*sin(phi)-y*cos(phi)
         // flip sign, (0, 0, 0) to (-x', y', phi), x'' = -x' = x*cos(phi)+y*sin(phi)
-        double xb = x * std::cos(phi) + y * std::sin(phi);
-        double yb = x * std::sin(phi) - y * std::cos(phi);
+        const double xb = x * std::cos(phi) + y * std::sin(phi);
+        const double yb = x * std::sin(phi) - y * std::cos(phi);
         if (LpRmL(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
             sol_t = v;
@@ -196,23 +197,22 @@ namespace erl::search_planning {
 
     // 8.6
     inline void
-    TauOmega(double u, double v, double xi, double eta, double phi, double &tau, double &omega) {
-        double delta = common::WrapAnglePi(u - v);
-        double a = std::sin(u) - std::sin(delta);
-        double b = std::cos(u) - std::cos(delta) - 1.0;
-        double t1 = std::atan2(eta * a - xi * b, xi * a + eta * b);
-        double t2 = 2.0 * (std::cos(delta) - std::cos(v) - std::cos(u)) + 3.0;
+    TauOmega(const double u, const double v, const double xi, const double eta, const double phi, double &tau, double &omega) {
+        const double delta = common::WrapAnglePi(u - v);
+        const double a = std::sin(u) - std::sin(delta);
+        const double b = std::cos(u) - std::cos(delta) - 1.0;
+        const double t1 = std::atan2(eta * a - xi * b, xi * a + eta * b);
+        const double t2 = 2.0 * (std::cos(delta) - std::cos(v) - std::cos(u)) + 3.0;
         tau = (t2 < 0) ? common::WrapAnglePi(t1 + M_PI) : common::WrapAnglePi(t1);
         omega = common::WrapAnglePi(tau - u + v - phi);
     }
 
     // 8.7
     inline bool
-    LpRupLumRm(double x, double y, double phi, double &t, double &u, double &v) {
-        double xi = x + std::sin(phi);
-        double eta = y - 1. - std::cos(phi);
-        double rho = 0.25 * (2.0 + std::sqrt(xi * xi + eta * eta));
-        if (rho <= 1.0) {
+    LpRupLumRm(const double x, const double y, const double phi, double &t, double &u, double &v) {
+        const double xi = x + std::sin(phi);
+        const double eta = y - 1. - std::cos(phi);
+        if (const double rho = 0.25 * (2.0 + std::sqrt(xi * xi + eta * eta)); rho <= 1.0) {
             u = std::acos(rho);  // [0, pi/2]
             TauOmega(u, -u, xi, eta, phi, t, v);
             return t >= kZero && v <= -kZero;
@@ -222,11 +222,10 @@ namespace erl::search_planning {
 
     // 8.8
     inline bool
-    LpRumLumRp(double x, double y, double phi, double &t, double &u, double &v) {
-        double xi = x + std::sin(phi);
-        double eta = y - 1. - std::cos(phi);
-        double rho = (20. - xi * xi - eta * eta) / 16.;
-        if (rho >= 0 && rho <= 1) {
+    LpRumLumRp(const double x, const double y, const double phi, double &t, double &u, double &v) {
+        const double xi = x + std::sin(phi);
+        const double eta = y - 1. - std::cos(phi);
+        if (const double rho = (20. - xi * xi - eta * eta) / 16.; rho >= 0 && rho <= 1) {
             u = -std::acos(rho);  // [-pi/2, 0]
             TauOmega(u, u, xi, eta, phi, t, v);
             return t >= kZero && v >= kZero;
@@ -235,10 +234,11 @@ namespace erl::search_planning {
     }
 
     void
+    // ReSharper disable once CppInconsistentNaming
     CCCC(
-        double x,
-        double y,
-        double phi,
+        const double x,
+        const double y,
+        const double phi,
         const ReedsSheppPath::ReedsSheppPathSegmentType *&sol_type,
         double &sol_t,
         double &sol_u,
@@ -315,13 +315,12 @@ namespace erl::search_planning {
 
     // 8.9
     inline bool
-    LpRmSmLm(double x, double y, double phi, double &t, double &u, double &v) {
-        double xi = x - std::sin(phi);
-        double eta = y - 1. + std::cos(phi);
-        double rho = xi * xi + eta * eta;
-        if (rho >= 4.0) {
-            double r = std::sqrt(rho - 4.0);
-            double theta = std::atan2(eta, xi);
+    LpRmSmLm(const double x, const double y, const double phi, double &t, double &u, double &v) {
+        const double xi = x - std::sin(phi);
+        const double eta = y - 1. + std::cos(phi);
+        if (const double rho = xi * xi + eta * eta; rho >= 4.0) {
+            const double r = std::sqrt(rho - 4.0);
+            const double theta = std::atan2(eta, xi);
             u = 2.0 - r;
             t = common::WrapAnglePi(theta + std::atan2(r, -2.0));
             v = common::WrapAnglePi(phi - M_PI_2 - t);
@@ -332,11 +331,10 @@ namespace erl::search_planning {
 
     // 8.10
     inline bool
-    LpRmSmRm(double x, double y, double phi, double &t, double &u, double &v) {
-        double xi = x + std::sin(phi);
-        double eta = y - 1.0 - std::cos(phi);
-        double rho = xi * xi + eta * eta;
-        if (rho >= 4.0) {
+    LpRmSmRm(const double x, const double y, const double phi, double &t, double &u, double &v) {
+        const double xi = x + std::sin(phi);
+        const double eta = y - 1.0 - std::cos(phi);
+        if (double rho = xi * xi + eta * eta; rho >= 4.0) {
             rho = std::sqrt(rho);
             t = std::atan2(xi, -eta);
             u = 2.0 - rho;
@@ -347,6 +345,7 @@ namespace erl::search_planning {
     }
 
     void
+    // ReSharper disable once CppInconsistentNaming
     CCSC(
         double x,
         double y,
@@ -499,11 +498,10 @@ namespace erl::search_planning {
 
     // 8.11
     inline bool
-    LpRmSLmRp(double x, double y, double phi, double &t, double &u, double &v) {
-        double xi = x + std::sin(phi);
-        double eta = y - 1. - std::cos(phi);
-        double rho = xi * xi + eta * eta;
-        if (rho >= 4.0) {
+    LpRmSLmRp(const double x, const double y, const double phi, double &t, double &u, double &v) {
+        const double xi = x + std::sin(phi);
+        const double eta = y - 1. - std::cos(phi);
+        if (const double rho = xi * xi + eta * eta; rho >= 4.0) {
             u = 4.0 - std::sqrt(rho - 4.0);
             if (u <= -kZero) {
                 t = common::WrapAnglePi(std::atan2((4.0 - u) * xi - 2.0 * eta, -2.0 * xi + (u - 4.0) * eta));
@@ -515,10 +513,11 @@ namespace erl::search_planning {
     }
 
     void
+    // ReSharper disable once CppInconsistentNaming
     CCSCC(
-        double x,
-        double y,
-        double phi,
+        const double x,
+        const double y,
+        const double phi,
         const ReedsSheppPath::ReedsSheppPathSegmentType *&sol_type,
         double &sol_t,
         double &sol_u,
@@ -566,14 +565,21 @@ namespace erl::search_planning {
     }
 
     std::shared_ptr<ReedsSheppPath>
-    ReedsSheppPath::Create(double x0, double y0, double phi0, double x1, double y1, double phi1, double turning_radius) {
-        double dx = x1 - x0;
-        double dy = y1 - y0;
-        double c = std::cos(phi0);
-        double s = std::sin(phi0);
+    ReedsSheppPath::Create(
+        const double x0,
+        const double y0,
+        const double phi0,
+        const double x1,
+        const double y1,
+        const double phi1,
+        const double turning_radius) {
+        const double dx = x1 - x0;
+        const double dy = y1 - y0;
+        const double c = std::cos(phi0);
+        const double s = std::sin(phi0);
         double x = c * dx + s * dy;
         double y = -s * dx + c * dy;
-        double phi = phi1 - phi0;
+        const double phi = phi1 - phi0;
         x /= turning_radius;
         y /= turning_radius;
 
@@ -591,7 +597,7 @@ namespace erl::search_planning {
     }
 
     void
-    ReedsSheppPath::Interpolate(double t, double &x, double &y, double &phi) const {
+    ReedsSheppPath::Interpolate(const double t, double &x, double &y, double &phi) const {
         if (t <= 0.0) {
             x = m_start_[0];
             y = m_start_[1];
@@ -614,12 +620,11 @@ namespace erl::search_planning {
 
             auto &seg_type = m_type_[seg_type_index];
             double v;
-            const double &kSegLength = m_length_[seg_type_index];
-            if (kSegLength >= 0) {
-                v = std::min(remaining_length, kSegLength);
+            if (const double &seg_length = m_length_[seg_type_index]; seg_length >= 0) {
+                v = std::min(remaining_length, seg_length);
                 remaining_length -= v;
             } else {
-                v = std::max(-remaining_length, kSegLength);
+                v = std::max(-remaining_length, seg_length);
                 remaining_length += v;
             }
 
@@ -649,7 +654,7 @@ namespace erl::search_planning {
     }
 
     void
-    ReedsSheppPath::InterpolateNPoints(std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const {
+    ReedsSheppPath::InterpolateNPoints(const std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const {
         xs.reserve(n);
         ys.reserve(n);
         phis.reserve(n);
@@ -663,7 +668,7 @@ namespace erl::search_planning {
         double phi_base = m_start_[2];
         int seg_index = 0;
 
-        auto step = [&x_base, &y_base, &phi_base, &seg_index, this](double v, double &x_out, double &y_out, double &phi_out) {
+        auto step = [&x_base, &y_base, &phi_base, &seg_index, this](const double v, double &x_out, double &y_out, double &phi_out) {
             switch (m_type_[seg_index]) {
                 case kReedsSheppLeft:
                     x_out = x_base + std::sin(phi_base + v) - std::sin(phi_base);
@@ -687,12 +692,11 @@ namespace erl::search_planning {
         };
 
         double s = 0;
-        double ds = m_total_length_ / double(n - 1);
+        const double ds = m_total_length_ / static_cast<double>(n - 1);
         double x, y, phi;
         while (m_type_[seg_index] != kReedsSheppNop) {
             s += ds;
-            double seg_length = std::fabs(m_length_[seg_index]);
-            if (s >= seg_length) {
+            if (const double seg_length = std::fabs(m_length_[seg_index]); s >= seg_length) {
                 step(m_length_[seg_index], x_base, y_base, phi_base);  // move to the end of the segment, i.e. the start of the next segment
                 s -= seg_length;
                 ++seg_index;
@@ -704,15 +708,15 @@ namespace erl::search_planning {
                 phi = phi_base;
                 ERL_DEBUG_ASSERT(
                     std::fabs(x_base * m_tuning_radius_ + m_start_[0] - m_goal_[0]) < 1.e-6,
-                    "x_base = %f, m_goal_[0] = %f before interpolation ends.",
+                    "x_base = {}, m_goal_[0] = {} before interpolation ends.",
                     x_base,
                     m_goal_[0]);
                 ERL_DEBUG_ASSERT(
                     std::fabs(y_base * m_tuning_radius_ + m_start_[1] - m_goal_[1]) < 1.e-6,
-                    "y_base = %f, m_goal_[1] = %f before interpolation ends.",
+                    "y_base = {}, m_goal_[1] = {} before interpolation ends.",
                     y_base,
                     m_goal_[1]);
-                ERL_DEBUG_ASSERT(std::fabs(phi_base - m_goal_[2]) < 1.e-6, "phi_base = %f, m_goal_[2] = %f before interpolation ends.", phi_base, m_goal_[2]);
+                ERL_DEBUG_ASSERT(std::fabs(phi_base - m_goal_[2]) < 1.e-6, "phi_base = {}, m_goal_[2] = {} before interpolation ends.", phi_base, m_goal_[2]);
             } else if (m_length_[seg_index] >= 0) {
                 step(s, x, y, phi);
             } else {

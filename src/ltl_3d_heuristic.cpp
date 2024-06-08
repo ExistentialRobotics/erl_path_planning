@@ -1,5 +1,7 @@
 #include "erl_search_planning/ltl_3d_heuristic.hpp"
 
+#include <boost/heap/d_ary_heap.hpp>
+
 namespace erl::search_planning {
 
     LinearTemporalLogicHeuristic3D::LinearTemporalLogicHeuristic3D(
@@ -16,9 +18,9 @@ namespace erl::search_planning {
         long label_map_cols = label_maps_in.at(0).cols();
         int grid_map_rows = grid_map_info->Shape(0);
         int grid_map_cols = grid_map_info->Shape(1);
-        auto num_floors = int(label_maps_in.size());
-        ERL_ASSERTM(label_map_rows == grid_map_rows, "label_maps #rows is not equal to grid_map_info #rows: %ld vs %d.", label_map_rows, grid_map_rows);
-        ERL_ASSERTM(label_map_cols == grid_map_cols, "label_maps #cols is not equal to grid_map_info #cols: %ld vs %d.", label_map_cols, grid_map_cols);
+        auto num_floors = static_cast<int>(label_maps_in.size());
+        ERL_ASSERTM(label_map_rows == grid_map_rows, "label_maps #rows is not equal to grid_map_info #rows: {} vs {}.", label_map_rows, grid_map_rows);
+        ERL_ASSERTM(label_map_cols == grid_map_cols, "label_maps #cols is not equal to grid_map_info #cols: {} vs {}.", label_map_cols, grid_map_cols);
 
         auto fsa_setting = fsa->GetSetting();
         auto num_labels = fsa->GetAlphabetSize();
@@ -40,7 +42,7 @@ namespace erl::search_planning {
         label_to_kdtree.resize(num_labels);
         for (uint32_t label = 0; label < num_labels; ++label) {
             auto &metric_states = label_to_metric_states[label];
-            auto num_states = long(metric_states.size());
+            auto num_states = static_cast<long>(metric_states.size());
             if (!num_states) { continue; }
             Eigen::Map<Eigen::Matrix3Xd> data_map(metric_states[0].data(), 3, num_states);
             label_to_kdtree[label] = std::make_shared<KdTree>(data_map);
@@ -53,7 +55,7 @@ namespace erl::search_planning {
             uint32_t fsa_state = 0;
             std::shared_ptr<Node> parent = nullptr;
 
-            Node(double cost_in, uint32_t label_in, uint32_t fsa_state_in, std::shared_ptr<Node> parent_in)
+            Node(const double cost_in, const uint32_t label_in, const uint32_t fsa_state_in, std::shared_ptr<Node> parent_in)
                 : cost(cost_in),
                   label(label_in),
                   fsa_state(fsa_state_in),
@@ -61,7 +63,7 @@ namespace erl::search_planning {
         };
 
         struct CompareNode {
-            [[nodiscard]] inline bool
+            [[nodiscard]] bool
             operator()(const std::shared_ptr<Node> &n1, const std::shared_ptr<Node> &n2) const {
                 return n1->cost > n2->cost;
             }
@@ -73,6 +75,7 @@ namespace erl::search_planning {
         using HeapKey = PriorityQueue::handle_type;
 
         // cost from one label to another
+        // ReSharper disable once CppInconsistentNaming
         Eigen::MatrixXd cost_l2l = Eigen::MatrixXd::Constant(num_labels, num_labels, std::numeric_limits<double>::infinity());  // transition cost
         label_distance.setConstant(num_labels, num_fsa_states, std::numeric_limits<double>::infinity());                        // g values
         Eigen::MatrixXb closed = Eigen::MatrixXb::Constant(num_labels, num_fsa_states, false);                                  // closed set
@@ -103,7 +106,7 @@ namespace erl::search_planning {
                 std::swap(label1_kdtree, label2_kdtree);
             }
             double min_d = std::numeric_limits<double>::infinity();
-            auto num_label1_states = long(label1_kdtree->kdtree_get_point_count());
+            auto num_label1_states = static_cast<long>(label1_kdtree->kdtree_get_point_count());
             for (long i = 0; i < num_label1_states; ++i) {
                 Eigen::Vector3d &&state1 = label1_kdtree->GetPoint(i);
                 long index = -1;
@@ -148,7 +151,7 @@ namespace erl::search_planning {
         }
 
         auto t1 = std::chrono::high_resolution_clock::now();
-        ERL_INFO("LTL 3D heuristic computation time: %f ms.", std::chrono::duration<double, std::milli>(t1 - t0).count());
+        ERL_INFO("LTL 3D heuristic computation time: {} ms.", std::chrono::duration<double, std::milli>(t1 - t0).count());
     }
 
     double
@@ -156,9 +159,9 @@ namespace erl::search_planning {
         if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
         if (label_distance.size() == 0) { return 0.; }
         double h = std::numeric_limits<double>::infinity();
-        auto q = uint32_t(env_state.grid[3]);        // (x, y, z, q)
-        if (fsa->IsSinkState(q)) { return h; }       // sink state, never reach the goal
-        if (fsa->IsAcceptingState(q)) { return 0; }  // accepting state, goal
+        auto q = static_cast<uint32_t>(env_state.grid[3]);  // (x, y, z, q)
+        if (fsa->IsSinkState(q)) { return h; }              // sink state, never reach the goal
+        if (fsa->IsAcceptingState(q)) { return 0; }         // accepting state, goal
         // for each successor of q
         auto num_states = fsa->GetSetting()->num_states;
         for (uint32_t nq = 0; nq < num_states; ++nq) {
@@ -171,8 +174,7 @@ namespace erl::search_planning {
                 double c = std::numeric_limits<double>::infinity();
                 label_kdtree->Knn(1, env_state.metric.head<3>(), index, c);
                 c = std::sqrt(c);
-                double tentative_h = c + label_distance(label, nq);
-                if (tentative_h < h) { h = tentative_h; }
+                if (const double tentative_h = c + label_distance(label, nq); tentative_h < h) { h = tentative_h; }
             }
         }
         return h;

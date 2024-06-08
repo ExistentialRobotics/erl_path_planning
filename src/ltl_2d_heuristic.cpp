@@ -1,5 +1,7 @@
-#include <absl/container/flat_hash_map.h>
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
+
+#include <absl/container/flat_hash_map.h>
+#include <boost/heap/d_ary_heap.hpp>
 
 namespace erl::search_planning {
 
@@ -14,12 +16,12 @@ namespace erl::search_planning {
         ERL_ASSERTM(grid_map_info != nullptr, "grid_map_info is nullptr.");
         ERL_ASSERTM(
             label_map.rows() == grid_map_info->Rows(),
-            "label_map #rows is not equal to grid_map_info #rows: %ld vs %d.",
+            "label_map #rows is not equal to grid_map_info #rows: {} vs {}.",
             label_map.rows(),
             grid_map_info->Rows());
         ERL_ASSERTM(
             label_map.cols() == grid_map_info->Cols(),
-            "label_map #cols is not equal to grid_map_info #cols: %ld vs %d.",
+            "label_map #cols is not equal to grid_map_info #cols: {} vs {}.",
             label_map.cols(),
             grid_map_info->Cols());
 
@@ -42,7 +44,7 @@ namespace erl::search_planning {
         label_to_kdtree.resize(num_labels);
         for (uint32_t label = 0; label < num_labels; ++label) {
             auto &metric_states = label_to_metric_states[label];
-            auto num_states = long(metric_states.size());
+            auto num_states = static_cast<long>(metric_states.size());
             if (!num_states) { continue; }
             label_to_kdtree[label] = std::make_shared<geometry::KdTree2d>(metric_states[0].data(), num_states);
         }
@@ -54,7 +56,7 @@ namespace erl::search_planning {
             uint32_t fsa_state = 0;
             std::shared_ptr<Node> parent = nullptr;
 
-            Node(double cost_in, uint32_t label_in, uint32_t fsa_state_in, std::shared_ptr<Node> parent_in)
+            Node(const double cost_in, const uint32_t label_in, const uint32_t fsa_state_in, std::shared_ptr<Node> parent_in)
                 : cost(cost_in),
                   label(label_in),
                   fsa_state(fsa_state_in),
@@ -62,7 +64,7 @@ namespace erl::search_planning {
         };
 
         struct CompareNode {
-            [[nodiscard]] inline bool
+            [[nodiscard]] bool
             operator()(const std::shared_ptr<Node> &n1, const std::shared_ptr<Node> &n2) const {
                 return n1->cost > n2->cost;
             }
@@ -74,6 +76,7 @@ namespace erl::search_planning {
         using HeapKey = PriorityQueue::handle_type;
 
         // cost from one label to another
+        // ReSharper disable once CppInconsistentNaming
         Eigen::MatrixXd cost_l2l = Eigen::MatrixXd::Constant(num_labels, num_labels, std::numeric_limits<double>::infinity());  // transition cost
         label_distance.setConstant(num_labels, num_fsa_states, std::numeric_limits<double>::infinity());                        // g values
         Eigen::MatrixXb closed = Eigen::MatrixXb::Constant(num_labels, num_fsa_states, false);                                  // closed set
@@ -104,7 +107,7 @@ namespace erl::search_planning {
                 std::swap(label1_kdtree, label2_kdtree);
             }
             double min_d = std::numeric_limits<double>::infinity();
-            auto num_label1_states = long(label1_kdtree->kdtree_get_point_count());
+            auto num_label1_states = static_cast<long>(label1_kdtree->kdtree_get_point_count());
             for (long i = 0; i < num_label1_states; ++i) {
                 Eigen::Vector2d &&state1 = label1_kdtree->GetPoint(i);
                 long index = -1;
@@ -154,23 +157,22 @@ namespace erl::search_planning {
         if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
         if (label_distance.size() == 0) { return 0.; }
         double h = std::numeric_limits<double>::infinity();
-        auto q = uint32_t(env_state.grid[2]);
+        auto q = static_cast<uint32_t>(env_state.grid[2]);
         if (fsa->IsSinkState(q)) { return h; }       // sink state, never reach the goal
         if (fsa->IsAcceptingState(q)) { return 0; }  // accepting state, goal
         // for each successor of q
-        auto num_states = fsa->GetSetting()->num_states;
+        const auto num_states = fsa->GetSetting()->num_states;
         for (uint32_t nq = 0; nq < num_states; ++nq) {
             if (q == nq) { continue; }
             std::vector<uint32_t> labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
-            for (uint32_t &label: labels) {
+            for (const uint32_t &label: labels) {
                 auto label_kdtree = label_to_kdtree[label];
                 if (label_kdtree == nullptr) { continue; }
                 long index = -1;
                 double c = std::numeric_limits<double>::infinity();
                 label_kdtree->Knn(1, env_state.metric.head<2>(), index, c);
                 c = std::sqrt(c);
-                double tentative_h = c + label_distance(label, nq);
-                if (tentative_h < h) { h = tentative_h; }
+                if (const double tentative_h = c + label_distance(label, nq); tentative_h < h) { h = tentative_h; }
             }
         }
         return h;

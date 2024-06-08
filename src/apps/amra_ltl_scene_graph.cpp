@@ -1,11 +1,13 @@
-#include <boost/program_options.hpp>
-#include <filesystem>
-#include "erl_search_planning/amra_star.hpp"
-#include "erl_search_planning/planning_interface_multi_resolutions.hpp"
-#include "erl_search_planning/ltl_3d_heuristic.hpp"
-#include "erl_search_planning/llm_scene_graph_heuristic.hpp"
-#include "erl_env/environment_ltl_scene_graph.hpp"
 #include "erl_common/yaml.hpp"
+#include "erl_env/environment_ltl_scene_graph.hpp"
+#include "erl_search_planning/amra_star.hpp"
+#include "erl_search_planning/llm_scene_graph_heuristic.hpp"
+#include "erl_search_planning/ltl_3d_heuristic.hpp"
+#include "erl_search_planning/planning_interface_multi_resolutions.hpp"
+
+#include <boost/program_options.hpp>
+
+#include <filesystem>
 
 struct Options : public erl::common::Yamlable<Options> {
     std::string output_dir = {};
@@ -27,11 +29,11 @@ struct Options : public erl::common::Yamlable<Options> {
     bool hold_for_visualization = false;
 };
 
-inline static const char *hierarchy_layout = R"(Hierarchical Planning Domain Layout:
+inline static const char *g_hierarchy_layout = R"(Hierarchical Planning Domain Layout:
 |  LEVEL  | Anchor | Occupancy | Object | Room | Floor |
-| ENABLED |   %c    |     %c     |   %c    |  %c   |   %c   |
-|   LTL   |   %c    |     %c     |   %c    |  %c   |   %c   |
-|   LLM   |   %c    |     %c     |   %c    |  %c   |   %c   |)";
+| ENABLED |   {:c}    |     {:c}     |   {:c}    |  {:c}   |   {:c}   |
+|   LTL   |   {:c}    |     {:c}     |   {:c}    |  {:c}   |   {:c}   |
+|   LLM   |   {:c}    |     {:c}     |   {:c}    |  {:c}   |   {:c}   |)";
 
 int
 main(int argc, char *argv[]) {
@@ -40,7 +42,7 @@ main(int argc, char *argv[]) {
 
     std::string max_level_str;
     Options options;
-    bool use_llm_heuristic = false;
+    bool use_llm_heuristic;
     char level_enabled_chars[5] = {'1', '0', '0', '0', '0'};
     char level_ltl_chars[5] = {'1', 'X', 'X', 'X', 'X'};
     char level_llm_chars[5] = {'X', 'X', 'X', 'X', 'X'};
@@ -118,7 +120,8 @@ main(int argc, char *argv[]) {
         if (max_level_str.empty()) {
             std::cerr << "max_level is not provided." << std::endl;
             return 1;
-        } else if (max_level_str == "kOcc") {
+        }
+        if (max_level_str == "kOcc") {
             options.max_level = scene_graph::Node::Type::kOcc;
         } else if (max_level_str == "kFloor") {
             options.max_level = scene_graph::Node::Type::kFloor;
@@ -130,58 +133,58 @@ main(int argc, char *argv[]) {
             std::cerr << "max_level is not valid." << std::endl;
             return 1;
         }
-        for (int i = 0; i <= int(options.max_level); ++i) { level_enabled_chars[i + 1] = '1'; }
+        for (int i = 0; i <= static_cast<int>(options.max_level); ++i) { level_enabled_chars[i + 1] = '1'; }
         if (options.ltl_heuristic_layout.empty()) {
             std::cerr << "ltl_heuristic_config is not provided." << std::endl;
             return 1;
-        } else if (options.ltl_heuristic_layout.length() != std::size_t(options.max_level) + 2) {
+        }
+        if (options.ltl_heuristic_layout.length() != static_cast<std::size_t>(options.max_level) + 2) {
             std::cerr << "ltl_heuristic_config is not valid with max_level = " << max_level_str << std::endl;
             return 1;
-        } else {
-            for (char c: options.ltl_heuristic_layout) {
-                if (c != '0' && c != '1') {
-                    std::cerr << "ltl_heuristic_config should only contain 0 or 1." << std::endl;
-                    return 1;
-                }
-            }
-            if (options.ltl_heuristic_layout[0] != '1') {
-                std::cerr << "ltl_heuristic_config should start with 1 to enable LTL heuristic for the anchor level." << std::endl;
+        }
+        for (char c: options.ltl_heuristic_layout) {
+            if (c != '0' && c != '1') {
+                std::cerr << "ltl_heuristic_config should only contain 0 or 1." << std::endl;
                 return 1;
             }
-            for (std::size_t i = 0; i < options.ltl_heuristic_layout.length(); ++i) {
-                if (options.ltl_heuristic_layout[i] == '1') {
-                    level_ltl_chars[i] = '1';
-                } else {
-                    level_ltl_chars[i] = '0';
-                }
+        }
+        if (options.ltl_heuristic_layout[0] != '1') {
+            std::cerr << "ltl_heuristic_config should start with 1 to enable LTL heuristic for the anchor level." << std::endl;
+            return 1;
+        }
+        for (std::size_t i = 0; i < options.ltl_heuristic_layout.length(); ++i) {
+            if (options.ltl_heuristic_layout[i] == '1') {
+                level_ltl_chars[i] = '1';
+            } else {
+                level_ltl_chars[i] = '0';
             }
         }
         if (options.llm_heuristic_layout.empty()) {
             std::cerr << "llm_heuristic_config is not provided." << std::endl;
             return 1;
-        } else if (options.llm_heuristic_layout.length() != std::size_t(options.max_level) + 2) {
+        }
+        if (options.llm_heuristic_layout.length() != static_cast<std::size_t>(options.max_level) + 2) {
             std::cerr << "llm_heuristic_config is not valid with max_level = " << max_level_str << std::endl;
             return 1;
-        } else {
-            for (char c: options.llm_heuristic_layout) {
-                if (c != '0' && c != '1') {
-                    std::cerr << "llm_heuristic_config should only contain 0 or 1." << std::endl;
-                    return 1;
-                }
-            }
-            if (options.llm_heuristic_layout[0] != '0') {
-                std::cerr << "llm_heuristic_layout should start with 0 because anchor level does not allow LLM heuristic." << std::endl;
+        }
+        for (char c: options.llm_heuristic_layout) {
+            if (c != '0' && c != '1') {
+                std::cerr << "llm_heuristic_config should only contain 0 or 1." << std::endl;
                 return 1;
             }
-            for (std::size_t i = 0; i < options.llm_heuristic_layout.length(); ++i) {
-                if (options.llm_heuristic_layout[i] == '1') {
-                    level_llm_chars[i] = '1';
-                } else {
-                    level_llm_chars[i] = '0';
-                }
+        }
+        if (options.llm_heuristic_layout[0] != '0') {
+            std::cerr << "llm_heuristic_layout should start with 0 because anchor level does not allow LLM heuristic." << std::endl;
+            return 1;
+        }
+        for (std::size_t i = 0; i < options.llm_heuristic_layout.length(); ++i) {
+            if (options.llm_heuristic_layout[i] == '1') {
+                level_llm_chars[i] = '1';
+            } else {
+                level_llm_chars[i] = '0';
             }
         }
-        use_llm_heuristic = std::any_of(options.ltl_heuristic_layout.begin(), options.ltl_heuristic_layout.end(), [](char c) { return c == '1'; });
+        use_llm_heuristic = std::any_of(options.ltl_heuristic_layout.begin(), options.ltl_heuristic_layout.end(), [](const char c) { return c == '1'; });
         if (use_llm_heuristic && options.llm_heuristic_file.empty()) {
             std::cerr << "llm_heuristic_file is not provided." << std::endl;
             return 1;
@@ -197,7 +200,7 @@ main(int argc, char *argv[]) {
 
     if (options.map_data_dir.empty()) {
         options.map_data_dir = std::filesystem::path(options.scene_graph_file).parent_path().string();
-        ERL_INFO("map_data_dir is not provided, using the default value: %s", options.map_data_dir.c_str());
+        ERL_INFO("map_data_dir is not provided, using the default value: {}", options.map_data_dir);
     }
 
     // create output dir
@@ -214,8 +217,8 @@ main(int argc, char *argv[]) {
     // create the environment
     env_setting->max_level = options.max_level;
     if (options.robot_radius > 0) {
-        long n = 360;
-        Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(n, 0, 2 * M_PI - 2 * M_PI / n);
+        constexpr long n = 360;
+        Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(n, 0, 2 * M_PI - 2 * M_PI / static_cast<double>(n));
         env_setting->shape.resize(2, n);
         for (long i = 0; i < n; ++i) {
             env_setting->shape(0, i) = options.robot_radius * cos(angles[i]);
@@ -225,9 +228,9 @@ main(int argc, char *argv[]) {
     env_setting->object_reach_distance = options.object_reach_radius;
     auto env = std::make_shared<EnvironmentLTLSceneGraph>(scene_graph, env_setting);
     // get initial states, goal set and goal tolerance.
-    auto init_q = int(env_setting->fsa->initial_state);
+    auto init_q = static_cast<int>(env_setting->fsa->initial_state);
     Eigen::VectorXd start = env->GridToMetric(Eigen::Vector4i(options.init_grid_x, options.init_grid_y, options.init_grid_z, init_q));
-    auto num_goals = long(env_setting->fsa->accepting_states.size());
+    auto num_goals = static_cast<long>(env_setting->fsa->accepting_states.size());
     std::vector<Eigen::VectorXd> goals(num_goals);
     for (long i = 0; i < num_goals; ++i) {
         Eigen::VectorXd &goal = goals[i];
@@ -235,13 +238,13 @@ main(int argc, char *argv[]) {
         goal[0] = 0;  // does not matter
         goal[1] = 0;  // does not matter
         goal[2] = 0;  // does not matter
-        goal[3] = double(env_setting->fsa->accepting_states[i]);
+        goal[3] = static_cast<double>(env_setting->fsa->accepting_states[i]);
     }
     double inf = std::numeric_limits<double>::infinity();
     Eigen::VectorXd goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
     // get ltl heuristic and llm heuristic
     ERL_INFO(
-        hierarchy_layout,
+        g_hierarchy_layout,
         level_enabled_chars[0],
         level_enabled_chars[1],
         level_enabled_chars[2],
@@ -258,11 +261,11 @@ main(int argc, char *argv[]) {
         level_llm_chars[3],
         level_llm_chars[4]);
     auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic3D>(env->GetFiniteStateAutomaton(), env->GetLabelMaps(), env->GetGridMapInfo());
-    std::shared_ptr<LLMSceneGraphHeuristic> llm_heuristic = nullptr;
+    std::shared_ptr<LlmSceneGraphHeuristic> llm_heuristic = nullptr;
     if (use_llm_heuristic) {
-        auto llm_heuristic_setting = std::make_shared<LLMSceneGraphHeuristic::Setting>();
+        auto llm_heuristic_setting = std::make_shared<LlmSceneGraphHeuristic::Setting>();
         llm_heuristic_setting->FromYamlFile(options.llm_heuristic_file);
-        llm_heuristic = std::make_shared<LLMSceneGraphHeuristic>(llm_heuristic_setting, env);
+        llm_heuristic = std::make_shared<LlmSceneGraphHeuristic>(llm_heuristic_setting, env);
     }
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics;
     for (std::size_t i = 0; i < options.ltl_heuristic_layout.length(); ++i) {
@@ -273,12 +276,12 @@ main(int argc, char *argv[]) {
     }
     // create the planner
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env, heuristics, start, goals, std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<amra_star::AMRAStar::Setting>();
+    auto amra_setting = std::make_shared<amra_star::AmraStar::Setting>();
     amra_setting->log = false;
     std::shared_ptr<amra_star::Output> result;
     for (int i = 0; i < options.repeat; ++i) {
         auto t0 = std::chrono::high_resolution_clock::now();
-        amra_star::AMRAStar planner(planning_interface, amra_setting);
+        amra_star::AmraStar planner(planning_interface, amra_setting);
         auto t1 = std::chrono::high_resolution_clock::now();
         result = planner.Plan();
         auto t2 = std::chrono::high_resolution_clock::now();
@@ -292,15 +295,13 @@ main(int argc, char *argv[]) {
     if (options.save_amra_log) {
         std::cout << "Running AMRA* again with logging enabled." << std::endl;
         amra_setting->log = true;
-        amra_star::AMRAStar planner(planning_interface, amra_setting);
+        amra_star::AmraStar planner(planning_interface, amra_setting);
         result = planner.Plan();
         std::cout << "Saving AMRA* log..." << std::endl;
         result->Save(output_dir / "amra.solution");
     }
     // draw path
-    for (auto &itr: result->paths) {
-        uint32_t plan_itr = itr.first;
-        Eigen::Matrix4Xd amra_path = itr.second;
+    for (auto &[plan_itr, amra_path]: result->paths) {
         long num_points = amra_path.cols();
         std::vector<cv::Point2i> cv_path;  // floor -> path
         int img_idx = 0;
@@ -316,7 +317,7 @@ main(int argc, char *argv[]) {
                 // draw start and goal
                 cv::circle(img, cv_path.front(), 10, cv::Scalar(0, 0, 255), -1);
                 cv::circle(img, cv_path.back(), 10, cv::Scalar(0, 255, 0), -1);
-                std::string img_name = erl::common::AsString("plan_", plan_itr, "_img_", img_idx, "_floor_", cur_floor);
+                std::string img_name = fmt::format("plan_{}_img_{}_floor_{}", plan_itr, img_idx, cur_floor);
                 if (options.hold_for_visualization) { cv::imshow(img_name, img); }
                 cv::imwrite(output_dir / (img_name + ".png"), img);
                 img_idx++;
@@ -331,7 +332,7 @@ main(int argc, char *argv[]) {
         // draw start and goal
         cv::circle(img, cv_path.front(), 10, cv::Scalar(0, 0, 255), -1);
         cv::circle(img, cv_path.back(), 10, cv::Scalar(0, 255, 0), -1);
-        std::string img_name = erl::common::AsString("plan_", plan_itr, "_img_", img_idx, "_floor_", cur_floor);
+        std::string img_name = fmt::format("plan_{}_img_{}_floor_{}", plan_itr, img_idx, cur_floor);
         if (options.hold_for_visualization) { cv::imshow(img_name, img); }
         cv::imwrite(output_dir / (img_name + ".png"), img);
     }
@@ -341,53 +342,54 @@ main(int argc, char *argv[]) {
     return 0;
 }
 
-namespace YAML {
-    template<>
-    struct convert<Options> {
-        inline static Node
-        encode(const Options &rhs) {
-            Node node;
-            node["output_dir"] = rhs.output_dir;
-            node["scene_graph_file"] = rhs.scene_graph_file;
-            node["map_data_dir"] = rhs.map_data_dir;
-            node["automaton_file"] = rhs.automaton_file;
-            node["ap_file"] = rhs.ap_file;
-            node["llm_heuristic_file"] = rhs.llm_heuristic_file;
-            node["init_grid_x"] = rhs.init_grid_x;
-            node["init_grid_y"] = rhs.init_grid_y;
-            node["init_grid_z"] = rhs.init_grid_z;
-            node["robot_radius"] = rhs.robot_radius;
-            node["object_reach_radius"] = rhs.object_reach_radius;
-            node["max_level"] = rhs.max_level;
-            node["ltl_heuristic_layout"] = rhs.ltl_heuristic_layout;
-            node["llm_heuristic_layout"] = rhs.llm_heuristic_layout;
-            node["repeat"] = rhs.repeat;
-            node["save_amra_log"] = rhs.save_amra_log;
-            node["hold_for_visualization"] = rhs.hold_for_visualization;
-            return node;
-        }
+// ReSharper disable CppInconsistentNaming
+template<>
+struct YAML::convert<Options> {
+    static Node
+    encode(const Options &rhs) {
+        Node node;
+        node["output_dir"] = rhs.output_dir;
+        node["scene_graph_file"] = rhs.scene_graph_file;
+        node["map_data_dir"] = rhs.map_data_dir;
+        node["automaton_file"] = rhs.automaton_file;
+        node["ap_file"] = rhs.ap_file;
+        node["llm_heuristic_file"] = rhs.llm_heuristic_file;
+        node["init_grid_x"] = rhs.init_grid_x;
+        node["init_grid_y"] = rhs.init_grid_y;
+        node["init_grid_z"] = rhs.init_grid_z;
+        node["robot_radius"] = rhs.robot_radius;
+        node["object_reach_radius"] = rhs.object_reach_radius;
+        node["max_level"] = rhs.max_level;
+        node["ltl_heuristic_layout"] = rhs.ltl_heuristic_layout;
+        node["llm_heuristic_layout"] = rhs.llm_heuristic_layout;
+        node["repeat"] = rhs.repeat;
+        node["save_amra_log"] = rhs.save_amra_log;
+        node["hold_for_visualization"] = rhs.hold_for_visualization;
+        return node;
+    }
 
-        inline static bool
-        decode(const Node &node, Options &rhs) {
-            if (!node.IsMap()) { return false; }
-            rhs.output_dir = node["output_dir"].as<std::string>();
-            rhs.scene_graph_file = node["scene_graph_file"].as<std::string>();
-            rhs.map_data_dir = node["map_data_dir"].as<std::string>();
-            rhs.automaton_file = node["automaton_file"].as<std::string>();
-            rhs.ap_file = node["ap_file"].as<std::string>();
-            rhs.llm_heuristic_file = node["llm_heuristic_file"].as<std::string>();
-            rhs.init_grid_x = node["init_grid_x"].as<int>();
-            rhs.init_grid_y = node["init_grid_y"].as<int>();
-            rhs.init_grid_z = node["init_grid_z"].as<int>();
-            rhs.robot_radius = node["robot_radius"].as<double>();
-            rhs.object_reach_radius = node["object_reach_radius"].as<double>();
-            rhs.max_level = node["max_level"].as<erl::env::scene_graph::Node::Type>();
-            rhs.ltl_heuristic_layout = node["ltl_heuristic_layout"].as<std::string>();
-            rhs.llm_heuristic_layout = node["llm_heuristic_layout"].as<std::string>();
-            rhs.repeat = node["repeat"].as<int>();
-            rhs.save_amra_log = node["save_amra_log"].as<bool>();
-            rhs.hold_for_visualization = node["hold_for_visualization"].as<bool>();
-            return true;
-        }
-    };
-}  // namespace YAML
+    static bool
+    decode(const Node &node, Options &rhs) {
+        if (!node.IsMap()) { return false; }
+        rhs.output_dir = node["output_dir"].as<std::string>();
+        rhs.scene_graph_file = node["scene_graph_file"].as<std::string>();
+        rhs.map_data_dir = node["map_data_dir"].as<std::string>();
+        rhs.automaton_file = node["automaton_file"].as<std::string>();
+        rhs.ap_file = node["ap_file"].as<std::string>();
+        rhs.llm_heuristic_file = node["llm_heuristic_file"].as<std::string>();
+        rhs.init_grid_x = node["init_grid_x"].as<int>();
+        rhs.init_grid_y = node["init_grid_y"].as<int>();
+        rhs.init_grid_z = node["init_grid_z"].as<int>();
+        rhs.robot_radius = node["robot_radius"].as<double>();
+        rhs.object_reach_radius = node["object_reach_radius"].as<double>();
+        rhs.max_level = node["max_level"].as<erl::env::scene_graph::Node::Type>();
+        rhs.ltl_heuristic_layout = node["ltl_heuristic_layout"].as<std::string>();
+        rhs.llm_heuristic_layout = node["llm_heuristic_layout"].as<std::string>();
+        rhs.repeat = node["repeat"].as<int>();
+        rhs.save_amra_log = node["save_amra_log"].as<bool>();
+        rhs.hold_for_visualization = node["hold_for_visualization"].as<bool>();
+        return true;
+    }
+};  // namespace YAML
+
+// ReSharper restore CppInconsistentNaming

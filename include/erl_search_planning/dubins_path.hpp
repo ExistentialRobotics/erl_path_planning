@@ -1,5 +1,5 @@
 #pragma once
-#include "erl_common/assert.hpp"
+#include "erl_common/logging.hpp"
 #include "erl_env/environment_state.hpp"
 
 namespace erl::search_planning {
@@ -26,46 +26,44 @@ namespace erl::search_planning {
         void
         InterpolateNPoints(std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const;
 
-        [[nodiscard]] inline double
+        [[nodiscard]] double
         GetLength() const {
             return m_total_length_ * m_tuning_radius_;
         }
 
-        [[nodiscard]] inline double
+        [[nodiscard]] double
         GetSegmentLength(int i) const {
             ERL_ASSERTM(i >= 0 && i < 3, "i = %d should be in [0, 3).", i);
             return m_length_[i] * m_tuning_radius_;
         }
 
-        [[nodiscard]] inline double
+        [[nodiscard]] double
         GetTurningRadius() const {
             return m_tuning_radius_;
         }
 
-        [[nodiscard]] inline std::string
+        [[nodiscard]] std::string
         GetDubinsPathType() const {
-            static const char* table = "LSR";
-            std::string type = "   ";
-            for (int i = 0; i < 3; ++i) {
-                type[i] = table[m_type_[i]];
-            }
+            static auto table = "LSR";
+            char type[3] = {0, 0, 0};
+            for (int i = 0; i < 3; ++i) { type[i] = table[m_type_[i]]; }
             return type;
         }
 
     private:
         explicit DubinsPath(
-            double x0,
-            double y0,
-            double phi0,
-            double x1,
-            double y1,
-            double phi1,
+            const double x0,
+            const double y0,
+            const double phi0,
+            const double x1,
+            const double y1,
+            const double phi1,
             const DubinsPathSegmentType *type = nullptr,
             double t = std::numeric_limits<double>::max(),
             double p = std::numeric_limits<double>::max(),
             double q = std::numeric_limits<double>::max(),
-            double total_length = std::numeric_limits<double>::max(),
-            double tuning_radius = 1.0)
+            const double total_length = std::numeric_limits<double>::max(),
+            const double tuning_radius = 1.0)
             : m_type_(type),
               m_total_length_(total_length),
               m_tuning_radius_(tuning_radius) {
@@ -78,9 +76,9 @@ namespace erl::search_planning {
             m_length_[0] = t;
             m_length_[1] = p;
             m_length_[2] = q;
-            ERL_ASSERTM(t >= 0., "t = %f should be non-negative.", t);
-            ERL_ASSERTM(p >= 0., "p = %f should be non-negative.", p);
-            ERL_ASSERTM(q >= 0., "q = %f should be non-negative.", q);
+            ERL_ASSERTM(t >= 0., "t = {} should be non-negative.", t);
+            ERL_ASSERTM(p >= 0., "p = {} should be non-negative.", p);
+            ERL_ASSERTM(q >= 0., "q = {} should be non-negative.", q);
         }
 
         double m_start_[3] = {0, 0, 0};                               // start state
