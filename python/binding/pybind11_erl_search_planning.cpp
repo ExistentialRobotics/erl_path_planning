@@ -59,7 +59,7 @@ BindPlanningInterfaces(const py::module &m) {
             py::arg("metric_start_coords"),
             py::arg("metric_goals_coords"),
             py::arg("metric_goals_tolerances"),
-            py::arg("terminal_costs") = std::vector<double>({0.}),
+            py::arg("terminal_costs") = std::vector({0.0}),
             py::arg("heuristic") = nullptr)
         .def(
             py::init<std::shared_ptr<EnvironmentBase>, Eigen::VectorXd, Eigen::VectorXd, Eigen::VectorXd, double, std::shared_ptr<HeuristicBase>>(),
@@ -75,9 +75,9 @@ BindPlanningInterfaces(const py::module &m) {
         .def_property_readonly("start_state", &PlanningInterface::GetStartState)
         .def("get_goal_state", &PlanningInterface::GetGoalState, py::arg("goal_index"))
         .def_property_readonly("num_goals", &PlanningInterface::GetNumGoals)
-        .def("is_metric_goal", &PlanningInterface::IsMetricGoal, py::arg("env_state"))
-        .def_static("is_virtual_goal", &PlanningInterface::IsVirtualGoal, py::arg("env_state"))
-        .def("reach_goal", &PlanningInterface::ReachGoal, py::arg("env_state"))
+        .def("is_metric_goal", &PlanningInterface::IsMetricGoal, py::arg("env_state").none(false))
+        .def_static("is_virtual_goal", &PlanningInterface::IsVirtualGoal, py::arg("env_state").none(false))
+        .def_static("reach_goal", &PlanningInterface::ReachGoal, py::arg("env_state").none(false))
         .def("state_hashing", &PlanningInterface::StateHashing, py::arg("env_state"))
         .def("get_path", &PlanningInterface::GetPath, py::arg("env_state"), py::arg("action_coords"));
 }
@@ -127,7 +127,7 @@ BindPlanningInterfaceMultiResolutions(const py::module &m) {
             py::arg("metric_start_coords"),
             py::arg("metric_goals_coords"),
             py::arg("metric_goals_tolerances"),
-            py::arg("terminal_costs") = std::vector<double>{0.})
+            py::arg("terminal_costs") = std::vector{0.0})
         .def(
             py::init<
                 std::shared_ptr<EnvironmentMultiResolution>,
@@ -152,7 +152,7 @@ BindPlanningInterfaceMultiResolutions(const py::module &m) {
         .def("get_heuristic_values", &PlanningInterfaceMultiResolutions::GetHeuristicValues, py::arg("env_state").none(false))
         .def("is_metric_goal", &PlanningInterfaceMultiResolutions::IsMetricGoal, py::arg("env_state").none(false))
         .def_static("is_virtual_goal", &PlanningInterfaceMultiResolutions::IsVirtualGoal, py::arg("env_state").none(false))
-        .def("reach_goal", &PlanningInterfaceMultiResolutions::ReachGoal, py::arg("env_state").none(false))
+        .def_static("reach_goal", &PlanningInterfaceMultiResolutions::ReachGoal, py::arg("env_state").none(false))
         .def("state_hashing", &PlanningInterfaceMultiResolutions::StateHashing, py::arg("env_state").none(false))
         .def("get_path", &PlanningInterfaceMultiResolutions::GetPath, py::arg("env_state").none(false), py::arg("action_coords"));
 }

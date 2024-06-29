@@ -106,12 +106,12 @@ namespace erl::search_planning {
                 std::swap(label1_kdtree, label2_kdtree);
             }
             double min_d = std::numeric_limits<double>::infinity();
-            auto num_label1_states = static_cast<long>(label1_kdtree->kdtree_get_point_count());
+            const auto num_label1_states = static_cast<long>(label1_kdtree->kdtree_get_point_count());
             for (long i = 0; i < num_label1_states; ++i) {
                 Eigen::Vector3d &&state1 = label1_kdtree->GetPoint(i);
                 long index = -1;
                 double min_d2 = std::numeric_limits<double>::infinity();
-                label2_kdtree->Knn(1, state1, index, min_d2);
+                label2_kdtree->Nearest(state1, index, min_d2);
                 if (min_d2 < min_d) { min_d = min_d2; }
             }
             return std::sqrt(min_d);
@@ -143,7 +143,7 @@ namespace erl::search_planning {
                         (*heap_keys(pred_label, pred_state))->parent = node;
                         queue.increase(heap_keys(pred_label, pred_state));
                     } else {
-                        heap_keys(pred_label, pred_state) = queue.push(std::make_shared<Node>(tentative_g, pred_label, pred_state, node));
+                        heap_keys(pred_label, pred_state) = queue.push(std::make_shared<Node>(tentative_g, pred_label, pred_state, /*parent*/ node));
                         opened(pred_label, pred_state) = true;
                     }
                 }
@@ -159,20 +159,20 @@ namespace erl::search_planning {
         if (env_state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0; }  // virtual goal
         if (label_distance.size() == 0) { return 0.; }
         double h = std::numeric_limits<double>::infinity();
-        auto q = static_cast<uint32_t>(env_state.grid[3]);  // (x, y, z, q)
-        if (fsa->IsSinkState(q)) { return h; }              // sink state, never reach the goal
-        if (fsa->IsAcceptingState(q)) { return 0; }         // accepting state, goal
+        const auto q = static_cast<uint32_t>(env_state.grid[3]);  // (x, y, z, q)
+        if (fsa->IsSinkState(q)) { return h; }                    // sink state, never reach the goal
+        if (fsa->IsAcceptingState(q)) { return 0; }               // accepting state, goal
         // for each successor of q
-        auto num_states = fsa->GetSetting()->num_states;
+        const auto num_states = fsa->GetSetting()->num_states;
         for (uint32_t nq = 0; nq < num_states; ++nq) {
             if (q == nq) { continue; }
             std::vector<uint32_t> labels = fsa->GetTransitionLabels(q, nq);  // labels that can go from q to nq
-            for (uint32_t &label: labels) {
+            for (const uint32_t &label: labels) {
                 auto label_kdtree = label_to_kdtree[label];
                 if (label_kdtree == nullptr) { continue; }
                 long index = -1;
                 double c = std::numeric_limits<double>::infinity();
-                label_kdtree->Knn(1, env_state.metric.head<3>(), index, c);
+                label_kdtree->Nearest(env_state.metric.head<3>(), index, c);
                 c = std::sqrt(c);
                 if (const double tentative_h = c + label_distance(label, nq); tentative_h < h) { h = tentative_h; }
             }

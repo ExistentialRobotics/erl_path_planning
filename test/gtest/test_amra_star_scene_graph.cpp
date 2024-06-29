@@ -327,8 +327,8 @@ TEST(LLMSceneGraph, Heuristic) {
     using namespace erl::search_planning;
 
     std::filesystem::path building_path = gtest_src_dir / "building.yaml";
-    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
-    std::filesystem::create_directories(output_dir);
+    // std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
+    // std::filesystem::create_directories(output_dir);
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
@@ -394,7 +394,7 @@ TEST(LLMSceneGraph, Heuristic) {
     double path_cost = result->costs[result->latest_plan_itr];
     std::cout << "Path cost: " << path_cost << std::endl;
     EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
-    if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
+    if (amra_setting->log) { result->Save(test_output_dir / "amra.solution"); }
 
     // draw path
     for (auto &[plan_itr, amra_path]: result->paths) {
@@ -412,7 +412,7 @@ TEST(LLMSceneGraph, Heuristic) {
             cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
-            cv::imwrite(output_dir / fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
+            cv::imwrite(test_output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num), cat_map);
         }
     }
     cv::waitKey(1000);  // wait 1s
