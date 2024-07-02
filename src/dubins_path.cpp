@@ -1,4 +1,5 @@
 #include "erl_search_planning/dubins_path.hpp"
+
 #include "erl_common/angle_utils.hpp"
 
 namespace erl::search_planning {

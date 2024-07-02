@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
-
 #include "erl_search_planning/astar.hpp"
 #include "erl_search_planning/planning_interface.hpp"
+
+#include <gtest/gtest.h>
 // THE ABOVE TWO HEADERS MUST BE INCLUDED BEFORE THE FOLLOWING HEADERS
-#include "erl_geometry/bresenham_2d.hpp"
 #include "erl_env/ddc_motion_primitive.hpp"
 #include "erl_env/environment_se2.hpp"
+#include "erl_geometry/bresenham_2d.hpp"
 #include "erl_search_planning/heuristic.hpp"
 
 using namespace erl::common;

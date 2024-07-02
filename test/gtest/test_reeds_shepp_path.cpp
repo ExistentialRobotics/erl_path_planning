@@ -1,6 +1,7 @@
-#include "erl_search_planning/reeds_shepp_path.hpp"
-#include "erl_common/test_helper.hpp"
 #include "erl_common/opencv.hpp"
+#include "erl_common/test_helper.hpp"
+#include "erl_search_planning/reeds_shepp_path.hpp"
+
 #include <memory>
 
 struct AppData {
