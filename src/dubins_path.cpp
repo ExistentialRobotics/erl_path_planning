@@ -15,11 +15,10 @@ namespace erl::search_planning {
         double alpha = common::WrapAngleTwoPi(phi0 - phi);
         double beta = common::WrapAngleTwoPi(phi1 - phi);
 
-        constexpr double kEpsilon = 1.e-6;
-        constexpr double kZero = -1.e-7;
+        constexpr double zero = -1.e-7;
 
-        if (d < kEpsilon && std::fabs(alpha - beta) < kEpsilon) {
-            return std::shared_ptr<DubinsPath>(new DubinsPath(x0, y0, phi0, x1, y1, phi1, DubinsPath::sk_DubinsPathType_[0], 0, d, 0, d, turning_radius));
+        if (constexpr double epsilon = 1.e-6; d < epsilon && std::fabs(alpha - beta) < epsilon) {
+            return std::shared_ptr<DubinsPath>(new DubinsPath(x0, y0, phi0, x1, y1, phi1, DubinsPath::kDubinsPathType[0], 0, d, 0, d, turning_radius));
         }
 
         double ca = std::cos(alpha);
@@ -35,7 +34,7 @@ namespace erl::search_planning {
         dx = d + sa - sb;
         dy = cb - ca;
         theta = std::atan2(dy, dx);
-        sol_type = DubinsPath::sk_DubinsPathType_[0];
+        sol_type = DubinsPath::kDubinsPathType[0];
         sol_t = t = common::WrapAngleTwoPi(theta - alpha);
         sol_p = p = std::sqrt(dx * dx + dy * dy);
         sol_q = q = common::WrapAngleTwoPi(beta - theta);
@@ -49,7 +48,7 @@ namespace erl::search_planning {
         q = common::WrapAngleTwoPi(theta - beta);
         l = t + p + q;
         if (l < sol_l) {
-            sol_type = DubinsPath::sk_DubinsPathType_[1];
+            sol_type = DubinsPath::kDubinsPathType[1];
             sol_t = t;
             sol_p = p;
             sol_q = q;
@@ -59,14 +58,14 @@ namespace erl::search_planning {
         dx = d - sa - sb;
         dy = ca + cb;
         p = dx * dx + dy * dy - 4;
-        if (p >= kZero) {
+        if (p >= zero) {
             p = std::sqrt(std::max(p, 0.0));
             theta = std::atan2(dy, dx) - std::atan2(2., p);
             t = common::WrapAngleTwoPi(alpha - theta);
             q = common::WrapAngleTwoPi(beta - theta);
             l = t + p + q;
             if (l < sol_l) {
-                sol_type = DubinsPath::sk_DubinsPathType_[2];
+                sol_type = DubinsPath::kDubinsPathType[2];
                 sol_t = t;
                 sol_p = p;
                 sol_q = q;
@@ -77,14 +76,14 @@ namespace erl::search_planning {
         dx = d + sa + sb;
         dy = -dy;  // dy = -ca - cb;
         p = dx * dx + dy * dy - 4;
-        if (p >= kZero) {
+        if (p >= zero) {
             p = std::sqrt(std::max(p, 0.0));
             theta = std::atan2(dy, dx) - std::atan2(-2., p);
             t = common::WrapAngleTwoPi(theta - alpha);
             q = common::WrapAngleTwoPi(theta - beta);
             l = t + p + q;
             if (l < sol_l) {
-                sol_type = DubinsPath::sk_DubinsPathType_[3];
+                sol_type = DubinsPath::kDubinsPathType[3];
                 sol_t = t;
                 sol_p = p;
                 sol_q = q;
@@ -103,7 +102,7 @@ namespace erl::search_planning {
             q = common::WrapAngleTwoPi(-beta + theta + p * 0.5);
             l = t + p + q;
             if (l < sol_l) {
-                sol_type = DubinsPath::sk_DubinsPathType_[4];
+                sol_type = DubinsPath::kDubinsPathType[4];
                 sol_t = t;
                 sol_p = p;
                 sol_q = q;
@@ -115,7 +114,7 @@ namespace erl::search_planning {
             q = common::WrapAngleTwoPi(alpha - beta - t + p);
             l = t + p + q;
             if (l < sol_l) {
-                sol_type = DubinsPath::sk_DubinsPathType_[4];
+                sol_type = DubinsPath::kDubinsPathType[4];
                 sol_t = t;
                 sol_p = p;
                 sol_q = q;
@@ -134,7 +133,7 @@ namespace erl::search_planning {
             q = common::WrapAngleTwoPi(beta - theta + p * 0.5);
             l = t + p + q;
             if (l < sol_l) {
-                sol_type = DubinsPath::sk_DubinsPathType_[5];
+                sol_type = DubinsPath::kDubinsPathType[5];
                 sol_t = t;
                 sol_p = p;
                 sol_q = q;
@@ -146,7 +145,7 @@ namespace erl::search_planning {
             q = common::WrapAngleTwoPi(beta - alpha - t + p);
             l = t + p + q;
             if (l < sol_l) {
-                sol_type = DubinsPath::sk_DubinsPathType_[5];
+                sol_type = DubinsPath::kDubinsPathType[5];
                 sol_t = t;
                 sol_p = p;
                 sol_q = q;
@@ -158,7 +157,7 @@ namespace erl::search_planning {
     }
 
     void
-    DubinsPath::Interpolate(double t, double &x, double &y, double &phi) const {
+    DubinsPath::Interpolate(const double t, double &x, double &y, double &phi) const {
         if (t <= 0.0) {
             x = m_start_[0];
             y = m_start_[1];
@@ -179,7 +178,7 @@ namespace erl::search_planning {
         double remaining_length = t * m_total_length_;
         for (int seg_type_index = 0; seg_type_index < 3; ++seg_type_index) {
             auto &seg_type = m_type_[seg_type_index];
-            double v = std::min(remaining_length, m_length_[seg_type_index]);
+            const double v = std::min(remaining_length, m_length_[seg_type_index]);
             remaining_length -= v;
             switch (seg_type) {
                 case kDubinsLeft:
@@ -204,7 +203,7 @@ namespace erl::search_planning {
     }
 
     void
-    DubinsPath::InterpolateNPoints(std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const {
+    DubinsPath::InterpolateNPoints(const std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const {
         xs.reserve(n);
         ys.reserve(n);
         phis.reserve(n);
@@ -218,7 +217,7 @@ namespace erl::search_planning {
         double phi_base = m_start_[2];
         int seg_index = 0;
 
-        auto step = [&x_base, &y_base, &phi_base, &seg_index, this](double v, double &x_out, double &y_out, double &phi_out) {
+        auto step = [&x_base, &y_base, &phi_base, &seg_index, this](const double v, double &x_out, double &y_out, double &phi_out) {
             switch (m_type_[seg_index]) {
                 case kDubinsLeft:
                     x_out = x_base + std::sin(phi_base + v) - std::sin(phi_base);
@@ -240,12 +239,11 @@ namespace erl::search_planning {
         };
 
         double s = 0;
-        double ds = m_total_length_ / double(n - 1);
+        const double ds = m_total_length_ / static_cast<double>(n - 1);
         double x, y, phi;
         while (seg_index < 3) {
             s += ds;
-            double seg_length = std::fabs(m_length_[seg_index]);
-            if (s > seg_length) {
+            if (const double seg_length = std::fabs(m_length_[seg_index]); s > seg_length) {
                 step(m_length_[seg_index], x_base, y_base, phi_base);
                 s -= seg_length;
                 ++seg_index;

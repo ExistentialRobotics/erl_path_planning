@@ -46,28 +46,28 @@ namespace erl::search_planning {
         double &sol_l) {
         double t, u, v, l;
         if (LpSpLp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 14: L+S+L+NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[14];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[14];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
         if (LpSpLp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 14: L-S-L-NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[14];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[14];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
             sol_l = l;
         }
         if (LpSpLp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 15: R+S+R+NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[15];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[15];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
         if (LpSpLp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 15: R-S-R-NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[15];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[15];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
@@ -75,28 +75,28 @@ namespace erl::search_planning {
         }
 
         if (LpSpRp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 12: L+S+R+NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[12];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[12];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
         if (LpSpRp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 12: L-S-R-NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[12];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[12];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
             sol_l = l;
         }
         if (LpSpRp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 13: R+S+L+NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[13];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[13];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
         if (LpSpRp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 13: R-S-L-NN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[13];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[13];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
@@ -132,28 +132,28 @@ namespace erl::search_planning {
         double t, u, v, l;
         // CCC: (0, 0, 0) -> (x, y, phi)
         if (LpRmL(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 0: L+R-LNN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[0];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
         if (LpRmL(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 0: L-R+LNN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[0];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
             sol_l = l;
         }
         if (LpRmL(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 1: R+L-RNN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[1];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
         if (LpRmL(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 1: R-L+RNN
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[1];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
@@ -166,28 +166,28 @@ namespace erl::search_planning {
         const double xb = x * std::cos(phi) + y * std::sin(phi);
         const double yb = x * std::sin(phi) - y * std::cos(phi);
         if (LpRmL(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[0];
             sol_t = v;
             sol_u = u;
             sol_v = t;
             sol_l = l;
         }
         if (LpRmL(-xb, yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[0];
             sol_t = -v;
             sol_u = -u;
             sol_v = -t;
             sol_l = l;
         }
         if (LpRmL(xb, -yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[1];
             sol_t = v;
             sol_u = u;
             sol_v = t;
             sol_l = l;
         }
         if (LpRmL(-xb, -yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[1];
             sol_t = -v;
             sol_u = -u;
             sol_v = -t;
@@ -247,7 +247,7 @@ namespace erl::search_planning {
         double &sol_l) {
         double t, u, v, l;
         if (LpRupLumRm(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L+R+L-R-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[2];
             sol_t = t;
             sol_u = u;
             sol_v = -u;
@@ -255,7 +255,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRupLumRm(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L-R-L+R+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[2];
             sol_t = -t;
             sol_u = -u;
             sol_v = u;
@@ -263,7 +263,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRupLumRm(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R+L+R-L-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[3];
             sol_t = t;
             sol_u = u;
             sol_v = -u;
@@ -271,7 +271,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRupLumRm(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R-L-R+L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[3];
             sol_t = -t;
             sol_u = -u;
             sol_v = u;
@@ -280,7 +280,7 @@ namespace erl::search_planning {
         }
 
         if (LpRumLumRp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L+R-L-R+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[2];
             sol_t = t;
             sol_u = u;
             sol_v = u;
@@ -288,7 +288,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRumLumRp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L-R+L+R-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[2];
             sol_t = -t;
             sol_u = -u;
             sol_v = -u;
@@ -296,7 +296,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRumLumRp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R+L-R-L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[3];
             sol_t = t;
             sol_u = u;
             sol_v = u;
@@ -304,7 +304,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRumLumRp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R-L+R+L-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[3];
             sol_t = -t;
             sol_u = -u;
             sol_v = -u;
@@ -358,7 +358,7 @@ namespace erl::search_planning {
         double &sol_l) {
         double t, u, v, l;
         if (LpRmSmLm(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 4: L+R-S-L-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[4];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[4];
             sol_t = t;
             sol_u = -M_PI_2;
             sol_v = u;
@@ -366,7 +366,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmLm(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 4: L-R+S+L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[4];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[4];
             sol_t = -t;
             sol_u = M_PI_2;
             sol_v = -u;
@@ -374,7 +374,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmLm(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 5: R+L-S-R-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[5];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[5];
             sol_t = t;
             sol_u = -M_PI_2;
             sol_v = u;
@@ -382,7 +382,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmLm(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 5: R-L+S+R+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[5];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[5];
             sol_t = -t;
             sol_u = M_PI_2;
             sol_v = -u;
@@ -391,7 +391,7 @@ namespace erl::search_planning {
         }
 
         if (LpRmSmRm(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 8: L+R-S-R-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[8];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[8];
             sol_t = t;
             sol_u = -M_PI_2;
             sol_v = u;
@@ -399,7 +399,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmRm(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 8: L-R+S+R+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[8];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[8];
             sol_t = -t;
             sol_u = M_PI_2;
             sol_v = -u;
@@ -407,7 +407,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmRm(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 9: R+L-S-L-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[9];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[9];
             sol_t = t;
             sol_u = -M_PI_2;
             sol_v = u;
@@ -415,7 +415,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmRm(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 9: R-L+S+L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[9];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[9];
             sol_t = -t;
             sol_u = M_PI_2;
             sol_v = -u;
@@ -430,7 +430,7 @@ namespace erl::search_planning {
         double xb = x * std::cos(phi) + y * std::sin(phi);
         double yb = x * std::sin(phi) - y * std::cos(phi);
         if (LpRmSmLm(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 6: L-S-R-L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[6];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[6];
             sol_t = v;
             sol_u = u;
             sol_v = -M_PI_2;
@@ -438,7 +438,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmLm(-xb, yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 6: L+S+R+L-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[6];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[6];
             sol_t = -v;
             sol_u = -u;
             sol_v = M_PI_2;
@@ -446,7 +446,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmLm(xb, -yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 7: R-S-L-R+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[7];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[7];
             sol_t = v;
             sol_u = u;
             sol_v = -M_PI_2;
@@ -454,7 +454,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmLm(-xb, -yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 7: R+S+L+R-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[7];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[7];
             sol_t = -v;
             sol_u = -u;
             sol_v = M_PI_2;
@@ -463,7 +463,7 @@ namespace erl::search_planning {
         }
 
         if (LpRmSmRm(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 10: R-S-R-L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[10];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[10];
             sol_t = v;
             sol_u = u;
             sol_v = -M_PI_2;
@@ -471,7 +471,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmRm(-xb, yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 10: R-S-R-L+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[10];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[10];
             sol_t = -v;
             sol_u = -u;
             sol_v = M_PI_2;
@@ -479,7 +479,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmRm(xb, -yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 11: L-S-L-R+N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[11];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[11];
             sol_t = v;
             sol_u = u;
             sol_v = -M_PI_2;
@@ -487,7 +487,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSmRm(-xb, -yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 11: L+S+L+R-N
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[11];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[11];
             sol_t = -v;
             sol_u = -u;
             sol_v = M_PI_2;
@@ -527,7 +527,7 @@ namespace erl::search_planning {
         double &sol_l) {
         double t, u, v, l;
         if (LpRmSLmRp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 16: L+R-S-L-R+
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[16];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[16];
             sol_t = t;
             sol_u = -M_PI_2;
             sol_v = u;
@@ -536,7 +536,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSLmRp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 16: L-R+S+L+R-
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[16];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[16];
             sol_t = -t;
             sol_u = M_PI_2;
             sol_v = -u;
@@ -545,7 +545,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSLmRp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 17: R+L-S-R-L+
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[17];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[17];
             sol_t = t;
             sol_u = -M_PI_2;
             sol_v = u;
@@ -554,7 +554,7 @@ namespace erl::search_planning {
             sol_l = l;
         }
         if (LpRmSLmRp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 17: R-L+S+R+L-
-            sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[17];
+            sol_type = ReedsSheppPath::kReedsSheppPathType[17];
             sol_t = -t;
             sol_u = M_PI_2;
             sol_v = -u;
