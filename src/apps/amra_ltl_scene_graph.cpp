@@ -207,7 +207,7 @@ main(int argc, char *argv[]) {
     if (!std::filesystem::exists(options.output_dir)) { std::filesystem::create_directories(options.output_dir); }
     // load scene graph
     auto scene_graph = std::make_shared<scene_graph::Building>();
-    scene_graph->FromYamlFile(options.scene_graph_file);
+    ERL_ASSERTM(scene_graph->FromYamlFile(options.scene_graph_file), "Failed to load scene graph from {}", options.scene_graph_file);
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
     env_setting->data_dir = options.map_data_dir;
@@ -264,7 +264,10 @@ main(int argc, char *argv[]) {
     std::shared_ptr<LlmSceneGraphHeuristic> llm_heuristic = nullptr;
     if (use_llm_heuristic) {
         auto llm_heuristic_setting = std::make_shared<LlmSceneGraphHeuristic::Setting>();
-        llm_heuristic_setting->FromYamlFile(options.llm_heuristic_file);
+        ERL_ASSERTM(
+            llm_heuristic_setting->FromYamlFile(options.llm_heuristic_file),
+            "Failed to load LLM heuristic setting from {}",
+            options.llm_heuristic_file);
         llm_heuristic = std::make_shared<LlmSceneGraphHeuristic>(llm_heuristic_setting, env);
     }
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics;

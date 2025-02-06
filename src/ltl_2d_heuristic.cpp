@@ -112,7 +112,7 @@ namespace erl::search_planning {
                 Eigen::Vector2d &&state1 = label1_kdtree->GetPoint(i);
                 long index = -1;
                 double min_d2 = std::numeric_limits<double>::infinity();
-                label2_kdtree->Knn(1, state1, index, min_d2);
+                label2_kdtree->Nearest(state1, index, min_d2);
                 if (min_d2 < min_d) { min_d = min_d2; }
             }
             return std::sqrt(min_d);
@@ -170,7 +170,7 @@ namespace erl::search_planning {
                 if (label_kdtree == nullptr) { continue; }
                 long index = -1;
                 double c = std::numeric_limits<double>::infinity();
-                label_kdtree->Knn(1, env_state.metric.head<2>(), index, c);
+                label_kdtree->Nearest(env_state.metric.head<2>(), index, c);
                 c = std::sqrt(c);
                 if (const double tentative_h = c + label_distance(label, nq); tentative_h < h) { h = tentative_h; }
             }

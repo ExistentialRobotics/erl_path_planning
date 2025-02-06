@@ -18,7 +18,7 @@ TEST(AMRAStarSceneGraph, SingleFloor) {
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(path.string());
+    ASSERT_TRUE(building->FromYamlFile(path.string()));
 
     auto env_setting = std::make_shared<EnvironmentSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
@@ -87,7 +87,7 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(building_path.string());
+    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
 
     auto env_setting = std::make_shared<EnvironmentSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
@@ -161,7 +161,7 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(building_path.string());
+    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
@@ -247,7 +247,7 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(building_path.string());
+    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
@@ -332,7 +332,7 @@ TEST(LLMSceneGraph, Heuristic) {
 
     // load the building
     auto building = std::make_shared<scene_graph::Building>();
-    building->FromYamlFile(building_path.string());
+    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
@@ -364,7 +364,7 @@ TEST(LLMSceneGraph, Heuristic) {
 
     auto gpt4_heuristic_file = gtest_src_dir / "gpt4_path_v2.yaml";
     auto gpt4_heuristic_setting = std::make_shared<LlmSceneGraphHeuristic::Setting>();
-    gpt4_heuristic_setting->FromYamlFile(gpt4_heuristic_file.string());
+    ASSERT_TRUE(gpt4_heuristic_setting->FromYamlFile(gpt4_heuristic_file.string()));
     auto gpt4_heuristic = std::make_shared<LlmSceneGraphHeuristic>(gpt4_heuristic_setting, environment_ltl_scene_graph);
 
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {

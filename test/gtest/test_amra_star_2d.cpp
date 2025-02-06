@@ -261,7 +261,7 @@ TEST(AMRAStar2D, LinearTemporalLogic) {
 
     auto env_setting_yaml = gtest_src_dir / "environment_ltl_2d.yaml";
     auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
-    env_setting->FromYamlFile(env_setting_yaml);
+    ASSERT_TRUE(env_setting->FromYamlFile(env_setting_yaml));
 
     auto label_map_png = gtest_src_dir / "label_map.png";
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);

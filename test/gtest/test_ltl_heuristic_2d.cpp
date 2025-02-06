@@ -11,7 +11,7 @@ TEST(LinearTemporalLogic, Heuristic2D) {
 
     auto fsa_setting_yaml = path / "fsa.yaml";
     auto fsa_setting = std::make_shared<erl::env::FiniteStateAutomaton::Setting>();
-    fsa_setting->FromYamlFile(fsa_setting_yaml);
+    ASSERT_TRUE(fsa_setting->FromYamlFile(fsa_setting_yaml));
     auto fsa = std::make_shared<erl::env::FiniteStateAutomaton>(fsa_setting);
 
     auto label_map_png = path / "label_map.png";

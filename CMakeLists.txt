@@ -52,9 +52,14 @@ target_link_libraries(amra_ltl_scene_graph ${PROJECT_NAME}::${PROJECT_NAME})
 ###################
 # Python bindings #
 ###################
+erl_add_pybind_module(
+        PYBIND_MODULE_NAME py${PROJECT_NAME}
+        PYBIND_SRC_DIR ${${PROJECT_NAME}_PYTHON_BINDING_DIR}
+        PYTHON_PKG_DIR ${${PROJECT_NAME}_PYTHON_DIR}/${PROJECT_NAME}
+        LIBRARIES ${PROJECT_NAME}
+)
 erl_add_python_package(
         PYTHON_PKG_DIR ${${PROJECT_NAME}_PYTHON_DIR}/${PROJECT_NAME}
-        PYBIND_MODULE_NAME py${PROJECT_NAME}
         DEPENDS_PYTHON_PKGS ${${PROJECT_NAME}_ERL_PACKAGES})
 
 #######################################################################################################################
