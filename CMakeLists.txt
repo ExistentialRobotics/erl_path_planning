@@ -7,24 +7,15 @@ project(erl_search_planning
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
 
 if (NOT COMMAND erl_project_setup)
-    find_package(erl_common REQUIRED)
+    find_package(erl_cmake_tools REQUIRED)
 endif ()
-erl_project_setup(
-        ${PROJECT_NAME}
-        ERL_PACKAGES erl_common erl_env erl_geometry
-)
-erl_setup_ros(
-        CATKIN_COMPONENTS ${${PROJECT_NAME}_CATKIN_COMPONENTS}
-)
-erl_catkin_package(
-        INCLUDE_DIRS include
-        LIBRARIES ${PROJECT_NAME} py${PROJECT_NAME}
-        CATKIN_DEPENDS ${${PROJECT_NAME}_CATKIN_DEPENDS}
-        DEPENDS ${${PROJECT_NAME}_DEPENDS})   # non-catkin dependencies are collected via erl_find_package
 
-#######################################################################################################################
+erl_project_setup(ERL_PACKAGES erl_common erl_env erl_geometry)
+erl_setup_ros(LIBRARIES ${PROJECT_NAME})
+
+####################################################################################################
 # BUILD
-#######################################################################################################################
+####################################################################################################
 
 ########################
 # define the libraries #
@@ -32,16 +23,11 @@ erl_catkin_package(
 file(GLOB SRC_FILES src/*.cpp)
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME}
-        PUBLIC
-        $<BUILD_INTERFACE:${${PROJECT_NAME}_INCLUDE_DIR}>
-        $<INSTALL_INTERFACE:${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}>)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${catkin_INCLUDE_DIRS})
-if (catkin_LIBRARIES)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${catkin_LIBRARIES})
-else ()
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_ERL_PACKAGES})
-endif ()
+erl_collect_targets(LIBRARIES ${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PUBLIC
+                           $<BUILD_INTERFACE:${${PROJECT_NAME}_INCLUDE_DIR}>
+                           $<INSTALL_INTERFACE:${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}>)
+erl_target_dependencies(${PROJECT_NAME})
 
 ###################
 # add executables #
@@ -53,30 +39,26 @@ target_link_libraries(amra_ltl_scene_graph ${PROJECT_NAME}::${PROJECT_NAME})
 # Python bindings #
 ###################
 erl_add_pybind_module(
-        PYBIND_MODULE_NAME py${PROJECT_NAME}
-        PYBIND_SRC_DIR ${${PROJECT_NAME}_PYTHON_BINDING_DIR}
-        PYTHON_PKG_DIR ${${PROJECT_NAME}_PYTHON_DIR}/${PROJECT_NAME}
-        LIBRARIES ${PROJECT_NAME}
+    PYBIND_MODULE_NAME py${PROJECT_NAME}
+    PYBIND_SRC_DIR ${${PROJECT_NAME}_PYTHON_BINDING_DIR}
+    LIBRARIES ${PROJECT_NAME}
 )
-erl_add_python_package(
-        PYTHON_PKG_DIR ${${PROJECT_NAME}_PYTHON_DIR}/${PROJECT_NAME}
-        DEPENDS_PYTHON_PKGS ${${PROJECT_NAME}_ERL_PACKAGES})
+erl_add_python_package()
 
-#######################################################################################################################
+####################################################################################################
 # INSTALL
-#######################################################################################################################
+####################################################################################################
 erl_install(
-        LIBRARIES ${PROJECT_NAME}
-        PYBIND_MODULES py${PROJECT_NAME})
+    EXECUTABLES ${${PROJECT_NAME}_COLLECTED_EXECUTABLES}
+    LIBRARIES ${${PROJECT_NAME}_COLLECTED_LIBRARIES}
+    PYBIND_MODULES py${PROJECT_NAME})
 
-#######################################################################################################################
+####################################################################################################
 # TEST
-#######################################################################################################################
-erl_add_tests(
-        LIBRARIES ${PROJECT_NAME}
-)
+####################################################################################################
+erl_add_tests(LIBRARIES ${PROJECT_NAME})
 
-#######################################################################################################################
+####################################################################################################
 # export variables
-#######################################################################################################################
-erl_mark_project_found(${PROJECT_NAME})
+####################################################################################################
+erl_mark_project_found()

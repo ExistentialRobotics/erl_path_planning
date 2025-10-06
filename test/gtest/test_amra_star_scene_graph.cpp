@@ -10,63 +10,74 @@
 
 TEST(AMRAStarSceneGraph, SingleFloor) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::env;
-    using namespace erl::search_planning;
+
+    using Dtype = double;
+    using EnvState = erl::env::EnvironmentState<Dtype, 3>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentSceneGraph = erl::env::EnvironmentSceneGraph<Dtype>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 3>;
+    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 3>;
+    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 3>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 3>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 3>;
+
+    // using namespace erl::env;
 
     // load environment
-    std::filesystem::path path = gtest_src_dir / "building.yaml";
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
-    auto building = std::make_shared<scene_graph::Building>();
-    ASSERT_TRUE(building->FromYamlFile(path.string()));
+    auto building = std::make_shared<erl::env::scene_graph::Building>();
+    ASSERT_TRUE(building->FromYamlFile(gtest_src_dir / "building.yaml"));
 
     auto env_setting = std::make_shared<EnvironmentSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
-    env_setting->shape = Eigen::Matrix2Xd(2, 360);
+    env_setting->robot_metric_contour = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     for (int i = 0; i < 360; ++i) {
         constexpr double r = 0.1;
-        env_setting->shape(0, i) = r * cos(angles[i]);
-        env_setting->shape(1, i) = r * sin(angles[i]);
+        env_setting->robot_metric_contour.col(i) << r * cos(angles[i]), r * sin(angles[i]);
     }
     auto env_scene_graph = std::make_shared<EnvironmentSceneGraph>(building, env_setting);
 
-    Eigen::VectorXd start = env_scene_graph->GridToMetric(Eigen::Vector3i(400, 900, 1));
-    Eigen::VectorXd goal = env_scene_graph->GridToMetric(Eigen::Vector3i(450, 200, 1));
-    Eigen::VectorXd goal_tolerance = Eigen::VectorXd::Zero(3);
+    MetricState start = env_scene_graph->GridToMetric(Eigen::Vector3i(400, 600, 1));
+    MetricState goal = env_scene_graph->GridToMetric(Eigen::Vector3i(400, 200, 1));
+    MetricState goal_tolerance = Eigen::VectorXd::Zero(3);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 0},  // anchor
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 1},  // kNA
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 2},  // kObject
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 3},  // kRoom
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 4},  // kFloor
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 0},  // anchor
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 1},  // kNA
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 2},  // kObject
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 3},  // kRoom
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 4},  // kFloor
     };
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
+    auto planning_interface = std::make_shared<PlanningInterface>(
         env_scene_graph,
         heuristics,
         start,
-        std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<amra_star::AmraStar::Setting>();
+        std::vector<MetricState>{goal},
+        std::vector<MetricState>{goal_tolerance});
+    auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
-    amra_star::AmraStar planner(planning_interface, amra_setting);
+    AmraStar planner(planning_interface, amra_setting);
 
-    std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
-    std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 8.701223, 1e-6);
+    std::shared_ptr<Output> result;
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() {
+        result = planner.Plan();
+    });
+    double plan_cost = result->plan_records[result->latest_plan_itr].cost;
+    std::cout << "Path cost: " << plan_cost << std::endl;
+    EXPECT_NEAR(plan_cost, 4.0017273277044296, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
-    for (auto &[plan_itr, amra_path]: result->paths) {
-        long num_points = amra_path.cols();
+    for (auto &[plan_itr, plan_record]: result->plan_records) {
+        const auto &path = plan_record.path;
+        long num_points = path.cols();
         cv::Mat cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, 1));
         std::vector<cv::Point2i> cv_path;
         cv_path.reserve(num_points);
         for (long i = 0; i < num_points; ++i) {
-            Eigen::Vector3d p = amra_path.col(i);
+            Eigen::Vector3d p = path.col(i);
             Eigen::Vector3i grid = env_scene_graph->MetricToGrid(p);
             cv_path.emplace_back(grid[1], grid[0]);
         }
@@ -79,62 +90,70 @@ TEST(AMRAStarSceneGraph, SingleFloor) {
 
 TEST(AMRAStarSceneGraph, CrossFloor) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::env;
-    using namespace erl::search_planning;
+
+    using Dtype = double;
+    using EnvState = erl::env::EnvironmentState<Dtype, 3>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentSceneGraph = erl::env::EnvironmentSceneGraph<Dtype>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 3>;
+    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 3>;
+    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 3>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 3>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 3>;
 
     // load environment
-    std::filesystem::path building_path = gtest_src_dir / "building.yaml";
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
-    auto building = std::make_shared<scene_graph::Building>();
-    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
+    auto building = std::make_shared<erl::env::scene_graph::Building>();
+    ASSERT_TRUE(building->FromYamlFile(gtest_src_dir / "building.yaml"));
 
     auto env_setting = std::make_shared<EnvironmentSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
-    env_setting->shape = Eigen::Matrix2Xd(2, 360);
+    env_setting->robot_metric_contour = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     for (int i = 0; i < 360; ++i) {
         constexpr double r = 0.1;
-        env_setting->shape(0, i) = r * cos(angles[i]);
-        env_setting->shape(1, i) = r * sin(angles[i]);
+        env_setting->robot_metric_contour.col(i) << r * cos(angles[i]), r * sin(angles[i]);
     }
     auto env_scene_graph = std::make_shared<EnvironmentSceneGraph>(building, env_setting);
 
-    Eigen::VectorXd start = env_scene_graph->GridToMetric(Eigen::Vector3i(400, 900, 1));
-    Eigen::VectorXd goal = env_scene_graph->GridToMetric(Eigen::Vector3i(400, 800, 2));
-    Eigen::VectorXd goal_tolerance = Eigen::VectorXd::Zero(3);
+    MetricState start = env_scene_graph->GridToMetric(Eigen::Vector3i(300, 750, 1));
+    MetricState goal = env_scene_graph->GridToMetric(Eigen::Vector3i(400, 600, 2));
+    MetricState goal_tolerance = Eigen::VectorXd::Zero(3);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 0},  // anchor
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 1},  // kNA
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 2},  // kObject
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 3},  // kRoom
-        {std::make_shared<EuclideanDistanceHeuristic<3>>(goal, goal_tolerance), 4},  // kFloor
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 0},  // anchor
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 1},  // kNA
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 2},  // kObject
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 3},  // kRoom
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 4},  // kFloor
     };
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
+    auto planning_interface = std::make_shared<PlanningInterface>(
         env_scene_graph,
         heuristics,
         start,
-        std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<amra_star::AmraStar::Setting>();
+        std::vector<MetricState>{goal},
+        std::vector<MetricState>{goal_tolerance});
+    auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
-    amra_star::AmraStar planner(planning_interface, amra_setting);
+    AmraStar planner(planning_interface, amra_setting);
 
-    std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
+    std::shared_ptr<Output> result;
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() {
+        result = planner.Plan();
+    });
+    double path_cost = result->plan_records[result->latest_plan_itr].cost;
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 15.485639, 1e-6);
+    EXPECT_NEAR(path_cost, 12.213213425656059, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
-    for (auto &[plan_itr, amra_path]: result->paths) {
-        long num_points = amra_path.cols();
+    for (auto &[plan_itr, plan_record]: result->plan_records) {
+        long num_points = plan_record.path.cols();
         std::unordered_map<int, std::vector<cv::Point2i>> cv_paths;  // floor -> path
         cv_paths.reserve(num_points);
         for (long i = 0; i < num_points; ++i) {
-            Eigen::Vector3d p = amra_path.col(i);
+            Eigen::Vector3d p = plan_record.path.col(i);
             Eigen::Vector3i grid = env_scene_graph->MetricToGrid(p);
             cv_paths[grid[2]].emplace_back(grid[1], grid[0]);
         }
@@ -144,7 +163,9 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
             cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
-            cv::imwrite(output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num), cat_map);
+            cv::imwrite(
+                output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num),
+                cat_map);
         }
     }
     cv::waitKey(1000);  // wait 1s
@@ -152,39 +173,54 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
 
 TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::env;
-    using namespace erl::search_planning;
 
-    std::filesystem::path building_path = gtest_src_dir / "building.yaml";
+    using Dtype = double;
+    using EnvState = erl::env::EnvironmentState<Dtype, 4>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentLTLSceneGraph = erl::env::EnvironmentLTLSceneGraph<Dtype>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 4>;
+    using LinearTemporalLogicHeuristic3D =
+        erl::search_planning::LinearTemporalLogicHeuristic3D<Dtype>;
+    using PlanningInterfaceMultiResolutions =
+        erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 4>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 4>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 4>;
+    using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
+
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
 
     // load the building
-    auto building = std::make_shared<scene_graph::Building>();
-    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
+    auto building = std::make_shared<erl::env::scene_graph::Building>();
+    ASSERT_TRUE(building->FromYamlFile(gtest_src_dir / "building.yaml"));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
-    env_setting->shape = Eigen::Matrix2Xd(2, 360);
+    env_setting->robot_metric_contour = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     for (int i = 0; i < 360; ++i) {
         constexpr double r = 0.1;
-        env_setting->shape(0, i) = r * cos(angles[i]);
-        env_setting->shape(1, i) = r * sin(angles[i]);
+        env_setting->robot_metric_contour.col(i) << r * cos(angles[i]), r * sin(angles[i]);
     }
     // load the finite state automaton setting from spot hoa file
-    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(gtest_src_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
+    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(
+        gtest_src_dir / "automaton.aut",
+        FiniteStateAutomaton::Setting::FileType::kSpotHoa,
+        false);
     // load the atomic propositions
     env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
-    auto environment_ltl_scene_graph = std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
+    auto environment_ltl_scene_graph =
+        std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
 
-    Eigen::VectorXd start = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(100, 200, 0, static_cast<int>(env_setting->fsa->initial_state)));
-    Eigen::VectorXd goal = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
+    MetricState start = environment_ltl_scene_graph->GridToMetric(
+        Eigen::Vector4i(400, 400, 0, static_cast<int>(env_setting->fsa->initial_state)));
+    MetricState goal = environment_ltl_scene_graph->GridToMetric(
+        Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
     double inf = std::numeric_limits<double>::infinity();
-    Eigen::VectorXd goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
+    MetricState goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
     auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic3D>(
         environment_ltl_scene_graph->GetFiniteStateAutomaton(),
         environment_ltl_scene_graph->GetLabelMaps(),
@@ -201,26 +237,28 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
         environment_ltl_scene_graph,
         heuristics,
         start,
-        std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<amra_star::AmraStar::Setting>();
+        std::vector<MetricState>{goal},
+        std::vector<MetricState>{goal_tolerance});
+    auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
-    amra_star::AmraStar planner(planning_interface, amra_setting);
+    AmraStar planner(planning_interface, amra_setting);
 
-    std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
+    std::shared_ptr<Output> result;
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() {
+        result = planner.Plan();
+    });
+    double path_cost = result->plan_records[result->latest_plan_itr].cost;
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
+    EXPECT_NEAR(path_cost, 16.28692462544273, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
-    for (auto &[plan_itr, amra_path]: result->paths) {
-        long num_points = amra_path.cols();
+    for (auto &[plan_itr, plan_record]: result->plan_records) {
+        long num_points = plan_record.path.cols();
         std::unordered_map<int, std::vector<cv::Point2i>> cv_paths;  // floor -> path
         cv_paths.reserve(num_points);
         for (long i = 0; i < num_points; ++i) {
-            Eigen::Vector4d p = amra_path.col(i);
+            Eigen::Vector4d p = plan_record.path.col(i);
             Eigen::Vector4i grid = environment_ltl_scene_graph->MetricToGrid(p);
             cv_paths[grid[2]].emplace_back(grid[1], grid[0]);
         }
@@ -230,7 +268,9 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
             cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
-            cv::imwrite(output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num), cat_map);
+            cv::imwrite(
+                output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num),
+                cat_map);
         }
     }
     cv::waitKey(1000);  // wait 1s
@@ -238,41 +278,55 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
 
 TEST(AMRAStarSceneGraph, SingleLayer) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::env;
-    using namespace erl::search_planning;
+
+    using Dtype = double;
+    using EnvState = erl::env::EnvironmentState<Dtype, 4>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentLTLSceneGraph = erl::env::EnvironmentLTLSceneGraph<Dtype>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 4>;
+    using LtlHeuristic3D = erl::search_planning::LinearTemporalLogicHeuristic3D<Dtype>;
+    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 4>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 4>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 4>;
+    using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
 
     std::filesystem::path building_path = gtest_src_dir / "building.yaml";
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
     std::filesystem::create_directories(output_dir);
 
     // load the building
-    auto building = std::make_shared<scene_graph::Building>();
+    auto building = std::make_shared<erl::env::scene_graph::Building>();
     ASSERT_TRUE(building->FromYamlFile(building_path.string()));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
-    env_setting->shape = Eigen::Matrix2Xd(2, 360);
+    env_setting->robot_metric_contour = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     for (int i = 0; i < 360; ++i) {
         constexpr double r = 0.1;
-        env_setting->shape(0, i) = r * cos(angles[i]);
-        env_setting->shape(1, i) = r * sin(angles[i]);
+        env_setting->robot_metric_contour.col(i) << r * cos(angles[i]), r * sin(angles[i]);
     }
     // load the finite state automaton setting from spot hoa file
-    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(gtest_src_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
+    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(
+        gtest_src_dir / "automaton.aut",
+        FiniteStateAutomaton::Setting::FileType::kSpotHoa,
+        false);
     // load the atomic propositions
     env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
     env_setting->max_level = erl::env::scene_graph::Node::Type::kOcc;
-    auto environment_ltl_scene_graph = std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
+    auto environment_ltl_scene_graph =
+        std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
 
-    Eigen::VectorXd start = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(100, 200, 0, static_cast<int>(env_setting->fsa->initial_state)));
-    Eigen::VectorXd goal = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
+    MetricState start = environment_ltl_scene_graph->GridToMetric(
+        Eigen::Vector4i(400, 400, 0, static_cast<int>(env_setting->fsa->initial_state)));
+    MetricState goal = environment_ltl_scene_graph->GridToMetric(
+        Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
     double inf = std::numeric_limits<double>::infinity();
-    Eigen::VectorXd goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
-    auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic3D>(
+    MetricState goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
+    auto ltl_heuristic = std::make_shared<LtlHeuristic3D>(
         environment_ltl_scene_graph->GetFiniteStateAutomaton(),
         environment_ltl_scene_graph->GetLabelMaps(),
         environment_ltl_scene_graph->GetGridMapInfo());
@@ -282,30 +336,32 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
         {ltl_heuristic, 1},  // kNA
     };
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
+    auto planning_interface = std::make_shared<PlanningInterface>(
         environment_ltl_scene_graph,
         heuristics,
         start,
-        std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<amra_star::AmraStar::Setting>();
+        std::vector<MetricState>{goal},
+        std::vector<MetricState>{goal_tolerance});
+    auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
-    amra_star::AmraStar planner(planning_interface, amra_setting);
+    AmraStar planner(planning_interface, amra_setting);
 
-    std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
+    std::shared_ptr<Output> result;
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() {
+        result = planner.Plan();
+    });
+    double path_cost = result->plan_records[result->latest_plan_itr].cost;
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.562500852413102, 1e-6);
+    EXPECT_NEAR(path_cost, 16.286924625442765, 1e-6);
     if (amra_setting->log) { result->Save(output_dir / "amra.solution"); }
 
     // draw path
-    for (auto &[plan_itr, amra_path]: result->paths) {
-        long num_points = amra_path.cols();
+    for (auto &[plan_itr, plan_record]: result->plan_records) {
+        long num_points = plan_record.path.cols();
         std::unordered_map<int, std::vector<cv::Point2i>> cv_paths;  // floor -> path
         cv_paths.reserve(num_points);
         for (long i = 0; i < num_points; ++i) {
-            Eigen::Vector4d p = amra_path.col(i);
+            Eigen::Vector4d p = plan_record.path.col(i);
             Eigen::Vector4i grid = environment_ltl_scene_graph->MetricToGrid(p);
             cv_paths[grid[2]].emplace_back(grid[1], grid[0]);
         }
@@ -315,7 +371,9 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
             cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
-            cv::imwrite(output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num), cat_map);
+            cv::imwrite(
+                output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num),
+                cat_map);
         }
     }
     cv::waitKey(1000);  // wait 1s
@@ -323,49 +381,63 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
 
 TEST(LLMSceneGraph, Heuristic) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::env;
-    using namespace erl::search_planning;
 
-    std::filesystem::path building_path = gtest_src_dir / "building.yaml";
-    // std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
-    // std::filesystem::create_directories(output_dir);
+    using Dtype = double;
+    using EnvState = erl::env::EnvironmentState<Dtype, 4>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentLTLSceneGraph = erl::env::EnvironmentLTLSceneGraph<Dtype>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 4>;
+    using LinearTemporalLogicHeuristic3D =
+        erl::search_planning::LinearTemporalLogicHeuristic3D<Dtype>;
+    using LlmSceneGraphHeuristic = erl::search_planning::LlmSceneGraphHeuristic<Dtype>;
+    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 4>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 4>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 4>;
+    using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
 
     // load the building
-    auto building = std::make_shared<scene_graph::Building>();
-    ASSERT_TRUE(building->FromYamlFile(building_path.string()));
+    auto building = std::make_shared<erl::env::scene_graph::Building>();
+    ASSERT_TRUE(building->FromYamlFile(gtest_src_dir / "building.yaml"));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
     env_setting->data_dir = gtest_src_dir.string();
     env_setting->object_reach_distance = 0.6;
-    env_setting->shape = Eigen::Matrix2Xd(2, 360);
+    env_setting->robot_metric_contour = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     for (int i = 0; i < 360; ++i) {
         constexpr double r = 0.1;
-        env_setting->shape(0, i) = r * cos(angles[i]);
-        env_setting->shape(1, i) = r * sin(angles[i]);
+        env_setting->robot_metric_contour.col(i) << r * cos(angles[i]), r * sin(angles[i]);
     }
     // load the finite state automaton setting from spot hoa file
-    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(gtest_src_dir / "automaton.aut", FiniteStateAutomaton::Setting::FileType::kSpotHoa);
+    env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(
+        gtest_src_dir / "automaton.aut",
+        FiniteStateAutomaton::Setting::FileType::kSpotHoa,
+        false);
     // load the atomic propositions
     env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
-    auto environment_ltl_scene_graph = std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
+    auto environment_ltl_scene_graph =
+        std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
 
-    Eigen::VectorXd start = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(100, 200, 0, static_cast<int>(env_setting->fsa->initial_state)));
-    Eigen::VectorXd goal = environment_ltl_scene_graph->GridToMetric(Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
+    MetricState start = environment_ltl_scene_graph->GridToMetric(
+        Eigen::Vector4i(400, 400, 0, static_cast<int>(env_setting->fsa->initial_state)));
+    MetricState goal = environment_ltl_scene_graph->GridToMetric(
+        Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
     double inf = std::numeric_limits<double>::infinity();
-    Eigen::VectorXd goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
+    MetricState goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
     auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic3D>(
         environment_ltl_scene_graph->GetFiniteStateAutomaton(),
         environment_ltl_scene_graph->GetLabelMaps(),
         environment_ltl_scene_graph->GetGridMapInfo());
 
-    auto gpt4_heuristic_file = gtest_src_dir / "gpt4_path_v2.yaml";
+    auto gpt4_heuristic_file = gtest_src_dir / "llm_heuristic.yaml";
     auto gpt4_heuristic_setting = std::make_shared<LlmSceneGraphHeuristic::Setting>();
     ASSERT_TRUE(gpt4_heuristic_setting->FromYamlFile(gpt4_heuristic_file.string()));
-    auto gpt4_heuristic = std::make_shared<LlmSceneGraphHeuristic>(gpt4_heuristic_setting, environment_ltl_scene_graph);
+    auto gpt4_heuristic = std::make_shared<LlmSceneGraphHeuristic>(
+        gpt4_heuristic_setting,
+        environment_ltl_scene_graph);
 
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {ltl_heuristic, 0},  // anchor
@@ -379,30 +451,32 @@ TEST(LLMSceneGraph, Heuristic) {
         {gpt4_heuristic, 4},
     };
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
+    auto planning_interface = std::make_shared<PlanningInterface>(
         environment_ltl_scene_graph,
         heuristics,
         start,
-        std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance});
-    auto amra_setting = std::make_shared<amra_star::AmraStar::Setting>();
+        std::vector<MetricState>{goal},
+        std::vector<MetricState>{goal_tolerance});
+    auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
-    amra_star::AmraStar planner(planning_interface, amra_setting);
+    AmraStar planner(planning_interface, amra_setting);
 
-    std::shared_ptr<amra_star::Output> result;
-    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() { result = planner.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
+    std::shared_ptr<Output> result;
+    erl::common::ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() {
+        result = planner.Plan();
+    });
+    double path_cost = result->plan_records[result->latest_plan_itr].cost;
     std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, 18.562500852412878, 1e-6);
+    EXPECT_NEAR(path_cost, 16.28692462544273, 1e-6);
     if (amra_setting->log) { result->Save(test_output_dir / "amra.solution"); }
 
     // draw path
-    for (auto &[plan_itr, amra_path]: result->paths) {
-        long num_points = amra_path.cols();
+    for (auto &[plan_itr, plan_record]: result->plan_records) {
+        long num_points = plan_record.path.cols();
         std::unordered_map<int, std::vector<cv::Point2i>> cv_paths;  // floor -> path
         cv_paths.reserve(num_points);
         for (long i = 0; i < num_points; ++i) {
-            Eigen::Vector4d p = amra_path.col(i);
+            Eigen::Vector4d p = plan_record.path.col(i);
             Eigen::Vector4i grid = environment_ltl_scene_graph->MetricToGrid(p);
             cv_paths[grid[2]].emplace_back(grid[1], grid[0]);
         }
@@ -412,7 +486,9 @@ TEST(LLMSceneGraph, Heuristic) {
             cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
-            cv::imwrite(test_output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num), cat_map);
+            cv::imwrite(
+                test_output_dir / fmt::format("plan_{}_floor_{}.png", plan_itr, floor_num),
+                cat_map);
         }
     }
     cv::waitKey(1000);  // wait 1s

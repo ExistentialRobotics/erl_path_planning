@@ -36,12 +36,12 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
         app_data->m_button_down = true;
         app_data->reeds_shepp_path = nullptr;
     } else if (event == cv::EVENT_LBUTTONUP) {
-        app_data->phi0 = std::atan2(double(y - app_data->y0), double(x - app_data->x0));
+        app_data->phi0 = std::atan2(y - app_data->y0, x - app_data->x0);
         app_data->start_set = true;
         app_data->l_button_down = false;
         ERL_INFO("set start: ({}, {}, {})", app_data->x0, app_data->y0, app_data->phi0);
     } else if (event == cv::EVENT_MBUTTONUP) {
-        app_data->phi1 = std::atan2(double(y - app_data->y1), double(x - app_data->x1));
+        app_data->phi1 = std::atan2(y - app_data->y1, x - app_data->x1);
         app_data->goal_set = true;
         app_data->m_button_down = false;
         ERL_INFO("set goal: ({}, {}, {})", app_data->x1, app_data->y1, app_data->phi1);
@@ -53,30 +53,42 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
 
     cv::Mat tmp;
     if (app_data->start_set) {
-        double dx = double(app_data->dir_vec_len) * std::cos(app_data->phi0);
-        double dy = double(app_data->dir_vec_len) * std::sin(app_data->phi0);
-        cv::Point2i p1(int(app_data->x0), app_data->canvas.rows - int(app_data->y0));
-        cv::Point2i p2(int(std::round(app_data->x0 + dx)), app_data->canvas.rows - int(std::round(app_data->y0 + dy)));
+        double dx = static_cast<double>(app_data->dir_vec_len) * std::cos(app_data->phi0);
+        double dy = static_cast<double>(app_data->dir_vec_len) * std::sin(app_data->phi0);
+        cv::Point2i p1(
+            static_cast<int>(app_data->x0),
+            app_data->canvas.rows - static_cast<int>(app_data->y0));
+        cv::Point2i p2(
+            static_cast<int>(std::round(app_data->x0 + dx)),
+            app_data->canvas.rows - static_cast<int>(std::round(app_data->y0 + dy)));
         cv::arrowedLine(app_data->canvas, p1, p2, cv::Scalar(0, 0, 0), 2);
         cv::circle(app_data->canvas, p1, 3, cv::Scalar(0, 255, 0), -1);
     } else if (app_data->l_button_down) {
         tmp = app_data->canvas.clone();
-        cv::Point2i p1(int(app_data->x0), app_data->canvas.rows - int(app_data->y0));
+        cv::Point2i p1(
+            static_cast<int>(app_data->x0),
+            app_data->canvas.rows - static_cast<int>(app_data->y0));
         cv::Point2i p2(x, y_cv);
         cv::arrowedLine(tmp, p1, p2, cv::Scalar(0, 0, 0), 2);
         cv::circle(tmp, p1, 3, cv::Scalar(0, 255, 0), -1);
     }
 
     if (app_data->goal_set) {
-        double dx = double(app_data->dir_vec_len) * std::cos(app_data->phi1);
-        double dy = double(app_data->dir_vec_len) * std::sin(app_data->phi1);
-        cv::Point2i p1(int(app_data->x1), app_data->canvas.rows - int(app_data->y1));
-        cv::Point2i p2(int(std::round(app_data->x1 + dx)), app_data->canvas.rows - int(std::round(app_data->y1 + dy)));
+        double dx = static_cast<double>(app_data->dir_vec_len) * std::cos(app_data->phi1);
+        double dy = static_cast<double>(app_data->dir_vec_len) * std::sin(app_data->phi1);
+        cv::Point2i p1(
+            static_cast<int>(app_data->x1),
+            app_data->canvas.rows - static_cast<int>(app_data->y1));
+        cv::Point2i p2(
+            static_cast<int>(std::round(app_data->x1 + dx)),
+            app_data->canvas.rows - static_cast<int>(std::round(app_data->y1 + dy)));
         cv::arrowedLine(app_data->canvas, p1, p2, cv::Scalar(0, 0, 0), 2);
         cv::circle(app_data->canvas, p1, 3, cv::Scalar(0, 255, 0), -1);
     } else if (app_data->m_button_down) {
         tmp = app_data->canvas.clone();
-        cv::Point2i p1(int(app_data->x1), app_data->canvas.rows - int(app_data->y1));
+        cv::Point2i p1(
+            static_cast<int>(app_data->x1),
+            app_data->canvas.rows - static_cast<int>(app_data->y1));
         cv::Point2i p2(x, y_cv);
         cv::arrowedLine(tmp, p1, p2, cv::Scalar(0, 0, 0), 2);
         cv::circle(tmp, p1, 3, cv::Scalar(0, 255, 0), -1);
@@ -99,18 +111,26 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
         app_data->y1,
         app_data->phi1,
         app_data->turning_radius);
-    ERL_INFO("dubins path: {}, length: {:f}", app_data->reeds_shepp_path->GetDubinsPathType().c_str(), app_data->reeds_shepp_path->GetLength());
+    ERL_INFO(
+        "dubins path: {}, length: {:f}",
+        app_data->reeds_shepp_path->GetDubinsPathType().c_str(),
+        app_data->reeds_shepp_path->GetLength());
     std::vector<double> xs, ys, phis;
     app_data->reeds_shepp_path->InterpolateNPoints(app_data->n_points, xs, ys, phis);
     std::vector<cv::Point> points;
     points.reserve(app_data->n_points);
     for (std::size_t i = 0; i < app_data->n_points; ++i) {
-        double dx = double(app_data->dir_vec_len) * std::cos(phis[i]);
-        double dy = double(app_data->dir_vec_len) * std::sin(phis[i]);
+        double dx = static_cast<double>(app_data->dir_vec_len) * std::cos(phis[i]);
+        double dy = static_cast<double>(app_data->dir_vec_len) * std::sin(phis[i]);
         points.emplace_back(xs[i], app_data->canvas.rows - ys[i]);
-        auto x2 = int(std::round(xs[i] + dx));
-        auto y2 = app_data->canvas.rows - int(std::round(ys[i] + dy));
-        cv::arrowedLine(app_data->canvas, points.back(), cv::Point2i(x2, y2), cv::Scalar(255, 0, 0), 1);
+        auto x2 = static_cast<int>(std::round(xs[i] + dx));
+        auto y2 = app_data->canvas.rows - static_cast<int>(std::round(ys[i] + dy));
+        cv::arrowedLine(
+            app_data->canvas,
+            points.back(),
+            cv::Point2i(x2, y2),
+            cv::Scalar(255, 0, 0),
+            1);
     }
     cv::polylines(app_data->canvas, points, false, cv::Scalar(0, 0, 255), 2);
     cv::circle(app_data->canvas, points.front(), 3, cv::Scalar(0, 255, 0), -1);

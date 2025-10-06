@@ -14,10 +14,23 @@
 
 TEST(AMRAStar2D, AStarConsistency) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::common;
-    using namespace erl::env;
-    using namespace erl::search_planning;
-    using namespace erl::search_planning::amra_star;
+
+    using Dtype = double;
+    using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
+    using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
+    using CostBase = erl::env::CostBase<Dtype, 2>;
+    using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
+    using EnvState = erl::env::EnvironmentState<Dtype, 2>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 2>;
+    using Environment2D = erl::env::Environment2D<Dtype>;
+    using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 2>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 2>;
+    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 2>;
+    using PlanningInterfaceMultiResolutions =
+        erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 2>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 2>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 2>;
 
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
     // clang-format off
@@ -38,21 +51,26 @@ TEST(AMRAStar2D, AStarConsistency) {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0;
     // clang-format on
-    auto grid_map_info = std::make_shared<GridMapInfo<2>>(Eigen::Vector2i{15, 15}, Eigen::Vector2d::Zero(), Eigen::Vector2d::Constant(15));
-    auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, grid_map_data);
+    auto grid_map_info = std::make_shared<GridMapInfo>(
+        Eigen::Vector2i{15, 15},
+        Eigen::Vector2d::Zero(),
+        Eigen::Vector2d::Constant(15));
+    auto grid_map = std::make_shared<GridMap>(grid_map_info, grid_map_data);
 
     auto env_2d_setting = std::make_shared<Environment2D::Setting>();
     env_2d_setting->SetGridMotionPrimitive(1, true);
     std::shared_ptr<CostBase> cost_func = std::make_shared<EuclideanDistanceCost>();
     auto env = std::make_shared<Environment2D>(grid_map, env_2d_setting, cost_func);
-    Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
-    Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 10});
-    Eigen::VectorXd goal_tolerance = Eigen::Vector2d::Zero();
+    MetricState start = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 1});
+    MetricState goal = grid_map_info->GridToMeterForPoints(Eigen::Vector2i{1, 10});
+    MetricState goal_tolerance = Eigen::Vector2d::Zero();
 
-    auto anchor_env = std::make_shared<EnvironmentGridAnchor<2>>(std::vector<std::shared_ptr<EnvironmentBase>>{env}, grid_map_info);
+    auto anchor_env = std::make_shared<EnvironmentGridAnchor>(
+        std::vector<std::shared_ptr<EnvironmentBase>>{env},
+        grid_map_info);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
-        {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 0},
-        {std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance), 1}};
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 0},
+        {std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0), 1}};
 
     constexpr double terminal_cost = 10.0;
     auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
@@ -60,25 +78,32 @@ TEST(AMRAStar2D, AStarConsistency) {
         anchor_env,
         heuristics,
         start,
-        std::vector<Eigen::VectorXd>{goal},
-        std::vector<Eigen::VectorXd>{goal_tolerance},
+        std::vector<MetricState>{goal},
+        std::vector<MetricState>{goal_tolerance},
         std::vector<double>{terminal_cost});
     auto amra_setting = std::make_shared<AmraStar::Setting>();
     amra_setting->log = true;
     AmraStar planner(planning_interface, amra_setting);
     std::shared_ptr<Output> result;
-    ReportTime<std::chrono::microseconds>("AMRAStar2D::AStarConsistency", 0, true, [&]() { result = planner.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
+    using namespace erl::common;
+    ReportTime<std::chrono::microseconds>("AMRAStar2D::AStarConsistency", 0, true, [&]() {
+        result = planner.Plan();
+    });
+    auto &plan_record = result->plan_records[result->latest_plan_itr];
+    double path_cost = plan_record.cost;
     std::cout << "Path cost: " << path_cost << std::endl << "Path: " << std::endl;
-    auto &path = result->paths[result->latest_plan_itr];
+    auto &path = plan_record.path;
     long num_points = path.cols();
     for (long i = 0; i < num_points; ++i) { std::cout << path.col(i).transpose() << std::endl; }
     EXPECT_DOUBLE_EQ(path_cost - terminal_cost, 16.071067811865476);
     if (amra_setting->log) { result->Save(test_output_dir / "amra.solution"); }
 }
 
-std::shared_ptr<erl::common::GridMapUnsigned2D>
-ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std::string &img_path = "") {
+std::shared_ptr<erl::common::GridMap<uint8_t, double, 2>>
+ReadAmraStarTestMap(
+    const std::string &filepath,
+    bool display = false,
+    const std::string &img_path = "") {
     std::ifstream file(filepath);
     std::string line, word;
     std::stringstream ss;
@@ -155,10 +180,15 @@ ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std
     Eigen::Vector2i map_shape(height, width);
     Eigen::Vector2d map_min(0.0, 0.0);
     Eigen::Vector2d map_max(height, width);
-    auto grid_map_info = std::make_shared<erl::common::GridMapInfo2D>(std::move(map_shape), std::move(map_min), std::move(map_max));
+    auto grid_map_info = std::make_shared<erl::common::GridMapInfo2Dd>(
+        std::move(map_shape),
+        std::move(map_min),
+        std::move(map_max));
     Eigen::MatrixX8U binary_map(grid_map_info->Height(), grid_map_info->Width());
     binary_map.setZero();
-    binary_map.topLeftCorner(height, width) = map.cast<uint8_t>().transpose();  // erl::common::GridMapUnsigned2D requires row-major storage
+    binary_map.topLeftCorner(height, width) =
+        map.cast<uint8_t>()
+            .transpose();  // erl::common::GridMapUnsigned2D requires row-major storage
 
     if (display) {
         cv::Mat img;
@@ -173,15 +203,35 @@ ReadAmraStarTestMap(const std::string &filepath, bool display = false, const std
         cv::imwrite(img_path, img);
     }
 
-    auto grid_map = std::make_shared<erl::common::GridMapUnsigned2D>(grid_map_info, Eigen::VectorX8U(binary_map.reshaped(binary_map.size(), 1)));
+    auto grid_map = std::make_shared<erl::common::GridMap<uint8_t, double, 2>>(
+        grid_map_info,
+        Eigen::VectorX8U(binary_map.reshaped(binary_map.size(), 1)));
     return grid_map;
 }
 
 void
-RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &start_grid, const Eigen::Vector2i &goal_grid, double expected_cost) {
-    std::filesystem::path src_dir = std::filesystem::path(__FILE__).parent_path();
-    std::filesystem::path data_dir = std::filesystem::absolute(src_dir / "../amra/dat");
-    std::filesystem::path result_dir = src_dir / "results";
+RunTestWithMap(
+    const std::filesystem::path &map_file,
+    const Eigen::Vector2i &start_grid,
+    const Eigen::Vector2i &goal_grid,
+    double expected_cost) {
+
+    GTEST_PREPARE_OUTPUT_DIR();
+
+    using Dtype = double;
+    using EnvState = erl::env::EnvironmentState<Dtype, 2>;
+    using MetricState = EnvState::MetricState;
+    using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 2>;
+    using Environment2D = erl::env::Environment2D<Dtype>;
+    using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 2>;
+    using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 2>;
+    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 2>;
+    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 2>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 2>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 2>;
+
+    std::filesystem::path data_dir = std::filesystem::absolute(gtest_src_dir / "../amra/dat");
 
     std::string map_name = std::filesystem::relative(map_file, data_dir).string();
     std::string sep(map_name.size() + 2, '=');
@@ -191,47 +241,57 @@ RunTestWithMap(const std::filesystem::path &map_file, const Eigen::Vector2i &sta
     using namespace erl::search_planning;
     using namespace erl::search_planning::amra_star;
 
-    auto map_result_dir = result_dir / "AMRAStar2D" / "MultiResolutions" / map_name;
-    if (!std::filesystem::exists(map_result_dir)) { std::filesystem::create_directories(map_result_dir); }
+    auto map_result_dir = test_output_dir / map_name;
+    if (!std::filesystem::exists(map_result_dir)) {
+        std::filesystem::create_directories(map_result_dir);
+    }
     constexpr bool display = false;
     std::string img_path = map_result_dir / "amra.png";
     auto grid_map = ReadAmraStarTestMap(map_file, display, img_path);
     auto grid_map_info = grid_map->info;
 
+    auto cost_func = std::make_shared<EuclideanDistanceCost>();
+
     auto env_high_res_setting = std::make_shared<Environment2D::Setting>();
     env_high_res_setting->SetGridMotionPrimitive(1, true);
     env_high_res_setting->grid_stride = 1;
-    auto env_high_res = std::make_shared<Environment2D>(grid_map, env_high_res_setting);
+    auto env_high_res = std::make_shared<Environment2D>(grid_map, env_high_res_setting, cost_func);
     auto env_mid_res_setting = std::make_shared<Environment2D::Setting>();
-    env_mid_res_setting->motions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {3, 3}, {3, -3}, {-3, 3}, {-3, -3}};
+    env_mid_res_setting
+        ->motions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {3, 3}, {3, -3}, {-3, 3}, {-3, -3}};
     env_mid_res_setting->grid_stride = 3;
-    auto env_mid_res = std::make_shared<Environment2D>(grid_map, env_mid_res_setting);
+    auto env_mid_res = std::make_shared<Environment2D>(grid_map, env_mid_res_setting, cost_func);
     auto env_low_res_setting = std::make_shared<Environment2D::Setting>();
-    env_low_res_setting->motions = {{9, 0}, {-9, 0}, {0, 9}, {0, -9}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
+    env_low_res_setting
+        ->motions = {{9, 0}, {-9, 0}, {0, 9}, {0, -9}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
     env_low_res_setting->grid_stride = 9;
-    auto env_low_res = std::make_shared<Environment2D>(grid_map, env_low_res_setting);
+    auto env_low_res = std::make_shared<Environment2D>(grid_map, env_low_res_setting, cost_func);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
-    auto env_anchor = std::make_shared<EnvironmentGridAnchor<2>>(envs, grid_map_info);
+    auto env_anchor = std::make_shared<EnvironmentGridAnchor>(envs, grid_map_info);
 
-    Eigen::VectorXd start = grid_map_info->GridToMeterForPoints(start_grid);
-    Eigen::VectorXd goal = grid_map_info->GridToMeterForPoints(goal_grid);
-    Eigen::VectorXd goal_tolerance = Eigen::Vector2d::Zero();
-    auto euclidean_heuristic = std::make_shared<EuclideanDistanceHeuristic<2>>(goal, goal_tolerance);
+    MetricState start = grid_map_info->GridToMeterForPoints(start_grid);
+    MetricState goal = grid_map_info->GridToMeterForPoints(goal_grid);
+    MetricState goal_tolerance = MetricState::Zero();
+    auto euclidean_heuristic =
+        std::make_shared<EuclideanDistanceHeuristic>(goal, goal_tolerance, 0);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {euclidean_heuristic, 0},
         {euclidean_heuristic, 1},
         {euclidean_heuristic, 2},
         {euclidean_heuristic, 3}};
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
+    auto planning_interface =
+        std::make_shared<PlanningInterface>(env_anchor, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AmraStar::Setting>();
     setting->log = true;
     std::shared_ptr<Output> result;
     AmraStar amra_star(planning_interface, setting);
-    ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() { result = amra_star.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
-    std::cout << "Path cost: " << path_cost << std::endl;
-    EXPECT_NEAR(path_cost, expected_cost, 1.e-6);
+    ReportTime<std::chrono::milliseconds>(map_name.c_str(), 0, true, [&]() {
+        result = amra_star.Plan();
+    });
+    auto plan_record = result->plan_records[result->latest_plan_itr];
+    std::cout << "Path cost: " << plan_record.cost << std::endl;
+    EXPECT_NEAR(plan_record.cost, expected_cost, 1.e-6);
 
     if (setting->log) { result->Save(map_result_dir / "amra.solution"); }
 }
@@ -251,10 +311,19 @@ TEST(AMRAStar2D, MultiResolutions) {
 
 TEST(AMRAStar2D, LinearTemporalLogic) {
     GTEST_PREPARE_OUTPUT_DIR();
-    using namespace erl::common;
-    using namespace erl::env;
-    using namespace erl::search_planning;
-    using namespace erl::search_planning::amra_star;
+
+    using Dtype = double;
+    using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 3>;
+    using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 3>;
+    using EnvironmentLTL2D = erl::env::EnvironmentLTL2D<Dtype>;
+    using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
+    using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
+    using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
+    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 3>;
+    using LtlHeuristic2D = erl::search_planning::LinearTemporalLogicHeuristic2D<Dtype>;
+    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 3>;
+    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 3>;
+    using Output = erl::search_planning::amra_star::Output<Dtype, 3>;
 
     auto output_dir = gtest_src_dir / "results" / test_output_dir;
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
@@ -272,46 +341,59 @@ TEST(AMRAStar2D, LinearTemporalLogic) {
     Eigen::Vector2i map_shape(251, 261);
     Eigen::Vector2d map_min(-5.05, -5.05);
     Eigen::Vector2d map_max(20.05, 21.05);
-    auto grid_map_info = std::make_shared<GridMapInfo2D>(map_shape, map_min, map_max);
-    auto grid_map = std::make_shared<GridMapUnsigned2D>(grid_map_info, 0);  // free to move everywhere
+    auto grid_map_info = std::make_shared<GridMapInfo>(map_shape, map_min, map_max);
+    auto grid_map = std::make_shared<GridMap>(grid_map_info, 0);  // free to move everywhere
     auto cost_func = std::make_shared<EuclideanDistanceCost>();
 
     auto env_high_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
     env_high_res_setting->SetGridMotionPrimitive(1, true);
     env_high_res_setting->grid_stride = 1;
-    auto env_high_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_high_res_setting, cost_func);
+    auto env_high_res =
+        std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_high_res_setting, cost_func);
     auto env_mid_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
-    env_mid_res_setting->motions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {3, 3}, {3, -3}, {-3, 3}, {-3, -3}};
+    env_mid_res_setting
+        ->motions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}, {3, 3}, {3, -3}, {-3, 3}, {-3, -3}};
     env_mid_res_setting->grid_stride = 3;
-    auto env_mid_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_mid_res_setting, cost_func);
+    auto env_mid_res =
+        std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_mid_res_setting, cost_func);
     auto env_low_res_setting = std::make_shared<EnvironmentLTL2D::Setting>(*env_setting);
-    env_low_res_setting->motions = {{9, 0}, {-9, 0}, {0, 9}, {0, -9}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
+    env_low_res_setting
+        ->motions = {{9, 0}, {-9, 0}, {0, 9}, {0, -9}, {9, 9}, {9, -9}, {-9, 9}, {-9, -9}};
     env_low_res_setting->grid_stride = 9;
-    auto env_low_res = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_low_res_setting, cost_func);
+    auto env_low_res =
+        std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_low_res_setting, cost_func);
     std::vector<std::shared_ptr<EnvironmentBase>> envs = {env_high_res, env_mid_res, env_low_res};
-    auto env_anchor = std::make_shared<EnvironmentGridAnchor<3>>(envs, env_high_res->GetGridMapInfo());
+    auto env_anchor = std::make_shared<EnvironmentGridAnchor>(envs, env_high_res->GetGridMapInfo());
 
     Eigen::VectorXd start(Eigen::Vector3d(-2, 3, env_setting->fsa->initial_state));
     Eigen::VectorXd goal(Eigen::Vector3d(0, 0, env_setting->fsa->accepting_states[0]));
     double inf = std::numeric_limits<double>::infinity();
     Eigen::VectorXd goal_tolerance(Eigen::Vector3d(inf, inf, 0));
 
-    auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic2D>(env_high_res->GetFiniteStateAutomaton(), label_map, grid_map_info);
+    auto ltl_heuristic = std::make_shared<LtlHeuristic2D>(
+        env_high_res->GetFiniteStateAutomaton(),
+        label_map,
+        grid_map_info);
     std::vector<std::pair<std::shared_ptr<HeuristicBase>, std::size_t>> heuristics = {
         {ltl_heuristic, 0},
         {ltl_heuristic, 1},
         {ltl_heuristic, 2},
         {ltl_heuristic, 3}};
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(env_anchor, heuristics, start, goal, goal_tolerance);
+    auto planning_interface =
+        std::make_shared<PlanningInterface>(env_anchor, heuristics, start, goal, goal_tolerance);
     auto setting = std::make_shared<AmraStar::Setting>();
     setting->log = true;
     std::shared_ptr<Output> result;
     AmraStar amra_star(planning_interface, setting);
-    ReportTime<std::chrono::milliseconds>("AMRA* 2D LTL", 0, true, [&]() { result = amra_star.Plan(); });
-    double path_cost = result->costs[result->latest_plan_itr];
-    std::cout << "Path cost: " << path_cost << std::endl;
+    erl::common::ReportTime<std::chrono::milliseconds>("AMRA* 2D LTL", 0, true, [&]() {
+        result = amra_star.Plan();
+    });
+    auto &plan_record = result->plan_records[result->latest_plan_itr];
+    std::cout << "Path cost: " << plan_record.cost << std::endl;
 
-    EXPECT_DOUBLE_EQ(path_cost, 20.417871555019033);  // 20.417871555019136, slightly lower than the A* result
+    EXPECT_DOUBLE_EQ(
+        plan_record.cost,
+        20.417871555019033);  // 20.417871555019136, slightly lower than the A* result
     if (setting->log) { result->Save(output_dir / "amra.solution"); }
 }

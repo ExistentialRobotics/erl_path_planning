@@ -1,0 +1,384 @@
+llm_paths:
+  2:
+    1:
+    - type: kEnterRoom
+      uuid1: 2
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 2
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 2
+      uuid2: 10
+  4:
+    1:
+    - type: kEnterRoom
+      uuid1: 4
+      uuid2: 7
+    - type: kEnterRoom
+      uuid1: 7
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 4
+      uuid2: 7
+    - type: kEnterRoom
+      uuid1: 7
+      uuid2: 11
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+    3:
+    - type: kEnterRoom
+      uuid1: 4
+      uuid2: 7
+    - type: kEnterRoom
+      uuid1: 7
+      uuid2: 11
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+  6:
+    1:
+    - type: kEnterRoom
+      uuid1: 6
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 6
+      uuid2: 11
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+    3:
+    - type: kEnterRoom
+      uuid1: 6
+      uuid2: 11
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+  7:
+    1:
+    - type: kEnterRoom
+      uuid1: 7
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 7
+      uuid2: 11
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+    3:
+    - type: kEnterRoom
+      uuid1: 7
+      uuid2: 11
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+  8:
+    1:
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+  10:
+    1:
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3: []
+  11:
+    1: []
+    2:
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 11
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+  12:
+    1:
+    - type: kEnterRoom
+      uuid1: 12
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 12
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 12
+      uuid2: 10
+  13:
+    1:
+    - type: kEnterRoom
+      uuid1: 13
+      uuid2: 8
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 13
+      uuid2: 8
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 13
+      uuid2: 8
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+  14:
+    1:
+    - type: kEnterRoom
+      uuid1: 14
+      uuid2: 8
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 14
+      uuid2: 8
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 14
+      uuid2: 8
+    - type: kEnterRoom
+      uuid1: 8
+      uuid2: 17
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+  15:
+    1:
+    - type: kEnterRoom
+      uuid1: 15
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 15
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 15
+      uuid2: 10
+  16:
+    1:
+    - type: kEnterRoom
+      uuid1: 16
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 16
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 16
+      uuid2: 10
+  17:
+    1:
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 18
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 17
+      uuid2: 10
+  18:
+    1:
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 11
+    2:
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10
+    - type: kEnterRoom
+      uuid1: 10
+      uuid2: 11
+    3:
+    - type: kEnterRoom
+      uuid1: 18
+      uuid2: 10

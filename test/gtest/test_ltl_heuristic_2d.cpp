@@ -1,20 +1,21 @@
+#include "erl_common/test_helper.hpp"
 #include "erl_search_planning/heuristic.hpp"
 #include "erl_search_planning/ltl_2d_heuristic.hpp"
-
-#include <gtest/gtest.h>
 
 #include <filesystem>
 
 TEST(LinearTemporalLogic, Heuristic2D) {
-    std::filesystem::path path = __FILE__;
-    path = path.parent_path();
+    GTEST_PREPARE_OUTPUT_DIR();
 
-    auto fsa_setting_yaml = path / "fsa.yaml";
+    using Dtype = double;
+    using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
+
+    auto fsa_setting_yaml = gtest_src_dir / "fsa.yaml";
     auto fsa_setting = std::make_shared<erl::env::FiniteStateAutomaton::Setting>();
     ASSERT_TRUE(fsa_setting->FromYamlFile(fsa_setting_yaml));
     auto fsa = std::make_shared<erl::env::FiniteStateAutomaton>(fsa_setting);
 
-    auto label_map_png = path / "label_map.png";
+    auto label_map_png = gtest_src_dir / "label_map.png";
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);
@@ -23,7 +24,7 @@ TEST(LinearTemporalLogic, Heuristic2D) {
     Eigen::Vector2i map_shape(251, 261);
     Eigen::Vector2d map_min(-5.05, -5.05);
     Eigen::Vector2d map_max(20.05, 21.05);
-    auto grid_map_info = std::make_shared<erl::common::GridMapInfo2D>(map_shape, map_min, map_max);
+    auto grid_map_info = std::make_shared<GridMapInfo>(map_shape, map_min, map_max);
 
     erl::search_planning::LinearTemporalLogicHeuristic2D heuristic(fsa, label_map, grid_map_info);
 
@@ -65,23 +66,28 @@ TEST(LinearTemporalLogic, Heuristic2D) {
            inf,    inf,    inf,    inf,    inf,    inf,    inf,      0,    inf;
     // clang-format on
 
-    Eigen::IOFormat fmt(  // kCommaInitFmt
-        6,                // precision
-        0,                // flags
-        ", ",             // coeffSeparator
-        ",\n",            // rowSeparator
-        "",               // rowPrefix
-        "",               // rowSuffix
-        "<<\n ",          // matPrefix
-        ";"               // matSuffix
-    );
+    Eigen::IOFormat
+        fmt(          // kCommaInitFmt
+            6,        // precision
+            0,        // flags
+            ", ",     // coeffSeparator
+            ",\n",    // rowSeparator
+            "",       // rowPrefix
+            "",       // rowSuffix
+            "<<\n ",  // matPrefix
+            ";"       // matSuffix
+        );
     std::cout << "Expected answer:" << std::endl
               << label_distance_g.format(fmt) << std::endl
               << "Fsa State Distance:" << std::endl
               << heuristic.label_distance.format(fmt) << std::endl;
 
-    EXPECT_TRUE(heuristic.label_distance.block(0, 0, 3, 8).isApprox(label_distance_g.block(0, 0, 3, 8), 1e-4));
-    EXPECT_TRUE(heuristic.label_distance.block(4, 0, 1, 8).isApprox(label_distance_g.block(4, 0, 1, 8), 1e-4));
-    EXPECT_TRUE(heuristic.label_distance.block(8, 0, 1, 8).isApprox(label_distance_g.block(8, 0, 1, 8), 1e-4));
-    EXPECT_TRUE(heuristic.label_distance.block(16, 0, 1, 8).isApprox(label_distance_g.block(16, 0, 1, 8), 1e-4));
+    EXPECT_TRUE(heuristic.label_distance.block(0, 0, 3, 8)
+                    .isApprox(label_distance_g.block(0, 0, 3, 8), 1e-4));
+    EXPECT_TRUE(heuristic.label_distance.block(4, 0, 1, 8)
+                    .isApprox(label_distance_g.block(4, 0, 1, 8), 1e-4));
+    EXPECT_TRUE(heuristic.label_distance.block(8, 0, 1, 8)
+                    .isApprox(label_distance_g.block(8, 0, 1, 8), 1e-4));
+    EXPECT_TRUE(heuristic.label_distance.block(16, 0, 1, 8)
+                    .isApprox(label_distance_g.block(16, 0, 1, 8), 1e-4));
 }

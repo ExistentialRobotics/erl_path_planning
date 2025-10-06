@@ -8,8 +8,6 @@ namespace erl::search_planning {
     class ReedsSheppPath {
 
     public:
-        ERL_SMART_PTR_TYPEDEFS(ReedsSheppPath);
-
         enum ReedsSheppPathSegmentType { kReedsSheppNop = 0, kReedsSheppLeft = 1, kReedsSheppStraight = 2, kReedsSheppRight = 3 };
 
         inline static const ReedsSheppPathSegmentType sk_ReedsSheppPathType_[18][5] = {

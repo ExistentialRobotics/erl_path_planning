@@ -5,7 +5,14 @@
 namespace erl::search_planning {
 
     std::shared_ptr<DubinsPath>
-    DubinsPath::Create(double x0, double y0, double phi0, double x1, double y1, double phi1, double turning_radius) {
+    DubinsPath::Create(
+        double x0,
+        double y0,
+        double phi0,
+        double x1,
+        double y1,
+        double phi1,
+        double turning_radius) {
         double dx = x1 - x0;
         double dy = y1 - y0;
         double d = std::sqrt(dx * dx + dy * dy) / turning_radius;
@@ -18,7 +25,19 @@ namespace erl::search_planning {
         constexpr double zero = -1.e-7;
 
         if (constexpr double epsilon = 1.e-6; d < epsilon && std::fabs(alpha - beta) < epsilon) {
-            return std::shared_ptr<DubinsPath>(new DubinsPath(x0, y0, phi0, x1, y1, phi1, DubinsPath::sk_DubinsPathType_[0], 0, d, 0, d, turning_radius));
+            return std::shared_ptr<DubinsPath>(new DubinsPath(
+                x0,
+                y0,
+                phi0,
+                x1,
+                y1,
+                phi1,
+                DubinsPath::sk_DubinsPathType_[0],
+                0,
+                d,
+                0,
+                d,
+                turning_radius));
         }
 
         double ca = std::cos(alpha);
@@ -153,7 +172,19 @@ namespace erl::search_planning {
             }
         }
 
-        return std::shared_ptr<DubinsPath>(new DubinsPath(x0, y0, phi0, x1, y1, phi1, sol_type, sol_t, sol_p, sol_q, sol_l, turning_radius));
+        return std::shared_ptr<DubinsPath>(new DubinsPath(
+            x0,
+            y0,
+            phi0,
+            x1,
+            y1,
+            phi1,
+            sol_type,
+            sol_t,
+            sol_p,
+            sol_q,
+            sol_l,
+            turning_radius));
     }
 
     void
@@ -203,7 +234,11 @@ namespace erl::search_planning {
     }
 
     void
-    DubinsPath::InterpolateNPoints(const std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const {
+    DubinsPath::InterpolateNPoints(
+        const std::size_t n,
+        std::vector<double> &xs,
+        std::vector<double> &ys,
+        std::vector<double> &phis) const {
         xs.reserve(n);
         ys.reserve(n);
         phis.reserve(n);
@@ -217,7 +252,11 @@ namespace erl::search_planning {
         double phi_base = m_start_[2];
         int seg_index = 0;
 
-        auto step = [&x_base, &y_base, &phi_base, &seg_index, this](const double v, double &x_out, double &y_out, double &phi_out) {
+        auto step = [&x_base,
+                     &y_base,
+                     &phi_base,
+                     &seg_index,
+                     this](const double v, double &x_out, double &y_out, double &phi_out) {
             switch (m_type_[seg_index]) {
                 case kDubinsLeft:
                     x_out = x_base + std::sin(phi_base + v) - std::sin(phi_base);
@@ -240,7 +279,7 @@ namespace erl::search_planning {
 
         double s = 0;
         const double ds = m_total_length_ / static_cast<double>(n - 1);
-        double x, y, phi;
+        double x = 0, y = 0, phi = 0;
         while (seg_index < 3) {
             s += ds;
             if (const double seg_length = std::fabs(m_length_[seg_index]); s > seg_length) {
@@ -263,7 +302,11 @@ namespace erl::search_planning {
                     "y_base = {}, m_goal_[1] = {} before interpolation ends.",
                     y_base,
                     m_goal_[1]);
-                ERL_DEBUG_ASSERT(std::fabs(phi_base - m_goal_[2]) < 1.e-6, "phi_base = {}, m_goal_[2] = {} before interpolation ends.", phi_base, m_goal_[2]);
+                ERL_DEBUG_ASSERT(
+                    std::fabs(phi_base - m_goal_[2]) < 1.e-6,
+                    "phi_base = {}, m_goal_[2] = {} before interpolation ends.",
+                    phi_base,
+                    m_goal_[2]);
             } else if (m_length_[seg_index] >= 0) {
                 step(s, x, y, phi);
             } else {
