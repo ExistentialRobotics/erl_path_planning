@@ -6,7 +6,7 @@ import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 import numpy as np
 
-from erl_search_planning.amra_star.solution import AMRAStarSolution, VisualizationFor3DSceneGraph
+from erl_path_planning.amra_star.solution import AMRAStarSolution, VisualizationFor3DSceneGraph
 
 
 class VisualizationFor2DGridMap:

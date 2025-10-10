@@ -8,8 +8,8 @@ from erl_common.storage import GridMapUnsigned2D
 from erl_env import load_ddc_motion_primitives_from_yaml
 from erl_geometry.house_expo import HouseExpoMap
 from erl_geometry.house_expo.list_data import get_map_and_traj_files
-from erl_search_planning.astar import AStar
-from erl_search_planning import PlanningInterface
+from erl_path_planning.astar import AStar
+from erl_path_planning import PlanningInterface
 
 
 class TestAStarSe2(unittest.TestCase):

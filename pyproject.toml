@@ -5,9 +5,9 @@ requires = ["setuptools", "wheel", "toml"]
 line-length = 120
 
 [erl]
-description = "Python bindings for erl_search_planning"
-python_pkg_name = "erl_search_planning"
-pybind_module_name = "pyerl_search_planning"
+description = "Python bindings for erl_path_planning"
+python_pkg_name = "erl_path_planning"
+pybind_module_name = "pyerl_path_planning"
 erl_dependencies = ["erl_common", "erl_env", "erl_geometry"]
 build_type = "Release"
 version = "0.1.0"

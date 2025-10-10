@@ -1,7 +1,7 @@
-#include "erl_search_planning/llm_scene_graph_heuristic.hpp"
+#include "erl_path_planning/llm_scene_graph_heuristic.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     template class LlmSceneGraphHeuristic<float>;
     template class LlmSceneGraphHeuristic<double>;
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

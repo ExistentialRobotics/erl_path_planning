@@ -2,7 +2,7 @@
 #include "erl_common/logging.hpp"
 #include "erl_env/environment_state.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     class DubinsPath {
 
@@ -88,4 +88,4 @@ namespace erl::search_planning {
         double m_total_length_ = std::numeric_limits<double>::max();  // total length
         double m_tuning_radius_ = 1.0;                                // turning radius
     };
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

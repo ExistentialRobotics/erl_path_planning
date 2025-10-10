@@ -4,13 +4,13 @@ import unittest
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from erl_search_planning.common.storage import GridMapInfo2D
-from erl_search_planning.common.storage import GridMapUnsigned2D
-from erl_search_planning.env import load_ddc_motion_primitives_from_yaml
-from erl_search_planning.search_planning import AStar
-from erl_search_planning.search_planning import PlanningSe2
-from erl_search_planning.env.data.house_expo import HouseExpoMap
-from erl_search_planning.env.data.house_expo.list_data import get_map_and_traj_files
+from erl_path_planning.common.storage import GridMapInfo2D
+from erl_path_planning.common.storage import GridMapUnsigned2D
+from erl_path_planning.env import load_ddc_motion_primitives_from_yaml
+from erl_path_planning import AStar
+from erl_path_planning import PlanningSe2
+from erl_path_planning.env.data.house_expo import HouseExpoMap
+from erl_path_planning.env.data.house_expo.list_data import get_map_and_traj_files
 
 
 class TestAStarSe2(unittest.TestCase):

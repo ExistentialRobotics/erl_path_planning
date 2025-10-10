@@ -2,81 +2,70 @@
 
 #include "heuristic.hpp"
 
-#include "erl_common/block_timer.hpp"
 #include "erl_geometry/kdtree_eigen_adaptor.hpp"
 
-#include <absl/container/flat_hash_map.h>
 #include <boost/heap/d_ary_heap.hpp>
 
 #include <memory>
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     template<typename Dtype>
-    struct LinearTemporalLogicHeuristic3D : public MultiGoalsHeuristic<Dtype, 4> {
+    struct LinearTemporalLogicHeuristic2D : public MultiGoalsHeuristic<Dtype, 3> {
 
-        using Super = MultiGoalsHeuristic<Dtype, 4>;
+        using Super = MultiGoalsHeuristic<Dtype, 3>;
         using EnvState = typename Super::EnvState;
-        using GridMapInfo = common::GridMapInfo3D<Dtype>;
-        using KdTree = geometry::KdTreeEigenAdaptor<Dtype, 3>;
+        using MetricState = typename Super::MetricState;
+        using GridMapInfo = common::GridMapInfo2D<Dtype>;
+        using KdTree = geometry::KdTreeEigenAdaptor<Dtype, 2>;
 
-        std::shared_ptr<env::FiniteStateAutomaton> fsa;
-        std::vector<std::shared_ptr<KdTree>> label_to_kdtree;
-        Eigen::MatrixX<Dtype> label_distance;
+        std::shared_ptr<env::FiniteStateAutomaton> fsa = nullptr;
+        std::vector<std::shared_ptr<geometry::KdTreeEigenAdaptor<Dtype, 2>>> label_to_kdtree = {};
+        Eigen::MatrixX<Dtype> label_distance = {};
 
         /**
          * @brief Construct a new Linear Temporal Logic Heuristic 3D object
          * @param fsa_in
-         * @param label_maps_in
-         * @param grid_map_info cell size of x, y and z axis
+         * @param label_map
+         * @param grid_map_info cell size of label_maps_in
          */
-        LinearTemporalLogicHeuristic3D(
+        LinearTemporalLogicHeuristic2D(
             std::shared_ptr<env::FiniteStateAutomaton> fsa_in,
-            const absl::flat_hash_map<int, Eigen::MatrixX<uint32_t>> &label_maps_in,
+            const Eigen::Ref<const Eigen::MatrixX<uint32_t>> &label_map,
             const std::shared_ptr<GridMapInfo> &grid_map_info)
             : Super({}),
               fsa(std::move(fsa_in)) {
 
-            ERL_BLOCK_TIMER();
-
             ERL_ASSERTM(fsa != nullptr, "fsa is nullptr.");
             ERL_ASSERTM(grid_map_info != nullptr, "grid_map_info is nullptr.");
-
-            long label_map_rows = label_maps_in.at(0).rows();
-            long label_map_cols = label_maps_in.at(0).cols();
-            int grid_map_rows = grid_map_info->Shape(0);
-            int grid_map_cols = grid_map_info->Shape(1);
-            auto num_floors = static_cast<int>(label_maps_in.size());
             ERL_ASSERTM(
-                label_map_rows == grid_map_rows,
-                "label_maps #rows is not equal to grid_map_info #rows: {} vs {}.",
-                label_map_rows,
-                grid_map_rows);
+                label_map.rows() == grid_map_info->Rows(),
+                "label_map #rows is not equal to grid_map_info #rows: {} vs {}.",
+                label_map.rows(),
+                grid_map_info->Rows());
             ERL_ASSERTM(
-                label_map_cols == grid_map_cols,
-                "label_maps #cols is not equal to grid_map_info #cols: {} vs {}.",
-                label_map_cols,
-                grid_map_cols);
+                label_map.cols() == grid_map_info->Cols(),
+                "label_map #cols is not equal to grid_map_info #cols: {} vs {}.",
+                label_map.cols(),
+                grid_map_info->Cols());
 
-            auto fsa_setting = fsa->GetSetting();
+            const auto fsa_setting = fsa->GetSetting();
             auto n_labels = fsa->GetAlphabetSize();
             auto n_fsa_states = fsa_setting->num_states;
 
             // compute label_to_grid_states
-            using SpaceCoords = Eigen::Vector<Dtype, 3>;
-            std::vector<std::vector<SpaceCoords>> label_to_metric_states(n_labels);
-            for (int i = 0; i < grid_map_rows; ++i) {
-                for (int j = 0; j < grid_map_cols; ++j) {
-                    for (int k = 0; k < num_floors; ++k) {
-                        Dtype &&x = grid_map_info->GridToMeterAtDim(i, 0);
-                        Dtype &&y = grid_map_info->GridToMeterAtDim(j, 1);
-                        Dtype &&z = grid_map_info->GridToMeterAtDim(k, 2);
-                        label_to_metric_states[label_maps_in.at(k)(i, j)].emplace_back(
-                            SpaceCoords{x, y, z});
-                    }
+            using SpaceCoords = Eigen::Vector<Dtype, 2>;
+            std::unordered_map<uint32_t, std::vector<SpaceCoords>> label_to_metric_states(n_labels);
+            int n_rows = grid_map_info->Rows();
+            int n_cols = grid_map_info->Cols();
+            for (int i = 0; i < n_rows; ++i) {
+                for (int j = 0; j < n_cols; ++j) {
+                    Dtype &&x = grid_map_info->GridToMeterAtDim(i, 0);
+                    Dtype &&y = grid_map_info->GridToMeterAtDim(j, 1);
+                    label_to_metric_states[label_map(i, j)].emplace_back(SpaceCoords{x, y});
                 }
             }
-            // construct kdtree
+            // construct kdtree for each label
             label_to_kdtree.resize(n_labels);
             for (uint32_t label = 0; label < n_labels; ++label) {
                 auto &metric_states = label_to_metric_states[label];
@@ -121,6 +110,7 @@ namespace erl::search_planning {
             using HeapKey = typename PriorityQueue::handle_type;
 
             // cost from one label to another
+            // ReSharper disable once CppInconsistentNaming
             Eigen::MatrixX<Dtype> cost_l2l = Eigen::MatrixX<Dtype>::Constant(  // transition cost
                 n_labels,
                 n_labels,
@@ -163,8 +153,7 @@ namespace erl::search_planning {
                     std::swap(label1_kdtree, label2_kdtree);
                 }
                 Dtype min_d = std::numeric_limits<Dtype>::infinity();
-                const auto num_label1_states =
-                    static_cast<long>(label1_kdtree->kdtree_get_point_count());
+                auto num_label1_states = static_cast<long>(label1_kdtree->kdtree_get_point_count());
                 for (long i = 0; i < num_label1_states; ++i) {
                     SpaceCoords &&state1 = label1_kdtree->GetPoint(i);
                     long index = -1;
@@ -180,7 +169,7 @@ namespace erl::search_planning {
                 queue.pop();
                 opened(node->label, node->fsa_state) = false;
                 closed(node->label, node->fsa_state) = true;
-                /// find predecessors: ? -> node->fsa_state via node->label
+                /// find predecessors: ? -> node.fsa_state via what label
                 for (uint32_t pred_state = 0; pred_state < n_fsa_states; ++pred_state) {
                     if (pred_state == node->fsa_state) { continue; }  // skip self-loop
                     if (fsa->GetNextState(pred_state, node->label) != node->fsa_state) { continue; }
@@ -204,11 +193,7 @@ namespace erl::search_planning {
                             queue.increase(heap_keys(pred_label, pred_state));
                         } else {
                             heap_keys(pred_label, pred_state) = queue.push(
-                                std::make_shared<Node>(
-                                    tentative_g,
-                                    pred_label,
-                                    pred_state,
-                                    /*parent*/ node));
+                                std::make_shared<Node>(tentative_g, pred_label, pred_state, node));
                             opened(pred_label, pred_state) = true;
                         }
                     }
@@ -218,7 +203,7 @@ namespace erl::search_planning {
 
         /**
          * @brief Compute the heuristic value of the given state
-         * @param env_state metric state (x, y, z, q) and grid state (i, j, k, q)
+         * @param env_state metric state (x, y, q) and grid state (i, j, q)
          * @return
          */
         [[nodiscard]] Dtype
@@ -228,7 +213,7 @@ namespace erl::search_planning {
             if (label_distance.size() == 0) { return 0.0f; }
 
             Dtype h = std::numeric_limits<Dtype>::infinity();
-            const auto q = static_cast<uint32_t>(env_state.grid[3]);  // (x, y, z, q)
+            const auto q = static_cast<uint32_t>(env_state.grid[2]);
             if (fsa->IsSinkState(q)) { return h; }          // sink state, never reach the goal
             if (fsa->IsAcceptingState(q)) { return 0.0f; }  // accepting state, goal
 
@@ -243,7 +228,7 @@ namespace erl::search_planning {
                     if (label_kdtree == nullptr) { continue; }
                     long index = -1;
                     Dtype c = std::numeric_limits<Dtype>::infinity();
-                    label_kdtree->Nearest(env_state.metric.template head<3>(), index, c);
+                    label_kdtree->Nearest(env_state.metric.template head<2>(), index, c);
                     c = std::sqrt(c);
                     if (const Dtype tentative_h = c + label_distance(label, nq); tentative_h < h) {
                         h = tentative_h;
@@ -254,7 +239,6 @@ namespace erl::search_planning {
         }
     };
 
-    extern template class LinearTemporalLogicHeuristic3D<float>;
-    extern template class LinearTemporalLogicHeuristic3D<double>;
-
-}  // namespace erl::search_planning
+    extern template class LinearTemporalLogicHeuristic2D<float>;
+    extern template class LinearTemporalLogicHeuristic2D<double>;
+}  // namespace erl::path_planning

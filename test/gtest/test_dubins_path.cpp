@@ -1,6 +1,6 @@
 #include "erl_common/opencv.hpp"
 #include "erl_common/test_helper.hpp"
-#include "erl_search_planning/dubins_path.hpp"
+#include "erl_path_planning/dubins_path.hpp"
 
 #include <memory>
 
@@ -11,7 +11,7 @@ struct AppData {
     bool start_set = false, goal_set = false;
     bool l_button_down = false;
     bool m_button_down = false;
-    std::shared_ptr<erl::search_planning::DubinsPath> reeds_shepp_path = nullptr;
+    std::shared_ptr<erl::path_planning::DubinsPath> reeds_shepp_path = nullptr;
     std::size_t n_points = 100;
     int dir_vec_len = 50;
     double turning_radius = 30.0;
@@ -103,7 +103,7 @@ OnMouse(int event, int x, int y, int flags, void *userdata) {
         return;
     }
 
-    app_data->reeds_shepp_path = erl::search_planning::DubinsPath::Create(
+    app_data->reeds_shepp_path = erl::path_planning::DubinsPath::Create(
         app_data->x0,
         app_data->y0,
         app_data->phi0,

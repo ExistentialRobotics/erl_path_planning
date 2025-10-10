@@ -1,7 +1,7 @@
-`erl_search_planning`
+`erl_path_planning`
 =====================
 
-This CMake project provides `erl_search_planning` which is a collection of search-based planning algorithms.
+This CMake project provides `erl_path_planning` which is a collection of path planning algorithms.
 
 - [AMRA*](docs/amra_star.md)
 

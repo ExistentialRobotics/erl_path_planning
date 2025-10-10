@@ -23,7 +23,7 @@ Working on it.
 
 # Visualization Examples
 
-You can use the [Python script](../python/erl_search_planning/amra_star/visualize.py) to visualize the search result
+You can use the [Python script](../python/erl_path_planning/amra_star/visualize.py) to visualize the search result
 stored in `*.solution` file.
 
 ## 2D Grid Map

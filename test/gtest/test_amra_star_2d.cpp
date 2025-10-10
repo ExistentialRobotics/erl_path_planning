@@ -3,14 +3,10 @@
 #include "erl_env/environment_2d.hpp"
 #include "erl_env/environment_grid_anchor.hpp"
 #include "erl_env/environment_ltl_2d.hpp"
-#include "erl_search_planning/amra_star.hpp"
-#include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/ltl_2d_heuristic.hpp"
-#include "erl_search_planning/planning_interface_multi_resolutions.hpp"
-
-#include <gtest/gtest.h>
-
-#include <fstream>
+#include "erl_path_planning/amra_star.hpp"
+#include "erl_path_planning/heuristic.hpp"
+#include "erl_path_planning/ltl_2d_heuristic.hpp"
+#include "erl_path_planning/search_planning_interface.hpp"
 
 TEST(AMRAStar2D, AStarConsistency) {
     GTEST_PREPARE_OUTPUT_DIR();
@@ -25,12 +21,12 @@ TEST(AMRAStar2D, AStarConsistency) {
     using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 2>;
     using Environment2D = erl::env::Environment2D<Dtype>;
     using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 2>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 2>;
-    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 2>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 2>;
+    using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 2>;
     using PlanningInterfaceMultiResolutions =
-        erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 2>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 2>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 2>;
+        erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 2>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 2>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 2>;
 
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
     // clang-format off
@@ -225,11 +221,11 @@ RunTestWithMap(
     using Environment2D = erl::env::Environment2D<Dtype>;
     using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 2>;
-    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 2>;
-    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 2>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 2>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 2>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 2>;
+    using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 2>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 2>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 2>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 2>;
 
     std::filesystem::path data_dir = std::filesystem::absolute(gtest_src_dir / "../amra/dat");
 
@@ -238,8 +234,8 @@ RunTestWithMap(
     std::cout << sep << std::endl << ' ' << map_name << ' ' << std::endl << sep << std::endl;
     using namespace erl::common;
     using namespace erl::env;
-    using namespace erl::search_planning;
-    using namespace erl::search_planning::amra_star;
+    using namespace erl::path_planning;
+    using namespace erl::path_planning::amra_star;
 
     auto map_result_dir = test_output_dir / map_name;
     if (!std::filesystem::exists(map_result_dir)) {
@@ -319,11 +315,11 @@ TEST(AMRAStar2D, LinearTemporalLogic) {
     using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 3>;
-    using LtlHeuristic2D = erl::search_planning::LinearTemporalLogicHeuristic2D<Dtype>;
-    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 3>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 3>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 3>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 3>;
+    using LtlHeuristic2D = erl::path_planning::LinearTemporalLogicHeuristic2D<Dtype>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 3>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 3>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 3>;
 
     auto output_dir = gtest_src_dir / "results" / test_output_dir;
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "planning_interface.hpp"
+#include "planning_output.hpp"
+#include "search_planning_interface.hpp"
 
 #include "erl_common/yaml.hpp"
 
@@ -12,7 +13,7 @@
 #include <memory>
 #include <utility>
 
-namespace erl::search_planning::astar {
+namespace erl::path_planning::astar {
 
     template<typename Dtype, int Dim>
     struct State;
@@ -91,12 +92,7 @@ namespace erl::search_planning::astar {
     };
 
     template<typename Dtype, int Dim>
-    struct Output {
-        int goal_index = -1;
-        Eigen::Matrix<Dtype, Dim, Eigen::Dynamic> path = {};
-        std::list<long> action_indices = {};
-        Dtype cost = std::numeric_limits<Dtype>::infinity();
-
+    struct Output : public PlanningOutput<Dtype, Dim> {
         // logging
         using MetricState = typename env::EnvironmentState<Dtype, Dim>::MetricState;
         std::map<std::size_t, std::list<MetricState>> opened_list = {};
@@ -140,7 +136,7 @@ namespace erl::search_planning::astar {
         using Setting = AstarSetting<Dtype>;
         using State_t = State<Dtype, Dim>;
         using EnvState = typename State_t::EnvState;
-        using PlanningInterface_t = PlanningInterface<Dtype, Dim>;
+        using PlanningInterface_t = SearchPlanningInterface<Dtype, Dim>;
         using PriorityQueue_t = PriorityQueue<Dtype, Dim>;
         using PriorityQueueItem_t = PriorityQueueItem<Dtype, Dim>;
         using Output_t = Output<Dtype, Dim>;
@@ -152,7 +148,7 @@ namespace erl::search_planning::astar {
         std::shared_ptr<PlanningInterface_t> m_planning_interface_ = nullptr;
         PriorityQueue_t m_priority_queue_;
         absl::flat_hash_map<long, std::shared_ptr<State_t>> m_astar_states_;
-        std::size_t m_iterations_ = 0;
+        long m_iterations_ = 0;
         // bool m_planned_ = false;
         absl::flat_hash_set<int> m_reached_goal_indices_;
         std::shared_ptr<Output_t> m_output_ = nullptr;
@@ -189,18 +185,12 @@ namespace erl::search_planning::astar {
             if (m_reached_goal_indices_.size() == m_planning_interface_->GetNumGoals()) {
                 return m_output_;  // all reachable goals are reached
             }
-            // check if the start state is a goal
-            if (int goal_index = m_planning_interface_->IsMetricGoal(m_start_state_->env_state);
-                goal_index >= 0) {
-                if (!m_reached_goal_indices_.contains(goal_index)) {
-                    // such result is not returned before
-                    RecoverPath(m_start_state_, goal_index);
-                    m_reached_goal_indices_.insert(goal_index);
-                    return m_output_;
-                }
-            }
 
-            if (m_astar_states_.size() > 1 && m_output_->goal_index >= 0) {
+            // should not check if the start state is a goal here.
+            // when there are multiple goals with different terminal costs, this may cause
+            // suboptimal output.
+
+            if (m_astar_states_.size() > 1 && !m_output_->plan_records.empty()) {
                 // Plan() is already called, resume the search.
                 // previous call of Plan() reached a goal
                 if (m_priority_queue_.empty()) {
@@ -227,6 +217,7 @@ namespace erl::search_planning::astar {
                         });
                     // get the goal with the smallest cost
                     const auto [goal_index, cost, goal_state] = goal_cost_states.front();
+                    ++m_iterations_;
                     RecoverPath(goal_state, goal_index);
                     m_reached_goal_indices_.insert(goal_index);
                     return m_output_;
@@ -237,22 +228,17 @@ namespace erl::search_planning::astar {
             }
 
             while (m_setting_->max_num_iterations < 0 ||
-                   static_cast<long>(m_iterations_) < m_setting_->max_num_iterations) {
+                   m_iterations_ < m_setting_->max_num_iterations) {
+
+                // increase the number of iterations
+                ++m_iterations_;
+
                 // check if done
                 if (m_planning_interface_->ReachGoal(m_current_->env_state)) {
                     RecoverPath(m_current_, -1);
                     LogStates();
-                    // if a goal was reached in previous call of Plan(), the goal is in CLOSED set,
-                    // and we should not get it again.
-                    ERL_DEBUG_ASSERT(
-                        m_reached_goal_indices_.insert(m_output_->goal_index).second,
-                        "Goal {} is reached multiple times.",
-                        m_output_->goal_index);
                     return m_output_;
                 }
-
-                // increase the number of iterations
-                m_iterations_++;
 
                 // add current node to closed set
                 m_current_->iteration_closed = m_iterations_;
@@ -337,27 +323,42 @@ namespace erl::search_planning::astar {
 
         void
         RecoverPath(const std::shared_ptr<State_t>& goal_state, int goal_index) {
-            m_output_->cost = goal_state->g_value;  // terminal cost is included in g_value if
-                                                    // goal_state is virtual goal
-            m_output_->goal_index = goal_index;
+            auto [plan_record_itr, inserted] = m_output_->plan_records.insert({m_iterations_, {}});
+            ERL_ASSERTM(
+                inserted,
+                "Planning record for iteration {} already exists.",
+                m_iterations_);
+
+            m_output_->latest_plan_itr = m_iterations_;
+            auto& plan_record = plan_record_itr->second;
+
+            // terminal cost is included in g_value if goal_state is virtual goal
+            plan_record.cost = goal_state->g_value;
             std::shared_ptr<State_t> node = goal_state;
             if (m_planning_interface_->IsVirtualGoal(node->env_state)) {
                 node = node->parent;
-                m_output_->goal_index = m_planning_interface_->IsMetricGoal(node->env_state);
-                ERL_DEBUG_ASSERT(m_output_->goal_index >= 0, "goal index is invalid.");
+                plan_record.goal_index = m_planning_interface_->IsMetricGoal(node->env_state);
+                ERL_DEBUG_ASSERT(plan_record.goal_index >= 0, "goal index is invalid.");
             } else {
                 ERL_DEBUG_ASSERT(
                     goal_index >= 0,
                     "goal index is invalid when goal_state is not virtual goal.");
-                m_output_->cost += m_planning_interface_->GetTerminalCost(goal_index);
+                plan_record.goal_index = goal_index;
+                plan_record.cost += m_planning_interface_->GetTerminalCost(goal_index);
             }
+
+            // if a goal was reached in previous call of Plan(), the goal is in CLOSED set,
+            // and we should not get it again.
+            const bool new_goal = m_reached_goal_indices_.insert(plan_record.goal_index).second;
+            (void) new_goal;
+            ERL_DEBUG_ASSERT(new_goal, "Goal {} is reached before.", plan_record.goal_index);
 
             if (node == nullptr) {}
             ERL_DEBUG_ASSERT(node != nullptr, "Goal state is not found.");
 
             ERL_DEBUG(
                 "Reach goal[{}/{}] (metric: {}, grid: {}) from metric start {} at iteration {}.",
-                m_output_->goal_index,
+                plan_record.goal_index,
                 m_planning_interface_->GetNumGoals(),
                 common::EigenToNumPyFmtString(node->env_state.metric.transpose()),
                 common::EigenToNumPyFmtString(node->env_state.grid.transpose()),
@@ -365,28 +366,32 @@ namespace erl::search_planning::astar {
                     m_planning_interface_->GetStartState().metric.transpose()),
                 m_iterations_);
 
-            m_output_->action_indices.clear();
+            plan_record.env_action_indices.clear();
+            const long env_id = m_planning_interface_->GetEnvironment()->GetEnvId();
             while (node->parent != nullptr) {
-                m_output_->action_indices.push_front(node->action_idx);
+                plan_record.env_action_indices.emplace_back(env_id, node->action_idx);
                 node = node->parent;
             }
+            std::reverse(
+                plan_record.env_action_indices.begin(),
+                plan_record.env_action_indices.end());
             std::vector<std::vector<EnvState>> path_segments;
             std::size_t num_path_states = 0;
             EnvState state = GetState(m_start_state_->env_state)->env_state;
-            for (auto& action_index: m_output_->action_indices) {
+            for (auto& [_, action_index]: plan_record.env_action_indices) {
                 std::vector path_segment = m_planning_interface_->GetPath(state, action_index);
                 if (path_segment.empty()) { continue; }
                 path_segments.push_back(path_segment);
                 num_path_states += path_segment.size();
                 state = path_segment.back();
             }
-            m_output_->path.resize(Eigen::NoChange, static_cast<long>(num_path_states + 1));
-            m_output_->path.col(0) = m_planning_interface_->GetStartState().metric;
+            plan_record.path.resize(Eigen::NoChange, static_cast<long>(num_path_states + 1));
+            plan_record.path.col(0) = m_planning_interface_->GetStartState().metric;
             long index = 1;
             for (auto& path_segment: path_segments) {
                 const auto num_states = static_cast<long>(path_segment.size());
                 for (long i = 0; i < num_states; ++i) {
-                    m_output_->path.col(index++) = path_segment[i].metric;
+                    plan_record.path.col(index++) = path_segment[i].metric;
                 }
             }
         }
@@ -412,12 +417,12 @@ namespace erl::search_planning::astar {
     extern template class AStar<double, 3>;
     extern template class AStar<float, 4>;
     extern template class AStar<double, 4>;
-}  // namespace erl::search_planning::astar
+}  // namespace erl::path_planning::astar
 
 template<>
-struct YAML::convert<erl::search_planning::astar::AstarSetting<float>>
-    : public erl::search_planning::astar::AstarSetting<float>::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::astar::AstarSetting<float>>
+    : public erl::path_planning::astar::AstarSetting<float>::YamlConvertImpl {};
 
 template<>
-struct YAML::convert<erl::search_planning::astar::AstarSetting<double>>
-    : public erl::search_planning::astar::AstarSetting<double>::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::astar::AstarSetting<double>>
+    : public erl::path_planning::astar::AstarSetting<double>::YamlConvertImpl {};

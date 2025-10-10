@@ -1,8 +1,8 @@
-#include "erl_search_planning/dubins_path.hpp"
+#include "erl_path_planning/dubins_path.hpp"
 
 #include "erl_common/angle_utils.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     std::shared_ptr<DubinsPath>
     DubinsPath::Create(
@@ -317,4 +317,4 @@ namespace erl::search_planning {
             phis.push_back(phi);
         }
     }
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

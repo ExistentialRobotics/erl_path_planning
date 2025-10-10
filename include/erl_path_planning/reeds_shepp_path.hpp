@@ -3,7 +3,7 @@
 #include "erl_common/logging.hpp"
 #include "erl_common/template_helper.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     class ReedsSheppPath {
 
@@ -104,4 +104,4 @@ namespace erl::search_planning {
         double m_tuning_radius_ = 1.0;                                // turning radius
     };
 
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

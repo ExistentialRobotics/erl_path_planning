@@ -1,9 +1,9 @@
-#include "erl_search_planning/reeds_shepp_path.hpp"
+#include "erl_path_planning/reeds_shepp_path.hpp"
 
 #include "erl_common/angle_utils.hpp"
 #include "erl_common/polar_coords.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     constexpr double kZero = -10 * std::numeric_limits<double>::epsilon();
 
@@ -727,4 +727,4 @@ namespace erl::search_planning {
             phis.push_back(phi);
         }
     }
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

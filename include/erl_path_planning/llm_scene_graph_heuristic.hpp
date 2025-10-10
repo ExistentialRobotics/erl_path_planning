@@ -7,7 +7,7 @@
 
 #include <memory>
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     template<typename Dtype>
     class LlmSceneGraphHeuristic : public HeuristicBase<Dtype, 4> {
@@ -193,20 +193,20 @@ namespace erl::search_planning {
     extern template class LlmSceneGraphHeuristic<float>;
     extern template class LlmSceneGraphHeuristic<double>;
 
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning
 
 template<>
-struct YAML::convert<erl::search_planning::LlmSceneGraphHeuristic<float>::LlmWaypoint>
-    : public erl::search_planning::LlmSceneGraphHeuristic<float>::LlmWaypoint::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<float>::LlmWaypoint>
+    : public erl::path_planning::LlmSceneGraphHeuristic<float>::LlmWaypoint::YamlConvertImpl {};
 
 template<>
-struct YAML::convert<erl::search_planning::LlmSceneGraphHeuristic<float>::Setting>
-    : public erl::search_planning::LlmSceneGraphHeuristic<float>::Setting::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<float>::Setting>
+    : public erl::path_planning::LlmSceneGraphHeuristic<float>::Setting::YamlConvertImpl {};
 
 template<>
-struct YAML::convert<erl::search_planning::LlmSceneGraphHeuristic<double>::LlmWaypoint>
-    : public erl::search_planning::LlmSceneGraphHeuristic<double>::LlmWaypoint::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<double>::LlmWaypoint>
+    : public erl::path_planning::LlmSceneGraphHeuristic<double>::LlmWaypoint::YamlConvertImpl {};
 
 template<>
-struct YAML::convert<erl::search_planning::LlmSceneGraphHeuristic<double>::Setting>
-    : public erl::search_planning::LlmSceneGraphHeuristic<double>::Setting::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<double>::Setting>
+    : public erl::path_planning::LlmSceneGraphHeuristic<double>::Setting::YamlConvertImpl {};

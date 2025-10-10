@@ -5,8 +5,8 @@ import numpy as np
 from erl_common.storage import GridMapInfo2D
 from erl_common.storage import GridMapUnsigned2D
 from erl_env import Environment2D
-from erl_search_planning.astar import AStar
-from erl_search_planning import PlanningInterface
+from erl_path_planning.astar import AStar
+from erl_path_planning import PlanningInterface
 
 
 class TestAStar2D(unittest.TestCase):

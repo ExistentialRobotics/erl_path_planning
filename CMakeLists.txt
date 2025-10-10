@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(erl_search_planning
+project(erl_path_planning
         LANGUAGES CXX
         VERSION 0.1.0
-        DESCRIPTION "erl_search_planning is a C++ library of search-based path planning algorithms.")
+        DESCRIPTION "erl_path_planning is a C++ library of path planning algorithms.")
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
 
 if (NOT COMMAND erl_project_setup)

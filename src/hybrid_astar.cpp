@@ -1,1 +1,1 @@
-#include "erl_search_planning/hybrid_astar.hpp"
+#include "erl_path_planning/hybrid_astar.hpp"

@@ -2,9 +2,9 @@
 #include "erl_env/cost.hpp"
 #include "erl_env/environment_2d.hpp"
 #include "erl_env/environment_ltl_2d.hpp"
-#include "erl_search_planning/astar.hpp"
-#include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/ltl_2d_heuristic.hpp"
+#include "erl_path_planning/astar.hpp"
+#include "erl_path_planning/heuristic.hpp"
+#include "erl_path_planning/ltl_2d_heuristic.hpp"
 
 TEST(AStar2D, PlanWithSingleGoal) {
 
@@ -14,9 +14,9 @@ TEST(AStar2D, PlanWithSingleGoal) {
     using CostBase = erl::env::CostBase<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
     using Environment2D = erl::env::Environment2D<Dtype>;
-    using PlanningInterface = erl::search_planning::PlanningInterface<Dtype, 2>;
-    using AStar = erl::search_planning::astar::AStar<Dtype, 2>;
-    using Output = erl::search_planning::astar::Output<Dtype, 2>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 2>;
+    using AStar = erl::path_planning::astar::AStar<Dtype, 2>;
+    using Output = erl::path_planning::astar::Output<Dtype, 2>;
 
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
     // clang-format off
@@ -65,11 +65,13 @@ TEST(AStar2D, PlanWithSingleGoal) {
     ReportTime<std::chrono::microseconds>("AStar2D::PlanWithSingleGoal", 0, true, [&]() {
         result = AStar(planning_interface).Plan();
     });
-    std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost
-              << ", number of controls: " << result->action_indices.size() << std::endl;
+    const auto *plan_record = result->GetLatestRecord();
+    ASSERT_TRUE(plan_record != nullptr);
+    std::cout << "Path to goal " << plan_record->goal_index << " cost: " << plan_record->cost
+              << ", number of controls: " << plan_record->env_action_indices.size() << std::endl;
 
-    EXPECT_DOUBLE_EQ(result->cost - 10.0, 16.071067811865476);
-    EXPECT_EQ(result->action_indices.size(), 14);
+    EXPECT_DOUBLE_EQ(plan_record->cost - 10.0, 16.071067811865476);
+    EXPECT_EQ(plan_record->env_action_indices.size(), 14);
 }
 
 TEST(AStar2D, PlanWithFourGoals) {
@@ -81,9 +83,9 @@ TEST(AStar2D, PlanWithFourGoals) {
     using CostBase = erl::env::CostBase<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
     using Environment2D = erl::env::Environment2D<Dtype>;
-    using PlanningInterface = erl::search_planning::PlanningInterface<Dtype, 2>;
-    using AStar = erl::search_planning::astar::AStar<Dtype, 2>;
-    using Output = erl::search_planning::astar::Output<Dtype, 2>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 2>;
+    using AStar = erl::path_planning::astar::AStar<Dtype, 2>;
+    using Output = erl::path_planning::astar::Output<Dtype, 2>;
 
     Eigen::Vector<uint8_t, 15 * 15> grid_map_data;
     // clang-format off
@@ -142,20 +144,28 @@ TEST(AStar2D, PlanWithFourGoals) {
     ReportTime<std::chrono::microseconds>("AStar2D::PlanWithFourGoals", 0, true, [&]() {
         result = astar_planner.Plan();
     });
+    const auto *plan_record = result->GetLatestRecord();
+    ASSERT_TRUE(plan_record != nullptr);
     std::cout << "Number of iterations: " << astar_planner.GetIterations() << std::endl;
-    std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost
-              << ", number of controls: " << result->action_indices.size() << std::endl;
+    std::cout << "Path to goal " << plan_record->goal_index << " cost: " << plan_record->cost
+              << ", number of controls: " << plan_record->env_action_indices.size() << std::endl;
 
     cv::Mat img = cv::Mat(15, 15, CV_8UC1, grid_map_data.data()).clone();
     img = (1 - img) * 255;
     cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
 
-    DrawTrajectoryInplace<Dtype>(img, result->path, grid_map_info, cv::Scalar(255, 0, 0), 1, false);
+    DrawTrajectoryInplace<Dtype>(
+        img,
+        plan_record->path,
+        grid_map_info,
+        cv::Scalar(255, 0, 0),
+        1,
+        false);
     Eigen::Vector2i grid_start = grid_map_info->MeterToGridForPoints(metric_start_coords);
     img.at<cv::Vec3b>(grid_start[0], grid_start[1]) = cv::Vec3b(0, 128, 255);
     img.at<cv::Vec3b>(
-        grid_goals.col(result->goal_index)[0],
-        grid_goals.col(result->goal_index)[1]) = cv::Vec3b(255, 128, 0);
+        grid_goals.col(plan_record->goal_index)[0],
+        grid_goals.col(plan_record->goal_index)[1]) = cv::Vec3b(255, 128, 0);
     cv::imwrite(test_output_dir / "result-path.png", img);
 
     if (astar_setting->log) {
@@ -181,15 +191,15 @@ TEST(AStar2D, PlanWithFourGoals) {
         cv::imwrite(test_output_dir / "result-opened.png", img);
     }
 
-    EXPECT_DOUBLE_EQ(result->cost, 1016.0710678118655);
-    EXPECT_EQ(result->action_indices.size(), 14);
+    EXPECT_DOUBLE_EQ(plan_record->cost, 1016.0710678118655);
+    EXPECT_EQ(plan_record->env_action_indices.size(), 14);
 
-    long num_points = result->path.cols();
+    long num_points = plan_record->path.cols();
     YAML::Emitter out;
     out << YAML::BeginSeq;
     for (long i = 0; i < num_points; ++i) {
         out << YAML::Flow
-            << YAML::convert<Eigen::Vector2d>::encode(Eigen::Vector2d(result->path.col(i)));
+            << YAML::convert<Eigen::Vector2d>::encode(Eigen::Vector2d(plan_record->path.col(i)));
     }
     out << YAML::EndSeq;
     std::ofstream ofs(test_output_dir / "path.yaml");
@@ -198,7 +208,10 @@ TEST(AStar2D, PlanWithFourGoals) {
     // continue planning to find path to the next goal
     for (int i = 1; i < 4; ++i) {
         result = astar_planner.Plan();
-        std::cout << "cost to goal " << result->goal_index << ": " << result->cost << std::endl;
+        plan_record = result->GetLatestRecord();
+        ASSERT_TRUE(plan_record != nullptr);
+        std::cout << "cost to goal " << plan_record->goal_index << ": " << plan_record->cost
+                  << std::endl;
     }
 }
 
@@ -212,10 +225,10 @@ RunLargeMapWithStepSize(int step_size, double expected_cost, int expected_num_ac
     using CostBase = erl::env::CostBase<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
     using Environment2D = erl::env::Environment2D<Dtype>;
-    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 2>;
-    using PlanningInterface = erl::search_planning::PlanningInterface<Dtype, 2>;
-    using AStar = erl::search_planning::astar::AStar<Dtype, 2>;
-    using Output = erl::search_planning::astar::Output<Dtype, 2>;
+    using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 2>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 2>;
+    using AStar = erl::path_planning::astar::AStar<Dtype, 2>;
+    using Output = erl::path_planning::astar::Output<Dtype, 2>;
 
     Eigen::Vector2d metric_start_coords(90, 10);
     Eigen::Vector2d metric_goal_coords(1, 50);
@@ -280,14 +293,22 @@ RunLargeMapWithStepSize(int step_size, double expected_cost, int expected_num_ac
     ReportTime<std::chrono::microseconds>(test_info->name(), 0, true, [&]() {
         result = AStar(planning_interface).Plan();
     });
-    std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost
-              << ", number of controls: " << result->action_indices.size() << std::endl;
+    const auto *plan_record = result->GetLatestRecord();
+    ASSERT_TRUE(plan_record != nullptr);
+    std::cout << "Path to goal " << plan_record->goal_index << " cost: " << plan_record->cost
+              << ", number of controls: " << plan_record->env_action_indices.size() << std::endl;
 
-    DrawTrajectoryInplace<Dtype>(img, result->path, grid_map_info, cv::Scalar(255, 0, 0), 1, false);
+    DrawTrajectoryInplace<Dtype>(
+        img,
+        plan_record->path,
+        grid_map_info,
+        cv::Scalar(255, 0, 0),
+        1,
+        false);
 
     cv::imwrite(test_output_dir / "result.png", img);
-    EXPECT_DOUBLE_EQ(result->cost, expected_cost);
-    EXPECT_EQ(result->action_indices.size(), expected_num_actions);
+    EXPECT_DOUBLE_EQ(plan_record->cost, expected_cost);
+    EXPECT_EQ(plan_record->env_action_indices.size(), expected_num_actions);
 }
 
 TEST(AStar2D, LargeMap_Step1) { RunLargeMapWithStepSize(1, 105.46307941550766, 890); }
@@ -305,10 +326,10 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
     using LinearTemporalLogicHeuristic2D =
-        erl::search_planning::LinearTemporalLogicHeuristic2D<Dtype>;
-    using PlanningInterface = erl::search_planning::PlanningInterface<Dtype, 3>;
-    using AStar = erl::search_planning::astar::AStar<Dtype, 3>;
-    using Output = erl::search_planning::astar::Output<Dtype, 3>;
+        erl::path_planning::LinearTemporalLogicHeuristic2D<Dtype>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 3>;
+    using AStar = erl::path_planning::astar::AStar<Dtype, 3>;
+    using Output = erl::path_planning::astar::Output<Dtype, 3>;
 
     auto env_setting_yaml = gtest_src_dir / "environment_ltl_2d.yaml";
     auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
@@ -357,8 +378,11 @@ TEST(AStar2D, LinearTemporalLogic2D) {
         result = astar.Plan();
     });
 
-    std::cout << "Path to goal " << result->goal_index << " cost: " << result->cost
-              << ", number of controls: " << result->action_indices.size() << std::endl;
+    const auto *plan_record = result->GetLatestRecord();
+    ASSERT_TRUE(plan_record != nullptr);
+
+    std::cout << "Path to goal " << plan_record->goal_index << " cost: " << plan_record->cost
+              << ", number of controls: " << plan_record->env_action_indices.size() << std::endl;
 
     cv::Mat img = label_map_img.clone();
     cv::normalize(img, img, 0, 255, cv::NORM_MINMAX);
@@ -367,7 +391,7 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     img.at<cv::Vec3b>(grid_start[0], grid_start[1]) = cv::Vec3b(0, 128, 255);
     DrawTrajectoryInplace<Dtype>(
         img,
-        result->path.topRows<2>(),
+        plan_record->path.topRows<2>(),
         grid_map_info,
         cv::Scalar(255, 0, 0),
         1,
@@ -375,15 +399,15 @@ TEST(AStar2D, LinearTemporalLogic2D) {
 
     cv::imwrite(test_output_dir / "result.png", img);
 
-    EXPECT_DOUBLE_EQ(result->cost, 20.417871555019136);
-    EXPECT_EQ(result->path.cols(), 165);
+    EXPECT_DOUBLE_EQ(plan_record->cost, 20.417871555019136);
+    EXPECT_EQ(plan_record->path.cols(), 165);
 
-    long num_points = result->path.cols();
+    long num_points = plan_record->path.cols();
     YAML::Emitter out;
     out << YAML::BeginSeq;
     for (long i = 0; i < num_points; ++i) {
         out << YAML::Flow
-            << YAML::convert<Eigen::Vector3d>::encode(Eigen::Vector3d(result->path.col(i)));
+            << YAML::convert<Eigen::Vector3d>::encode(Eigen::Vector3d(plan_record->path.col(i)));
     }
     out << YAML::EndSeq;
     std::ofstream ofs(test_output_dir / "path.yaml");

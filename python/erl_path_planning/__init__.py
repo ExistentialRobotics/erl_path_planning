@@ -3,7 +3,7 @@ import erl_common as common
 import erl_env as env
 import erl_geometry as geometry
 
-from .pyerl_search_planning import *
+from .pyerl_path_planning import *
 from . import astar
 from . import amra_star
 

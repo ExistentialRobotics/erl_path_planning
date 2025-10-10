@@ -3,7 +3,8 @@
 // Implementation of AMRA*: Anytime Multi-Resolution Multi-HeuristicBase A*
 
 #include "heuristic.hpp"
-#include "planning_interface_multi_resolutions.hpp"
+#include "planning_output.hpp"
+#include "search_planning_interface.hpp"
 
 #include "erl_common/eigen.hpp"
 #include "erl_common/yaml.hpp"
@@ -18,7 +19,7 @@
 
 using namespace std::chrono_literals;
 
-namespace erl::search_planning::amra_star {
+namespace erl::path_planning::amra_star {
 
     template<typename Dtype, int Dim>
     struct State;
@@ -153,19 +154,7 @@ namespace erl::search_planning::amra_star {
     };
 
     template<typename Dtype, int Dim>
-    struct PlanRecord {
-        int goal_index = -1;
-        Eigen::Matrix<Dtype, Dim, Eigen::Dynamic> path = {};
-        std::list<std::pair<long, long>> env_level_action_indices = {};
-        Dtype cost = std::numeric_limits<Dtype>::infinity();
-    };
-
-    template<typename Dtype, int Dim>
-    struct Output {
-        uint32_t latest_plan_itr = -1;  // latest plan iteration
-        // plan_itr -> plan_record
-        std::unordered_map<uint32_t, PlanRecord<Dtype, Dim>> plan_records = {};
-
+    struct Output : public PlanningOutput<Dtype, Dim> {
         // statistics
         uint32_t num_heuristics = 0;
         uint32_t num_resolution_levels = 0;
@@ -191,10 +180,10 @@ namespace erl::search_planning::amra_star {
             std::ofstream ofs(file_path);
             ERL_ASSERTM(ofs.is_open(), "Failed to open file: {}", file_path.string());
 
-            std::size_t num_successful_plans = plan_records.size();
+            std::size_t num_successful_plans = this->plan_records.size();
             ofs << "AMRA* solution" << std::endl
                 << "num_successful_plans: " << num_successful_plans << std::endl
-                << "latest_plan_itr: " << latest_plan_itr << std::endl
+                << "latest_plan_itr: " << this->latest_plan_itr << std::endl
                 << "num_heuristics: " << num_heuristics << std::endl
                 << "num_resolution_levels: " << num_resolution_levels << std::endl
                 << "num_expansions: " << num_expansions << std::endl
@@ -204,7 +193,7 @@ namespace erl::search_planning::amra_star {
 
             // save solutions and their cost, actions, etc. for each plan iteration
             long d = 0;
-            for (auto& [plan_itr, plan_record]: plan_records) {
+            for (auto& [plan_itr, plan_record]: this->plan_records) {
                 auto& [goal_index, path, env_level_action_indices, cost] = plan_record;
 
                 d = path.rows();  // dimension of the state space
@@ -345,7 +334,7 @@ namespace erl::search_planning::amra_star {
         using Setting = AmraStarSetting<Dtype>;
         using State_t = State<Dtype, Dim>;
         using EnvState = typename State_t::EnvState;
-        using PlanningInterface = PlanningInterfaceMultiResolutions<Dtype, Dim>;
+        using PlanningInterface = SearchPlanningInterfaceMultiResolutions<Dtype, Dim>;
         using PriorityQueue_t = PriorityQueue<Dtype, Dim>;
         using PriorityQueueItem_t = PriorityQueueItem<Dtype, Dim>;
         using Output_t = Output<Dtype, Dim>;
@@ -748,12 +737,13 @@ namespace erl::search_planning::amra_star {
                 m_total_expand_itr_,
                 m_plan_itr_);
 
-            auto& actions_coords = plan_record.env_level_action_indices;
+            auto& actions_coords = plan_record.env_action_indices;
             actions_coords.clear();
             while (node->parent != nullptr) {
-                actions_coords.push_front(std::pair{node->env_level, node->action_idx});
+                actions_coords.emplace_back(node->env_level, node->action_idx);
                 node = node->parent;
             }
+            std::reverse(actions_coords.begin(), actions_coords.end());
             std::vector<std::vector<EnvState>> path_segments;
             path_segments.reserve(actions_coords.size());
             long num_path_states = 0;
@@ -799,12 +789,12 @@ namespace erl::search_planning::amra_star {
     extern template class AmraStar<double, 2>;
     extern template class AmraStar<double, 3>;
 
-}  // namespace erl::search_planning::amra_star
+}  // namespace erl::path_planning::amra_star
 
 template<>
-struct YAML::convert<erl::search_planning::amra_star::AmraStarSetting<float>>
-    : public erl::search_planning::amra_star::AmraStarSetting<float>::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::amra_star::AmraStarSetting<float>>
+    : public erl::path_planning::amra_star::AmraStarSetting<float>::YamlConvertImpl {};
 
 template<>
-struct YAML::convert<erl::search_planning::amra_star::AmraStarSetting<double>>
-    : public erl::search_planning::amra_star::AmraStarSetting<double>::YamlConvertImpl {};
+struct YAML::convert<erl::path_planning::amra_star::AmraStarSetting<double>>
+    : public erl::path_planning::amra_star::AmraStarSetting<double>::YamlConvertImpl {};

@@ -1,9 +1,9 @@
 #include "erl_common/yaml.hpp"
 #include "erl_env/environment_ltl_scene_graph.hpp"
-#include "erl_search_planning/amra_star.hpp"
-#include "erl_search_planning/llm_scene_graph_heuristic.hpp"
-#include "erl_search_planning/ltl_3d_heuristic.hpp"
-#include "erl_search_planning/planning_interface_multi_resolutions.hpp"
+#include "erl_path_planning/amra_star.hpp"
+#include "erl_path_planning/llm_scene_graph_heuristic.hpp"
+#include "erl_path_planning/ltl_3d_heuristic.hpp"
+#include "erl_path_planning/search_planning_interface.hpp"
 
 #include <boost/program_options.hpp>
 
@@ -116,13 +116,13 @@ void
 run(const Options<Dtype> &options) {
     using namespace erl::common;
     using namespace erl::env;
-    using namespace erl::search_planning;
+    using namespace erl::path_planning;
 
     using Env = EnvironmentLTLSceneGraph<Dtype>;
     using MetricState = typename Env::MetricState;
     using LtlHeuristic = LinearTemporalLogicHeuristic3D<Dtype>;
     using LlmHeuristic = LlmSceneGraphHeuristic<Dtype>;
-    using PlanningInterface = PlanningInterfaceMultiResolutions<Dtype, 4>;
+    using PlanningInterface = SearchPlanningInterfaceMultiResolutions<Dtype, 4>;
     using Heuristic = typename PlanningInterface::Heuristic;
     using AmraStar = amra_star::AmraStar<Dtype, 4>;
 

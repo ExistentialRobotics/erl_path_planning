@@ -1,10 +1,10 @@
 #include "erl_common/test_helper.hpp"
 #include "erl_env/environment_ltl_scene_graph.hpp"
 #include "erl_env/environment_scene_graph.hpp"
-#include "erl_search_planning/amra_star.hpp"
-#include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/llm_scene_graph_heuristic.hpp"
-#include "erl_search_planning/ltl_3d_heuristic.hpp"
+#include "erl_path_planning/amra_star.hpp"
+#include "erl_path_planning/heuristic.hpp"
+#include "erl_path_planning/llm_scene_graph_heuristic.hpp"
+#include "erl_path_planning/ltl_3d_heuristic.hpp"
 
 #include <filesystem>
 
@@ -15,11 +15,11 @@ TEST(AMRAStarSceneGraph, SingleFloor) {
     using EnvState = erl::env::EnvironmentState<Dtype, 3>;
     using MetricState = EnvState::MetricState;
     using EnvironmentSceneGraph = erl::env::EnvironmentSceneGraph<Dtype>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 3>;
-    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 3>;
-    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 3>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 3>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 3>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 3>;
+    using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 3>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 3>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 3>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 3>;
 
     // using namespace erl::env;
 
@@ -95,11 +95,11 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
     using EnvState = erl::env::EnvironmentState<Dtype, 3>;
     using MetricState = EnvState::MetricState;
     using EnvironmentSceneGraph = erl::env::EnvironmentSceneGraph<Dtype>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 3>;
-    using EuclideanDistanceHeuristic = erl::search_planning::EuclideanDistanceHeuristic<Dtype, 3>;
-    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 3>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 3>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 3>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 3>;
+    using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 3>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 3>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 3>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 3>;
 
     // load environment
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
@@ -178,13 +178,11 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     using EnvState = erl::env::EnvironmentState<Dtype, 4>;
     using MetricState = EnvState::MetricState;
     using EnvironmentLTLSceneGraph = erl::env::EnvironmentLTLSceneGraph<Dtype>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 4>;
-    using LinearTemporalLogicHeuristic3D =
-        erl::search_planning::LinearTemporalLogicHeuristic3D<Dtype>;
-    using PlanningInterfaceMultiResolutions =
-        erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 4>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 4>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 4>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 4>;
+    using LtlHeuristic3D = erl::path_planning::LinearTemporalLogicHeuristic3D<Dtype>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 4>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 4>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 4>;
     using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
 
     std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
@@ -221,7 +219,7 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
         Eigen::Vector4i(0, 0, 0, static_cast<int>(env_setting->fsa->accepting_states[0])));
     double inf = std::numeric_limits<double>::infinity();
     MetricState goal_tolerance = Eigen::Vector4d(inf, inf, inf, 0);
-    auto ltl_heuristic = std::make_shared<LinearTemporalLogicHeuristic3D>(
+    auto ltl_heuristic = std::make_shared<LtlHeuristic3D>(
         environment_ltl_scene_graph->GetFiniteStateAutomaton(),
         environment_ltl_scene_graph->GetLabelMaps(),
         environment_ltl_scene_graph->GetGridMapInfo());
@@ -233,7 +231,7 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
         {ltl_heuristic, 4},  // kFloor
     };
 
-    auto planning_interface = std::make_shared<PlanningInterfaceMultiResolutions>(
+    auto planning_interface = std::make_shared<PlanningInterface>(
         environment_ltl_scene_graph,
         heuristics,
         start,
@@ -283,11 +281,11 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
     using EnvState = erl::env::EnvironmentState<Dtype, 4>;
     using MetricState = EnvState::MetricState;
     using EnvironmentLTLSceneGraph = erl::env::EnvironmentLTLSceneGraph<Dtype>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 4>;
-    using LtlHeuristic3D = erl::search_planning::LinearTemporalLogicHeuristic3D<Dtype>;
-    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 4>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 4>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 4>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 4>;
+    using LtlHeuristic3D = erl::path_planning::LinearTemporalLogicHeuristic3D<Dtype>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 4>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 4>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 4>;
     using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
 
     std::filesystem::path building_path = gtest_src_dir / "building.yaml";
@@ -386,13 +384,13 @@ TEST(LLMSceneGraph, Heuristic) {
     using EnvState = erl::env::EnvironmentState<Dtype, 4>;
     using MetricState = EnvState::MetricState;
     using EnvironmentLTLSceneGraph = erl::env::EnvironmentLTLSceneGraph<Dtype>;
-    using HeuristicBase = erl::search_planning::HeuristicBase<Dtype, 4>;
+    using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 4>;
     using LinearTemporalLogicHeuristic3D =
-        erl::search_planning::LinearTemporalLogicHeuristic3D<Dtype>;
-    using LlmSceneGraphHeuristic = erl::search_planning::LlmSceneGraphHeuristic<Dtype>;
-    using PlanningInterface = erl::search_planning::PlanningInterfaceMultiResolutions<Dtype, 4>;
-    using AmraStar = erl::search_planning::amra_star::AmraStar<Dtype, 4>;
-    using Output = erl::search_planning::amra_star::Output<Dtype, 4>;
+        erl::path_planning::LinearTemporalLogicHeuristic3D<Dtype>;
+    using LlmSceneGraphHeuristic = erl::path_planning::LlmSceneGraphHeuristic<Dtype>;
+    using PlanningInterface = erl::path_planning::SearchPlanningInterfaceMultiResolutions<Dtype, 4>;
+    using AmraStar = erl::path_planning::amra_star::AmraStar<Dtype, 4>;
+    using Output = erl::path_planning::amra_star::Output<Dtype, 4>;
     using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
 
     // load the building

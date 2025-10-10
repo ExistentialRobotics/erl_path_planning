@@ -7,7 +7,7 @@
 #include "erl_env/environment_state.hpp"
 #include "erl_env/finite_state_automaton.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
 
     template<typename Dtype, int Dim>
     class HeuristicBase {
@@ -228,13 +228,13 @@ namespace erl::search_planning {
         using Super = HeuristicBase<Dtype, Dim>;
         using EnvState = typename Super::EnvState;
 
-        std::vector<std::shared_ptr<Super>> goal_heuristics;
+        std::vector<std::shared_ptr<Super>> heuristics;
 
-        explicit MultiGoalsHeuristic(std::vector<std::shared_ptr<Super>> goal_heuristics_in)
-            : goal_heuristics(std::move(goal_heuristics_in)) {  // may be empty
-            for (std::size_t i = 0; i < goal_heuristics.size(); ++i) {
+        explicit MultiGoalsHeuristic(std::vector<std::shared_ptr<Super>> heuristics_in)
+            : heuristics(std::move(heuristics_in)) {  // may be empty
+            for (std::size_t i = 0; i < heuristics.size(); ++i) {
                 ERL_ASSERTM(
-                    goal_heuristics[i] != nullptr,
+                    heuristics[i] != nullptr,
                     "goal_heuristics_in[%d] is nullptr.",
                     static_cast<int>(i));
             }
@@ -244,10 +244,10 @@ namespace erl::search_planning {
         operator()(const EnvState &state) const override {
             if (state.grid[0] == env::VirtualStateValue::kGoal) { return 0.0f; }  // virtual goal
             Dtype min_h = std::numeric_limits<Dtype>::infinity();
-            for (auto &heuristic: goal_heuristics) {
+            for (auto &heuristic: heuristics) {
                 if (const Dtype h = (*heuristic)(state); h < min_h) { min_h = h; }
             }
             return min_h;
         }
     };
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

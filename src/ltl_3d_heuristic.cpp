@@ -1,6 +1,6 @@
-#include "erl_search_planning/ltl_3d_heuristic.hpp"
+#include "erl_path_planning/ltl_3d_heuristic.hpp"
 
-namespace erl::search_planning {
+namespace erl::path_planning {
     template class LinearTemporalLogicHeuristic3D<float>;
     template class LinearTemporalLogicHeuristic3D<double>;
-}  // namespace erl::search_planning
+}  // namespace erl::path_planning

@@ -1,6 +1,6 @@
 #include "erl_common/test_helper.hpp"
-#include "erl_search_planning/heuristic.hpp"
-#include "erl_search_planning/ltl_2d_heuristic.hpp"
+#include "erl_path_planning/heuristic.hpp"
+#include "erl_path_planning/ltl_2d_heuristic.hpp"
 
 #include <filesystem>
 
@@ -26,7 +26,7 @@ TEST(LinearTemporalLogic, Heuristic2D) {
     Eigen::Vector2d map_max(20.05, 21.05);
     auto grid_map_info = std::make_shared<GridMapInfo>(map_shape, map_min, map_max);
 
-    erl::search_planning::LinearTemporalLogicHeuristic2D heuristic(fsa, label_map, grid_map_info);
+    erl::path_planning::LinearTemporalLogicHeuristic2D heuristic(fsa, label_map, grid_map_info);
 
     Eigen::MatrixXd label_distance_g(32, 9);
     double inf = std::numeric_limits<double>::infinity();
