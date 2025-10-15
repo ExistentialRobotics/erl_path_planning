@@ -166,8 +166,8 @@ namespace erl::path_planning {
                 ERL_ASSERTM(
                     line.size() == 2,
                     "Each line should be <state hashing>, <heuristic value>.");
-                long state_hashing;
-                Dtype heuristic_value;
+                long state_hashing = -1;
+                Dtype heuristic_value = 0.0f;
                 try {
                     state_hashing = std::stol(line[0]);
                 } catch (const std::invalid_argument &e) {

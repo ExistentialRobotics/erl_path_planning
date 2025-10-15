@@ -9,7 +9,13 @@ namespace erl::path_planning {
 
     // 8.1
     static bool
-    LpSpLp(const double x, const double y, const double phi, double &t, double &u, double &v) {  // left forward, straight forward, left forward
+    LpSpLp(
+        const double x,
+        const double y,
+        const double phi,
+        double &t,
+        double &u,
+        double &v) {  // left forward, straight forward, left forward
         common::CartesianToPolar(x - std::sin(phi), y - 1. + std::cos(phi), u, t);
         // path is not optimal if t or v is outside [0, pi]
         if (t >= kZero) {
@@ -21,7 +27,13 @@ namespace erl::path_planning {
 
     // 8.2
     static bool
-    LpSpRp(const double x, const double y, const double phi, double &t, double &u, double &v) {  // left forward, straight forward, right forward
+    LpSpRp(
+        const double x,
+        const double y,
+        const double phi,
+        double &t,
+        double &u,
+        double &v) {  // left forward, straight forward, right forward
         const double xi = x + std::sin(phi);
         const double eta = y - 1. - std::cos(phi);
         if (const double u1 = xi * xi + eta * eta; u1 >= 4.0) {
@@ -45,28 +57,32 @@ namespace erl::path_planning {
         double &sol_v,
         double &sol_l) {
         double t, u, v, l;
-        if (LpSpLp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 14: L+S+L+NN
+        if (LpSpLp(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 14: L+S+L+NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[14];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
-        if (LpSpLp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 14: L-S-L-NN
+        if (LpSpLp(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 14: L-S-L-NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[14];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
             sol_l = l;
         }
-        if (LpSpLp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 15: R+S+R+NN
+        if (LpSpLp(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 15: R+S+R+NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[15];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
-        if (LpSpLp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 15: R-S-R-NN
+        if (LpSpLp(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 15: R-S-R-NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[15];
             sol_t = -t;
             sol_u = -u;
@@ -74,28 +90,32 @@ namespace erl::path_planning {
             sol_l = l;
         }
 
-        if (LpSpRp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 12: L+S+R+NN
+        if (LpSpRp(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 12: L+S+R+NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[12];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
-        if (LpSpRp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 12: L-S-R-NN
+        if (LpSpRp(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 12: L-S-R-NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[12];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
             sol_l = l;
         }
-        if (LpSpRp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 13: R+S+L+NN
+        if (LpSpRp(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 13: R+S+L+NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[13];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
-        if (LpSpRp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 13: R-S-L-NN
+        if (LpSpRp(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 13: R-S-L-NN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[13];
             sol_t = -t;
             sol_u = -u;
@@ -106,7 +126,13 @@ namespace erl::path_planning {
 
     // 8.3, 8.4
     static bool
-    LpRmL(const double x, const double y, const double phi, double &t, double &u, double &v) {  // left forward, right backward, left forward/backward
+    LpRmL(
+        const double x,
+        const double y,
+        const double phi,
+        double &t,
+        double &u,
+        double &v) {  // left forward, right backward, left forward/backward
         const double xi = x - std::sin(phi);
         const double eta = y - 1. + std::cos(phi);
         if (const double u1 = xi * xi + eta * eta; u1 <= 16.0) {
@@ -131,28 +157,32 @@ namespace erl::path_planning {
         double &sol_l) {
         double t, u, v, l;
         // CCC: (0, 0, 0) -> (x, y, phi)
-        if (LpRmL(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 0: L+R-LNN
+        if (LpRmL(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 0: L+R-LNN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
-        if (LpRmL(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 0: L-R+LNN
+        if (LpRmL(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 0: L-R+LNN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
             sol_t = -t;
             sol_u = -u;
             sol_v = -v;
             sol_l = l;
         }
-        if (LpRmL(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 1: R+L-RNN
+        if (LpRmL(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 1: R+L-RNN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
             sol_t = t;
             sol_u = u;
             sol_v = v;
             sol_l = l;
         }
-        if (LpRmL(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 1: R-L+RNN
+        if (LpRmL(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {  // 1: R-L+RNN
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
             sol_t = -t;
             sol_u = -u;
@@ -165,28 +195,32 @@ namespace erl::path_planning {
         // flip sign, (0, 0, 0) to (-x', y', phi), x'' = -x' = x*cos(phi)+y*sin(phi)
         const double xb = x * std::cos(phi) + y * std::sin(phi);
         const double yb = x * std::sin(phi) - y * std::cos(phi);
-        if (LpRmL(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
+        if (LpRmL(xb, yb, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
             sol_t = v;
             sol_u = u;
             sol_v = t;
             sol_l = l;
         }
-        if (LpRmL(-xb, yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
+        if (LpRmL(-xb, yb, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[0];
             sol_t = -v;
             sol_u = -u;
             sol_v = -t;
             sol_l = l;
         }
-        if (LpRmL(xb, -yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
+        if (LpRmL(xb, -yb, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
             sol_t = v;
             sol_u = u;
             sol_v = t;
             sol_l = l;
         }
-        if (LpRmL(-xb, -yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
+        if (LpRmL(-xb, -yb, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v))) {
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[1];
             sol_t = -v;
             sol_u = -u;
@@ -197,7 +231,14 @@ namespace erl::path_planning {
 
     // 8.6
     inline void
-    TauOmega(const double u, const double v, const double xi, const double eta, const double phi, double &tau, double &omega) {
+    TauOmega(
+        const double u,
+        const double v,
+        const double xi,
+        const double eta,
+        const double phi,
+        double &tau,
+        double &omega) {
         const double delta = common::WrapAnglePi(u - v);
         const double a = std::sin(u) - std::sin(delta);
         const double b = std::cos(u) - std::cos(delta) - 1.0;
@@ -246,7 +287,8 @@ namespace erl::path_planning {
         double &sol_w,
         double &sol_l) {
         double t, u, v, l;
-        if (LpRupLumRm(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L+R+L-R-N
+        if (LpRupLumRm(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L+R+L-R-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
             sol_t = t;
             sol_u = u;
@@ -254,7 +296,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRupLumRm(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L-R-L+R+N
+        if (LpRupLumRm(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L-R-L+R+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
             sol_t = -t;
             sol_u = -u;
@@ -262,7 +305,8 @@ namespace erl::path_planning {
             sol_w = -v;
             sol_l = l;
         }
-        if (LpRupLumRm(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R+L+R-L-N
+        if (LpRupLumRm(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R+L+R-L-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
             sol_t = t;
             sol_u = u;
@@ -270,7 +314,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRupLumRm(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R-L-R+L+N
+        if (LpRupLumRm(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R-L-R+L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
             sol_t = -t;
             sol_u = -u;
@@ -279,7 +324,8 @@ namespace erl::path_planning {
             sol_l = l;
         }
 
-        if (LpRumLumRp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L+R-L-R+N
+        if (LpRumLumRp(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L+R-L-R+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
             sol_t = t;
             sol_u = u;
@@ -287,7 +333,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRumLumRp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L-R+L+R-N
+        if (LpRumLumRp(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 2: L-R+L+R-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[2];
             sol_t = -t;
             sol_u = -u;
@@ -295,7 +342,8 @@ namespace erl::path_planning {
             sol_w = -v;
             sol_l = l;
         }
-        if (LpRumLumRp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R+L-R-L+N
+        if (LpRumLumRp(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R+L-R-L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
             sol_t = t;
             sol_u = u;
@@ -303,7 +351,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRumLumRp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R-L+R+L-N
+        if (LpRumLumRp(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + 2.0 * std::fabs(u) + std::fabs(v))) {  // 3: R-L+R+L-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[3];
             sol_t = -t;
             sol_u = -u;
@@ -357,7 +406,8 @@ namespace erl::path_planning {
         double &sol_w,
         double &sol_l) {
         double t, u, v, l;
-        if (LpRmSmLm(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 4: L+R-S-L-N
+        if (LpRmSmLm(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 4: L+R-S-L-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[4];
             sol_t = t;
             sol_u = -M_PI_2;
@@ -365,7 +415,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRmSmLm(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 4: L-R+S+L+N
+        if (LpRmSmLm(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 4: L-R+S+L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[4];
             sol_t = -t;
             sol_u = M_PI_2;
@@ -373,7 +424,8 @@ namespace erl::path_planning {
             sol_w = -v;
             sol_l = l;
         }
-        if (LpRmSmLm(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 5: R+L-S-R-N
+        if (LpRmSmLm(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 5: R+L-S-R-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[5];
             sol_t = t;
             sol_u = -M_PI_2;
@@ -381,7 +433,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRmSmLm(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 5: R-L+S+R+N
+        if (LpRmSmLm(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 5: R-L+S+R+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[5];
             sol_t = -t;
             sol_u = M_PI_2;
@@ -390,7 +443,8 @@ namespace erl::path_planning {
             sol_l = l;
         }
 
-        if (LpRmSmRm(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 8: L+R-S-R-N
+        if (LpRmSmRm(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 8: L+R-S-R-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[8];
             sol_t = t;
             sol_u = -M_PI_2;
@@ -398,7 +452,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRmSmRm(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 8: L-R+S+R+N
+        if (LpRmSmRm(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 8: L-R+S+R+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[8];
             sol_t = -t;
             sol_u = M_PI_2;
@@ -406,7 +461,8 @@ namespace erl::path_planning {
             sol_w = -v;
             sol_l = l;
         }
-        if (LpRmSmRm(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 9: R+L-S-L-N
+        if (LpRmSmRm(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 9: R+L-S-L-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[9];
             sol_t = t;
             sol_u = -M_PI_2;
@@ -414,7 +470,8 @@ namespace erl::path_planning {
             sol_w = v;
             sol_l = l;
         }
-        if (LpRmSmRm(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 9: R-L+S+L+N
+        if (LpRmSmRm(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 9: R-L+S+L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[9];
             sol_t = -t;
             sol_u = M_PI_2;
@@ -429,7 +486,8 @@ namespace erl::path_planning {
         // flip sign, (0, 0, 0) to (-x', y', phi), x'' = -x' = x*cos(phi)+y*sin(phi)
         double xb = x * std::cos(phi) + y * std::sin(phi);
         double yb = x * std::sin(phi) - y * std::cos(phi);
-        if (LpRmSmLm(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 6: L-S-R-L+N
+        if (LpRmSmLm(xb, yb, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 6: L-S-R-L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[6];
             sol_t = v;
             sol_u = u;
@@ -437,7 +495,8 @@ namespace erl::path_planning {
             sol_w = t;
             sol_l = l;
         }
-        if (LpRmSmLm(-xb, yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 6: L+S+R+L-N
+        if (LpRmSmLm(-xb, yb, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 6: L+S+R+L-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[6];
             sol_t = -v;
             sol_u = -u;
@@ -445,7 +504,8 @@ namespace erl::path_planning {
             sol_w = -t;
             sol_l = l;
         }
-        if (LpRmSmLm(xb, -yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 7: R-S-L-R+N
+        if (LpRmSmLm(xb, -yb, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 7: R-S-L-R+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[7];
             sol_t = v;
             sol_u = u;
@@ -453,7 +513,8 @@ namespace erl::path_planning {
             sol_w = t;
             sol_l = l;
         }
-        if (LpRmSmLm(-xb, -yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 7: R+S+L+R-N
+        if (LpRmSmLm(-xb, -yb, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 7: R+S+L+R-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[7];
             sol_t = -v;
             sol_u = -u;
@@ -462,7 +523,8 @@ namespace erl::path_planning {
             sol_l = l;
         }
 
-        if (LpRmSmRm(xb, yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 10: R-S-R-L+N
+        if (LpRmSmRm(xb, yb, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 10: R-S-R-L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[10];
             sol_t = v;
             sol_u = u;
@@ -470,7 +532,8 @@ namespace erl::path_planning {
             sol_w = t;
             sol_l = l;
         }
-        if (LpRmSmRm(-xb, yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 10: R-S-R-L+N
+        if (LpRmSmRm(-xb, yb, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 10: R-S-R-L+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[10];
             sol_t = -v;
             sol_u = -u;
@@ -478,7 +541,8 @@ namespace erl::path_planning {
             sol_w = -t;
             sol_l = l;
         }
-        if (LpRmSmRm(xb, -yb, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 11: L-S-L-R+N
+        if (LpRmSmRm(xb, -yb, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 11: L-S-L-R+N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[11];
             sol_t = v;
             sol_u = u;
@@ -486,7 +550,8 @@ namespace erl::path_planning {
             sol_w = t;
             sol_l = l;
         }
-        if (LpRmSmRm(-xb, -yb, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 11: L+S+L+R-N
+        if (LpRmSmRm(-xb, -yb, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI_2)) {  // 11: L+S+L+R-N
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[11];
             sol_t = -v;
             sol_u = -u;
@@ -504,7 +569,8 @@ namespace erl::path_planning {
         if (const double rho = xi * xi + eta * eta; rho >= 4.0) {
             u = 4.0 - std::sqrt(rho - 4.0);
             if (u <= -kZero) {
-                t = common::WrapAnglePi(std::atan2((4.0 - u) * xi - 2.0 * eta, -2.0 * xi + (u - 4.0) * eta));
+                t = common::WrapAnglePi(
+                    std::atan2((4.0 - u) * xi - 2.0 * eta, -2.0 * xi + (u - 4.0) * eta));
                 v = common::WrapAnglePi(t - phi);
                 return t >= kZero && v >= kZero;
             }
@@ -526,7 +592,8 @@ namespace erl::path_planning {
         double &sol_z,
         double &sol_l) {
         double t, u, v, l;
-        if (LpRmSLmRp(x, y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 16: L+R-S-L-R+
+        if (LpRmSLmRp(x, y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 16: L+R-S-L-R+
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[16];
             sol_t = t;
             sol_u = -M_PI_2;
@@ -535,7 +602,8 @@ namespace erl::path_planning {
             sol_z = v;
             sol_l = l;
         }
-        if (LpRmSLmRp(-x, y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 16: L-R+S+L+R-
+        if (LpRmSLmRp(-x, y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 16: L-R+S+L+R-
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[16];
             sol_t = -t;
             sol_u = M_PI_2;
@@ -544,7 +612,8 @@ namespace erl::path_planning {
             sol_z = -v;
             sol_l = l;
         }
-        if (LpRmSLmRp(x, -y, -phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 17: R+L-S-R-L+
+        if (LpRmSLmRp(x, -y, -phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 17: R+L-S-R-L+
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[17];
             sol_t = t;
             sol_u = -M_PI_2;
@@ -553,7 +622,8 @@ namespace erl::path_planning {
             sol_z = v;
             sol_l = l;
         }
-        if (LpRmSLmRp(-x, -y, phi, t, u, v) && sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 17: R-L+S+R+L-
+        if (LpRmSLmRp(-x, -y, phi, t, u, v) &&
+            sol_l > (l = std::fabs(t) + std::fabs(u) + std::fabs(v) + M_PI)) {  // 17: R-L+S+R+L-
             sol_type = ReedsSheppPath::sk_ReedsSheppPathType_[17];
             sol_t = -t;
             sol_u = M_PI_2;
@@ -584,7 +654,9 @@ namespace erl::path_planning {
         y /= turning_radius;
 
         double sol_t, sol_u, sol_v;
-        double sol_w = std::numeric_limits<double>::max(), sol_z = std::numeric_limits<double>::max(), sol_l = std::numeric_limits<double>::max();
+        double sol_w = std::numeric_limits<double>::max(),
+               sol_z = std::numeric_limits<double>::max(),
+               sol_l = std::numeric_limits<double>::max();
         const ReedsSheppPathSegmentType *sol_type = nullptr;
         CSC(x, y, phi, sol_type, sol_t, sol_u, sol_v, sol_l);
         CCC(x, y, phi, sol_type, sol_t, sol_u, sol_v, sol_l);
@@ -592,8 +664,21 @@ namespace erl::path_planning {
         CCSC(x, y, phi, sol_type, sol_t, sol_u, sol_v, sol_w, sol_l);
         CCSCC(x, y, phi, sol_type, sol_t, sol_u, sol_v, sol_w, sol_z, sol_l);
 
-        return std::shared_ptr<ReedsSheppPath>(
-            new ReedsSheppPath(x0, y0, phi0, x1, y1, phi1, sol_type, sol_t, sol_u, sol_v, sol_w, sol_z, sol_l, turning_radius));
+        return std::shared_ptr<ReedsSheppPath>(new ReedsSheppPath(
+            x0,
+            y0,
+            phi0,
+            x1,
+            y1,
+            phi1,
+            sol_type,
+            sol_t,
+            sol_u,
+            sol_v,
+            sol_w,
+            sol_z,
+            sol_l,
+            turning_radius));
     }
 
     void
@@ -654,7 +739,11 @@ namespace erl::path_planning {
     }
 
     void
-    ReedsSheppPath::InterpolateNPoints(const std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const {
+    ReedsSheppPath::InterpolateNPoints(
+        const std::size_t n,
+        std::vector<double> &xs,
+        std::vector<double> &ys,
+        std::vector<double> &phis) const {
         xs.reserve(n);
         ys.reserve(n);
         phis.reserve(n);
@@ -668,7 +757,11 @@ namespace erl::path_planning {
         double phi_base = m_start_[2];
         int seg_index = 0;
 
-        auto step = [&x_base, &y_base, &phi_base, &seg_index, this](const double v, double &x_out, double &y_out, double &phi_out) {
+        auto step = [&x_base,
+                     &y_base,
+                     &phi_base,
+                     &seg_index,
+                     this](const double v, double &x_out, double &y_out, double &phi_out) {
             switch (m_type_[seg_index]) {
                 case kReedsSheppLeft:
                     x_out = x_base + std::sin(phi_base + v) - std::sin(phi_base);
@@ -693,11 +786,12 @@ namespace erl::path_planning {
 
         double s = 0;
         const double ds = m_total_length_ / static_cast<double>(n - 1);
-        double x, y, phi;
+        double x = 0, y = 0, phi = 0;
         while (m_type_[seg_index] != kReedsSheppNop) {
             s += ds;
             if (const double seg_length = std::fabs(m_length_[seg_index]); s >= seg_length) {
-                step(m_length_[seg_index], x_base, y_base, phi_base);  // move to the end of the segment, i.e. the start of the next segment
+                // move to the end of the segment, i.e. the start of the next segment
+                step(m_length_[seg_index], x_base, y_base, phi_base);
                 s -= seg_length;
                 ++seg_index;
             }
@@ -716,7 +810,11 @@ namespace erl::path_planning {
                     "y_base = {}, m_goal_[1] = {} before interpolation ends.",
                     y_base,
                     m_goal_[1]);
-                ERL_DEBUG_ASSERT(std::fabs(phi_base - m_goal_[2]) < 1.e-6, "phi_base = {}, m_goal_[2] = {} before interpolation ends.", phi_base, m_goal_[2]);
+                ERL_DEBUG_ASSERT(
+                    std::fabs(phi_base - m_goal_[2]) < 1.e-6,
+                    "phi_base = {}, m_goal_[2] = {} before interpolation ends.",
+                    phi_base,
+                    m_goal_[2]);
             } else if (m_length_[seg_index] >= 0) {
                 step(s, x, y, phi);
             } else {

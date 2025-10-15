@@ -149,7 +149,6 @@ namespace erl::path_planning::astar {
         PriorityQueue_t m_priority_queue_;
         absl::flat_hash_map<long, std::shared_ptr<State_t>> m_astar_states_;
         long m_iterations_ = 0;
-        // bool m_planned_ = false;
         absl::flat_hash_set<int> m_reached_goal_indices_;
         std::shared_ptr<Output_t> m_output_ = nullptr;
 
@@ -253,7 +252,12 @@ namespace erl::path_planning::astar {
             }
 
             // infeasible problem
-            ERL_INFO("Reached maximum number of iterations.");
+            if (m_setting_->max_num_iterations > 0 &&
+                m_iterations_ >= m_setting_->max_num_iterations) {
+                ERL_WARN("Reached maximum number of iterations.");
+            } else {
+                ERL_WARN("Open set is empty, no path to any goal exists.");
+            }
             LogStates();
 
             return m_output_;

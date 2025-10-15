@@ -11,8 +11,8 @@
 namespace erl::path_planning {
 
     template<typename Dtype>
-    struct LinearTemporalLogicHeuristic2D : public MultiGoalsHeuristic<Dtype, 3> {
-
+    class LinearTemporalLogicHeuristic2D : public MultiGoalsHeuristic<Dtype, 3> {
+    public:
         using Super = MultiGoalsHeuristic<Dtype, 3>;
         using EnvState = typename Super::EnvState;
         using MetricState = typename Super::MetricState;
@@ -110,7 +110,6 @@ namespace erl::path_planning {
             using HeapKey = typename PriorityQueue::handle_type;
 
             // cost from one label to another
-            // ReSharper disable once CppInconsistentNaming
             Eigen::MatrixX<Dtype> cost_l2l = Eigen::MatrixX<Dtype>::Constant(  // transition cost
                 n_labels,
                 n_labels,

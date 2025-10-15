@@ -19,7 +19,7 @@ TEST(AMRAStar2D, AStarConsistency) {
     using EnvState = erl::env::EnvironmentState<Dtype, 2>;
     using MetricState = EnvState::MetricState;
     using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 2>;
-    using Environment2D = erl::env::Environment2D<Dtype>;
+    using Environment2D = erl::env::Environment2D<Dtype, uint8_t>;
     using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 2>;
     using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 2>;
     using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 2>;
@@ -218,7 +218,7 @@ RunTestWithMap(
     using EnvState = erl::env::EnvironmentState<Dtype, 2>;
     using MetricState = EnvState::MetricState;
     using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 2>;
-    using Environment2D = erl::env::Environment2D<Dtype>;
+    using Environment2D = erl::env::Environment2D<Dtype, uint8_t>;
     using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
     using HeuristicBase = erl::path_planning::HeuristicBase<Dtype, 2>;
@@ -311,7 +311,7 @@ TEST(AMRAStar2D, LinearTemporalLogic) {
     using Dtype = double;
     using EnvironmentBase = erl::env::EnvironmentBase<Dtype, 3>;
     using EnvironmentGridAnchor = erl::env::EnvironmentGridAnchor<Dtype, 3>;
-    using EnvironmentLTL2D = erl::env::EnvironmentLTL2D<Dtype>;
+    using EnvironmentLTL2D = erl::env::EnvironmentLTL2D<Dtype, uint8_t>;
     using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;

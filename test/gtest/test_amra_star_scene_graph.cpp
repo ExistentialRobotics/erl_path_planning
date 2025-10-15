@@ -174,6 +174,8 @@ TEST(AMRAStarSceneGraph, CrossFloor) {
 TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     GTEST_PREPARE_OUTPUT_DIR();
 
+    auto data_dir = gtest_src_dir / "../../data/scene_graph_ltl";
+
     using Dtype = double;
     using EnvState = erl::env::EnvironmentState<Dtype, 4>;
     using MetricState = EnvState::MetricState;
@@ -185,16 +187,16 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     using Output = erl::path_planning::amra_star::Output<Dtype, 4>;
     using FiniteStateAutomaton = erl::env::FiniteStateAutomaton;
 
-    std::filesystem::path output_dir = gtest_src_dir / "results" / test_output_dir;
+    std::filesystem::path output_dir = test_output_dir;
     std::filesystem::create_directories(output_dir);
 
     // load the building
     auto building = std::make_shared<erl::env::scene_graph::Building>();
-    ASSERT_TRUE(building->FromYamlFile(gtest_src_dir / "building.yaml"));
+    ASSERT_TRUE(building->FromYamlFile(data_dir / "building.yaml"));
 
     // load the env setting
     auto env_setting = std::make_shared<EnvironmentLTLSceneGraph::Setting>();
-    env_setting->data_dir = gtest_src_dir.string();
+    env_setting->data_dir = data_dir.string();
     env_setting->robot_metric_contour = Eigen::Matrix2Xd(2, 360);
     Eigen::VectorXd angles = Eigen::VectorXd::LinSpaced(360, 0, 2 * M_PI);
     for (int i = 0; i < 360; ++i) {
@@ -203,11 +205,11 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
     }
     // load the finite state automaton setting from spot hoa file
     env_setting->fsa = std::make_shared<FiniteStateAutomaton::Setting>(
-        gtest_src_dir / "automaton.aut",
+        data_dir / "automaton.aut",
         FiniteStateAutomaton::Setting::FileType::kSpotHoa,
         false);
     // load the atomic propositions
-    env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
+    env_setting->LoadAtomicPropositions(data_dir / "ap_desc.yaml");
 
     // create the environment
     auto environment_ltl_scene_graph =
@@ -263,7 +265,7 @@ TEST(AMRAStarSceneGraph, LinearTemporalLogic) {
         std::unordered_map<int, cv::Mat> cat_maps;  // floor -> map
         for (auto &[floor_num, cv_path]: cv_paths) {
             auto &cat_map = cat_maps[floor_num];
-            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(gtest_src_dir, floor_num));
+            cat_map = erl::common::ColorGrayCustom(building->LoadCatMap(data_dir, floor_num));
             cv::polylines(cat_map, cv_path, false, cv::Scalar(0, 0, 255), 2);
             cv::imshow(fmt::format("plan_{}_floor_{}", plan_itr, floor_num), cat_map);
             cv::imwrite(

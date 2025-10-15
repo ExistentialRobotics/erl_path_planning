@@ -7,13 +7,14 @@
 #include "erl_path_planning/ltl_2d_heuristic.hpp"
 
 TEST(AStar2D, PlanWithSingleGoal) {
+    GTEST_PREPARE_OUTPUT_DIR();
 
     using Dtype = double;
     using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using CostBase = erl::env::CostBase<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
-    using Environment2D = erl::env::Environment2D<Dtype>;
+    using Environment2D = erl::env::Environment2D<Dtype, uint8_t>;
     using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 2>;
     using AStar = erl::path_planning::astar::AStar<Dtype, 2>;
     using Output = erl::path_planning::astar::Output<Dtype, 2>;
@@ -82,7 +83,7 @@ TEST(AStar2D, PlanWithFourGoals) {
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using CostBase = erl::env::CostBase<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
-    using Environment2D = erl::env::Environment2D<Dtype>;
+    using Environment2D = erl::env::Environment2D<Dtype, uint8_t>;
     using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 2>;
     using AStar = erl::path_planning::astar::AStar<Dtype, 2>;
     using Output = erl::path_planning::astar::Output<Dtype, 2>;
@@ -224,7 +225,7 @@ RunLargeMapWithStepSize(int step_size, double expected_cost, int expected_num_ac
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using CostBase = erl::env::CostBase<Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
-    using Environment2D = erl::env::Environment2D<Dtype>;
+    using Environment2D = erl::env::Environment2D<Dtype, uint8_t>;
     using EuclideanDistanceHeuristic = erl::path_planning::EuclideanDistanceHeuristic<Dtype, 2>;
     using PlanningInterface = erl::path_planning::SearchPlanningInterface<Dtype, 2>;
     using AStar = erl::path_planning::astar::AStar<Dtype, 2>;
@@ -240,7 +241,7 @@ RunLargeMapWithStepSize(int step_size, double expected_cost, int expected_num_ac
     auto grid_map_info = std::make_shared<GridMapInfo>(map_shape, map_min, map_max);
 
     Eigen::MatrixX8U map_data = erl::common::LoadEigenMatrixFromTextFile<uint8_t>(
-        (gtest_src_dir / "circles_map_1001x1001.txt").string());
+        (gtest_src_dir / "../../data/circles_map_1001x1001.txt").string());
     Eigen::VectorX8U data = map_data.transpose().reshaped(map_shape.prod(), 1);  // row-major
     auto grid_map = std::make_shared<GridMap>(grid_map_info, std::move(data));
 
@@ -321,7 +322,7 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     GTEST_PREPARE_OUTPUT_DIR();
 
     using Dtype = double;
-    using EnvironmentLTL2D = erl::env::EnvironmentLTL2D<Dtype>;
+    using EnvironmentLTL2D = erl::env::EnvironmentLTL2D<Dtype, uint8_t>;
     using GridMapInfo = erl::common::GridMapInfo2D<Dtype>;
     using GridMap = erl::common::GridMap<uint8_t, Dtype, 2>;
     using EuclideanDistanceCost = erl::env::EuclideanDistanceCost<Dtype, 2>;
@@ -331,11 +332,11 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     using AStar = erl::path_planning::astar::AStar<Dtype, 3>;
     using Output = erl::path_planning::astar::Output<Dtype, 3>;
 
-    auto env_setting_yaml = gtest_src_dir / "environment_ltl_2d.yaml";
+    auto env_setting_yaml = gtest_src_dir / "../../data/environment_ltl_2d.yaml";
     auto env_setting = std::make_shared<EnvironmentLTL2D::Setting>();
     ASSERT_TRUE(env_setting->FromYamlFile(env_setting_yaml));
 
-    auto label_map_png = gtest_src_dir / "label_map.png";
+    auto label_map_png = gtest_src_dir / "../../data/label_map.png";
     cv::Mat label_map_img = cv::imread(label_map_png.string(), cv::IMREAD_GRAYSCALE);
     Eigen::MatrixX8U label_map_img_eigen;
     cv::cv2eigen(label_map_img, label_map_img_eigen);
@@ -350,6 +351,7 @@ TEST(AStar2D, LinearTemporalLogic2D) {
     auto env = std::make_shared<EnvironmentLTL2D>(label_map, grid_map, env_setting, cost_func);
     Eigen::Vector3d metric_start_coords(-2, 3, env_setting->fsa->initial_state);
     std::vector<Eigen::Vector3d> metric_goals_coords(env_setting->fsa->accepting_states.size());
+    env_setting->fsa->AsSpotGraphHoaFile(test_output_dir / "automaton.aut", false);
     for (std::size_t i = 0; i < metric_goals_coords.size(); ++i) {
         Eigen::Vector3d &goal_coords = metric_goals_coords[i];
         goal_coords[0] = 0;

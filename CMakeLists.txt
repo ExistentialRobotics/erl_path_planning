@@ -51,7 +51,8 @@ erl_add_python_package()
 erl_install(
     EXECUTABLES ${${PROJECT_NAME}_COLLECTED_EXECUTABLES}
     LIBRARIES ${${PROJECT_NAME}_COLLECTED_LIBRARIES}
-    PYBIND_MODULES py${PROJECT_NAME})
+    PYBIND_MODULES py${PROJECT_NAME}
+    OTHER_FILES data)
 
 ####################################################################################################
 # TEST

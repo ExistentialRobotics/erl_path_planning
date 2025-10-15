@@ -2,7 +2,7 @@ floor_area: 28.947549660785576
 floors:
     0:
         cat_map: cat_maps/0.png
-        down_stairs_cost: inf
+        down_stairs_cost: .inf
         down_stairs_id: -1
         down_stairs_portal: null
         down_stairs_uuid: -1
@@ -1500,7 +1500,7 @@ floors:
                 uuid: 11
                 volume: 8.456127120085656
         type: kFloor
-        up_stairs_cost: inf
+        up_stairs_cost: .inf
         up_stairs_id: -1
         up_stairs_portal: null
         up_stairs_uuid: -1
