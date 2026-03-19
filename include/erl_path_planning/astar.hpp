@@ -33,7 +33,7 @@ namespace erl::path_planning::astar {
     template<typename T>
     struct Greater {
         bool
-        operator()(const std::shared_ptr<T>& s1, const std::shared_ptr<T>& s2) const {
+        operator()(const std::shared_ptr<T> &s1, const std::shared_ptr<T> &s2) const {
             if (std::abs(s1->f_value - s2->f_value) < 1.e-6) {
                 // f value is too close, compare g value
                 return s1->state->g_value > s2->state->g_value;
@@ -107,26 +107,12 @@ namespace erl::path_planning::astar {
         bool log = false;
         bool reopen_inconsistent = false;
 
-        struct YamlConvertImpl {
-            static YAML::Node
-            encode(const AstarSetting& setting) {
-                YAML::Node node;
-                ERL_YAML_SAVE_ATTR(node, setting, eps);
-                ERL_YAML_SAVE_ATTR(node, setting, max_num_iterations);
-                ERL_YAML_SAVE_ATTR(node, setting, log);
-                ERL_YAML_SAVE_ATTR(node, setting, reopen_inconsistent);
-                return node;
-            }
-
-            static bool
-            decode(const YAML::Node& node, AstarSetting& setting) {
-                ERL_YAML_LOAD_ATTR(node, setting, eps);
-                ERL_YAML_LOAD_ATTR(node, setting, max_num_iterations);
-                ERL_YAML_LOAD_ATTR(node, setting, log);
-                ERL_YAML_LOAD_ATTR(node, setting, reopen_inconsistent);
-                return true;
-            }
-        };
+        ERL_REFLECT_SCHEMA(
+            AstarSetting,
+            ERL_REFLECT_MEMBER(AstarSetting, eps),
+            ERL_REFLECT_MEMBER(AstarSetting, max_num_iterations),
+            ERL_REFLECT_MEMBER(AstarSetting, log),
+            ERL_REFLECT_MEMBER(AstarSetting, reopen_inconsistent));
     };
 
     template<typename Dtype, int Dim>
@@ -164,7 +150,7 @@ namespace erl::path_planning::astar {
             ERL_ASSERTM(m_setting_->eps > 0., "eps must be positive.");
             // initialize start node
             auto start_env_state = m_planning_interface_->GetStartState();
-            auto& start = GetState(start_env_state);
+            auto &start = GetState(start_env_state);
             start = std::make_shared<State_t>(
                 std::move(start_env_state),
                 0.0f,
@@ -211,7 +197,7 @@ namespace erl::path_planning::astar {
                     std::sort(
                         goal_cost_states.begin(),
                         goal_cost_states.end(),
-                        [](const auto& a, const auto& b) {
+                        [](const auto &a, const auto &b) {
                             return std::get<1>(a) < std::get<1>(b);
                         });
                     // get the goal with the smallest cost
@@ -264,8 +250,8 @@ namespace erl::path_planning::astar {
         }
 
     private:
-        std::shared_ptr<State_t>&
-        GetState(const EnvState& env_state) {
+        std::shared_ptr<State_t> &
+        GetState(const EnvState &env_state) {
             return m_astar_states_[m_planning_interface_->StateHashing(env_state)];
         }
 
@@ -275,9 +261,9 @@ namespace erl::path_planning::astar {
             auto successors = m_planning_interface_->GetSuccessors(m_current_->env_state);
 
             // process successors
-            for (auto& successor: successors) {
+            for (auto &successor: successors) {
                 // get child node
-                auto& child = GetState(successor.env_state);
+                auto &child = GetState(successor.env_state);
                 if (!child) {  // new node
                     child = std::make_shared<State_t>(
                         successor.env_state,
@@ -326,7 +312,7 @@ namespace erl::path_planning::astar {
         }
 
         void
-        RecoverPath(const std::shared_ptr<State_t>& goal_state, int goal_index) {
+        RecoverPath(const std::shared_ptr<State_t> &goal_state, int goal_index) {
             auto [plan_record_itr, inserted] = m_output_->plan_records.insert({m_iterations_, {}});
             ERL_ASSERTM(
                 inserted,
@@ -334,7 +320,7 @@ namespace erl::path_planning::astar {
                 m_iterations_);
 
             m_output_->latest_plan_itr = m_iterations_;
-            auto& plan_record = plan_record_itr->second;
+            auto &plan_record = plan_record_itr->second;
 
             // terminal cost is included in g_value if goal_state is virtual goal
             plan_record.cost = goal_state->g_value;
@@ -382,7 +368,7 @@ namespace erl::path_planning::astar {
             std::vector<std::vector<EnvState>> path_segments;
             std::size_t num_path_states = 0;
             EnvState state = GetState(m_start_state_->env_state)->env_state;
-            for (auto& [_, action_index]: plan_record.env_action_indices) {
+            for (auto &[_, action_index]: plan_record.env_action_indices) {
                 std::vector path_segment = m_planning_interface_->GetPath(state, action_index);
                 if (path_segment.empty()) { continue; }
                 path_segments.push_back(path_segment);
@@ -392,7 +378,7 @@ namespace erl::path_planning::astar {
             plan_record.path.resize(Eigen::NoChange, static_cast<long>(num_path_states + 1));
             plan_record.path.col(0) = m_planning_interface_->GetStartState().metric;
             long index = 1;
-            for (auto& path_segment: path_segments) {
+            for (auto &path_segment: path_segments) {
                 const auto num_states = static_cast<long>(path_segment.size());
                 for (long i = 0; i < num_states; ++i) {
                     plan_record.path.col(index++) = path_segment[i].metric;
@@ -403,7 +389,7 @@ namespace erl::path_planning::astar {
         void
         LogStates() const {
             if (!m_setting_->log) { return; }
-            for (auto& [state_hashing, astar_state]: m_astar_states_) {
+            for (auto &[state_hashing, astar_state]: m_astar_states_) {
                 if (astar_state->IsOpened()) {
                     m_output_->opened_list[astar_state->iteration_opened].push_back(
                         astar_state->env_state.metric);
@@ -422,11 +408,3 @@ namespace erl::path_planning::astar {
     extern template class AStar<float, 4>;
     extern template class AStar<double, 4>;
 }  // namespace erl::path_planning::astar
-
-template<>
-struct YAML::convert<erl::path_planning::astar::AstarSetting<float>>
-    : public erl::path_planning::astar::AstarSetting<float>::YamlConvertImpl {};
-
-template<>
-struct YAML::convert<erl::path_planning::astar::AstarSetting<double>>
-    : public erl::path_planning::astar::AstarSetting<double>::YamlConvertImpl {};

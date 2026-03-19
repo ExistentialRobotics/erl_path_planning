@@ -37,7 +37,7 @@ namespace erl::path_planning {
             : Super({}),
               fsa(std::move(fsa_in)) {
 
-            ERL_BLOCK_TIMER();
+            const ERL_BLOCK_TIMER_MSG("LTL Heuristic 3D Construction");
 
             ERL_ASSERTM(fsa != nullptr, "fsa is nullptr.");
             ERL_ASSERTM(grid_map_info != nullptr, "grid_map_info is nullptr.");

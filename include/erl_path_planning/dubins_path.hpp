@@ -18,13 +18,24 @@ namespace erl::path_planning {
             {kDubinsLeft, kDubinsRight, kDubinsLeft}};      // LRL
 
         static std::shared_ptr<DubinsPath>
-        Create(double x0, double y0, double phi0, double x1, double y1, double phi1, double turning_radius = 1.0);
+        Create(
+            double x0,
+            double y0,
+            double phi0,
+            double x1,
+            double y1,
+            double phi1,
+            double turning_radius = 1.0);
 
         void
         Interpolate(double t, double &x, double &y, double &phi) const;
 
         void
-        InterpolateNPoints(std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const;
+        InterpolateNPoints(
+            std::size_t n,
+            std::vector<double> &xs,
+            std::vector<double> &ys,
+            std::vector<double> &phis) const;
 
         [[nodiscard]] double
         GetLength() const {

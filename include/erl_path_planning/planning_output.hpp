@@ -17,7 +17,7 @@ namespace erl::path_planning {
         // plan_itr -> plan_record
         std::unordered_map<long, PlanRecord<Dtype, Dim>> plan_records = {};
 
-        [[nodiscard]] const PlanRecord<Dtype, Dim>*
+        [[nodiscard]] const PlanRecord<Dtype, Dim> *
         GetLatestRecord() const {
             if (latest_plan_itr < 0) { return nullptr; }
             auto itr = plan_records.find(latest_plan_itr);

@@ -39,7 +39,7 @@ namespace erl::path_planning::amra_star {
     template<typename T>
     struct Greater {
         bool
-        operator()(const std::shared_ptr<T>& s1, const std::shared_ptr<T>& s2) const {
+        operator()(const std::shared_ptr<T> &s1, const std::shared_ptr<T> &s2) const {
             if (std::abs(s1->f_value - s2->f_value) < 1.e-6) {
                 // f value is too close, compare g value
                 return s1->state->g_value > s2->state->g_value;
@@ -129,7 +129,7 @@ namespace erl::path_planning::amra_star {
         void
         RemoveFromClosed(
             const std::size_t close_set_id,
-            const std::vector<std::size_t>& open_set_ids) {
+            const std::vector<std::size_t> &open_set_ids) {
             if (!InClosed(close_set_id)) { return; }
             for (const auto open_set_id: open_set_ids) { iteration_opened[open_set_id] = 0; }
             iteration_closed[close_set_id] = 0;
@@ -176,7 +176,7 @@ namespace erl::path_planning::amra_star {
         std::unordered_map<uint32_t, std::list<MetricState>> inconsistent_states;
 
         void
-        Save(const std::filesystem::path& file_path) const {
+        Save(const std::filesystem::path &file_path) const {
             std::ofstream ofs(file_path);
             ERL_ASSERTM(ofs.is_open(), "Failed to open file: {}", file_path.string());
 
@@ -193,8 +193,8 @@ namespace erl::path_planning::amra_star {
 
             // save solutions and their cost, actions, etc. for each plan iteration
             long d = 0;
-            for (auto& [plan_itr, plan_record]: this->plan_records) {
-                auto& [goal_index, path, env_level_action_indices, cost] = plan_record;
+            for (auto &[plan_itr, plan_record]: this->plan_records) {
+                auto &[goal_index, path, env_level_action_indices, cost] = plan_record;
 
                 d = path.rows();  // dimension of the state space
                 long n = path.cols();
@@ -216,15 +216,15 @@ namespace erl::path_planning::amra_star {
                 }
                 ofs << "num_actions: " << env_level_action_indices.size() << std::endl
                     << "env_levels, action_indices" << std::endl;
-                for (const auto& [env_level, action_idx]: env_level_action_indices) {
+                for (const auto &[env_level, action_idx]: env_level_action_indices) {
                     ofs << env_level << ", " << action_idx << std::endl;
                 }
             }
 
             // save opened_states, closed_states, inconsistent_states
             std::size_t cnt = 1;
-            for (const auto& [plan_itr, opened_states_at_plan_itr]: opened_states) {
-                for (const auto& [heuristic_id, opened_states_at_heuristic_id]:
+            for (const auto &[plan_itr, opened_states_at_plan_itr]: opened_states) {
+                for (const auto &[heuristic_id, opened_states_at_heuristic_id]:
                      opened_states_at_plan_itr) {
                     cnt += opened_states_at_heuristic_id.size();
                 }
@@ -234,10 +234,10 @@ namespace erl::path_planning::amra_star {
                 << "expand_itr, heuristic_id, pos[0]";
             for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
             ofs << std::endl;
-            for (const auto& [expand_itr, opened_states_at_expand_itr]: opened_states) {
-                for (const auto& [heuristic_id, opened_states_at_heuristic_id]:
+            for (const auto &[expand_itr, opened_states_at_expand_itr]: opened_states) {
+                for (const auto &[heuristic_id, opened_states_at_heuristic_id]:
                      opened_states_at_expand_itr) {
-                    for (const auto& state: opened_states_at_heuristic_id) {
+                    for (const auto &state: opened_states_at_heuristic_id) {
                         // if (state.size() == 0) { continue; }
                         // skip empty state (e.g., virtual goal)
                         ofs << expand_itr << ", " << heuristic_id << ", " << state[0];
@@ -248,7 +248,7 @@ namespace erl::path_planning::amra_star {
             }
 
             cnt = 1;
-            for (const auto& [expand_itr, closed_states_at_expand_itr]: closed_states) {
+            for (const auto &[expand_itr, closed_states_at_expand_itr]: closed_states) {
                 cnt += closed_states_at_expand_itr.size();
             }
             ofs << "closed_states: " << std::endl
@@ -256,8 +256,8 @@ namespace erl::path_planning::amra_star {
                 << "expand_itr, action_resolution_level, pos[0]";
             for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
             ofs << std::endl;
-            for (const auto& [expand_itr, closed_states_at_expand_itr]: closed_states) {
-                for (const auto& [action_resolution_level, state]: closed_states_at_expand_itr) {
+            for (const auto &[expand_itr, closed_states_at_expand_itr]: closed_states) {
+                for (const auto &[action_resolution_level, state]: closed_states_at_expand_itr) {
                     ofs << expand_itr << ", " << action_resolution_level << ", " << state[0];
                     for (long i = 1; i < d; ++i) { ofs << ", " << state[i]; }
                     ofs << std::endl;
@@ -265,14 +265,14 @@ namespace erl::path_planning::amra_star {
             }
 
             cnt = 1;
-            for (const auto& [expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) {
+            for (const auto &[expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) {
                 cnt += inconsistent_states_at_expand_itr.size();
             }
             ofs << "inconsistent_states: " << std::endl << cnt << std::endl << "expand_itr, pos[0]";
             for (long i = 1; i < d; ++i) { ofs << ", pos[" << i << "]"; }
             ofs << std::endl;
-            for (const auto& [expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) {
-                for (const auto& state: inconsistent_states_at_expand_itr) {
+            for (const auto &[expand_itr, inconsistent_states_at_expand_itr]: inconsistent_states) {
+                for (const auto &state: inconsistent_states_at_expand_itr) {
                     ofs << expand_itr << ", " << state[0];
                     for (long i = 1; i < d; ++i) { ofs << ", " << state[i]; }
                     ofs << std::endl;
@@ -293,38 +293,16 @@ namespace erl::path_planning::amra_star {
         Dtype w2_decay_factor = 0.5f;
         bool log = false;
 
-        struct YamlConvertImpl {
-            static YAML::Node
-            encode(const AmraStarSetting& setting) {
-                YAML::Node node;
-                node["time_limit"] = static_cast<Dtype>(setting.time_limit.count()) / 1.e9f;
-
-                ERL_YAML_SAVE_ATTR(node, setting, w1_init);
-                ERL_YAML_SAVE_ATTR(node, setting, w2_init);
-                ERL_YAML_SAVE_ATTR(node, setting, w1_final);
-                ERL_YAML_SAVE_ATTR(node, setting, w2_final);
-                ERL_YAML_SAVE_ATTR(node, setting, w1_decay_factor);
-                ERL_YAML_SAVE_ATTR(node, setting, w2_decay_factor);
-                ERL_YAML_SAVE_ATTR(node, setting, log);
-                return node;
-            }
-
-            static bool
-            decode(const YAML::Node& node, AmraStarSetting& setting) {
-                if (!node.IsMap()) { return false; }
-                setting.time_limit = std::chrono::nanoseconds(
-                    static_cast<std::size_t>(node["time_limit"].as<Dtype>() * 1.e9f));
-
-                ERL_YAML_LOAD_ATTR(node, setting, w1_init);
-                ERL_YAML_LOAD_ATTR(node, setting, w2_init);
-                ERL_YAML_LOAD_ATTR(node, setting, w1_final);
-                ERL_YAML_LOAD_ATTR(node, setting, w2_final);
-                ERL_YAML_LOAD_ATTR(node, setting, w1_decay_factor);
-                ERL_YAML_LOAD_ATTR(node, setting, w2_decay_factor);
-                ERL_YAML_LOAD_ATTR(node, setting, log);
-                return true;
-            }
-        };
+        ERL_REFLECT_SCHEMA(
+            AmraStarSetting,
+            ERL_REFLECT_MEMBER(AmraStarSetting, time_limit),
+            ERL_REFLECT_MEMBER(AmraStarSetting, w1_init),
+            ERL_REFLECT_MEMBER(AmraStarSetting, w2_init),
+            ERL_REFLECT_MEMBER(AmraStarSetting, w1_final),
+            ERL_REFLECT_MEMBER(AmraStarSetting, w2_final),
+            ERL_REFLECT_MEMBER(AmraStarSetting, w1_decay_factor),
+            ERL_REFLECT_MEMBER(AmraStarSetting, w2_decay_factor),
+            ERL_REFLECT_MEMBER(AmraStarSetting, log));
     };
 
     template<typename Dtype, int Dim>
@@ -395,7 +373,7 @@ namespace erl::path_planning::amra_star {
                 GetState(goal_env_state) = m_goal_states_.back();
             }
 
-            for (auto& queue: m_open_queues_) { queue.reserve(20000); }
+            for (auto &queue: m_open_queues_) { queue.reserve(20000); }
         }
 
         std::shared_ptr<Output_t>
@@ -416,10 +394,10 @@ namespace erl::path_planning::amra_star {
             m_total_expand_itr_ = 1;
 
             m_plan_itr_++;
-            for (auto& goal_state: m_goal_states_) { ReinitState(goal_state); }
+            for (auto &goal_state: m_goal_states_) { ReinitState(goal_state); }
             ReinitState(m_start_state_);                                    // L45
             m_start_state_->g_value = 0.;                                   // L44
-            for (auto& open_queue: m_open_queues_) { open_queue.clear(); }  // L46-47
+            for (auto &open_queue: m_open_queues_) { open_queue.clear(); }  // L46-47
             m_inconsistent_states_.clear();
             m_inconsistent_states_.insert(m_start_state_);  // L48
 
@@ -431,14 +409,14 @@ namespace erl::path_planning::amra_star {
                     m_output_->w1_values[m_plan_itr_] = m_w1_;
                     m_output_->w2_values[m_plan_itr_] = m_w2_;
                 }
-                for (auto& state: m_inconsistent_states_) {  // L50
+                for (auto &state: m_inconsistent_states_) {  // L50
                     state->RemoveFromClosed(0, m_planning_interface_->GetResolutionHeuristicIds(0));
                     InsertOrUpdate(state, 0, GetFvalue(state, 0));  // L51
                 }
                 m_inconsistent_states_.clear();  // L52
                 // update other open queues using the anchor-level open queue
-                for (auto& queue_item: m_open_queues_[0]) {  // L53
-                    std::shared_ptr<State_t>& state = queue_item->state;
+                for (auto &queue_item: m_open_queues_[0]) {  // L53
+                    std::shared_ptr<State_t> &state = queue_item->state;
                     for (std::size_t heuristic_id = 1; heuristic_id < num_heuristics;
                          ++heuristic_id) {  // L54
                         const std::size_t resolution_level =
@@ -457,7 +435,7 @@ namespace erl::path_planning::amra_star {
                 }
 
                 // empty all close sets
-                for (auto& [state_hashing, state]: m_states_hash_map_) {
+                for (auto &[state_hashing, state]: m_states_hash_map_) {
                     for (std::size_t res_level = 0; res_level < num_resolution_levels;
                          ++res_level) {  // L57
                         state->RemoveFromClosed(
@@ -498,12 +476,12 @@ namespace erl::path_planning::amra_star {
     private:
         std::pair<std::shared_ptr<State_t>, int>
         ImprovePath(
-            const std::chrono::system_clock::time_point& start_time,
-            std::chrono::nanoseconds& elapsed_time) {
+            const std::chrono::system_clock::time_point &start_time,
+            std::chrono::nanoseconds &elapsed_time) {
 
             elapsed_time = 0ns;
             const std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
-            auto& open_anchor = m_open_queues_[0];
+            auto &open_anchor = m_open_queues_[0];
             while (!open_anchor.empty() &&
                    (open_anchor.top()->f_value < std::numeric_limits<double>::infinity())) {  // L25
                 elapsed_time = std::chrono::system_clock::now() - start_time;
@@ -528,7 +506,7 @@ namespace erl::path_planning::amra_star {
 
                     // state in the open queue of heuristic_id may be invalid when it is moved to
                     // CLOSE by another heuristic
-                    auto& open = m_open_queues_[heuristic_id];
+                    auto &open = m_open_queues_[heuristic_id];
                     while (!open.empty() || !open_anchor.empty()) {
                         if (!open.empty() && open.top()->f_value <= f_check) {
                             std::shared_ptr<State_t> state = open.top()->state;
@@ -562,7 +540,7 @@ namespace erl::path_planning::amra_star {
         }
 
         void
-        Expand(const std::shared_ptr<State_t>& parent, std::size_t heuristic_id) {
+        Expand(const std::shared_ptr<State_t> &parent, std::size_t heuristic_id) {
 
             // L4
             std::size_t res_level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
@@ -599,8 +577,8 @@ namespace erl::path_planning::amra_star {
             const std::size_t num_resolution_levels =
                 m_planning_interface_->GetNumResolutionLevels();
             const std::size_t num_heuristics = m_planning_interface_->GetNumHeuristics();
-            for (auto& successor: successors) {  // L9
-                std::shared_ptr<State_t>& child = GetState(successor.env_state);
+            for (auto &successor: successors) {  // L9
+                std::shared_ptr<State_t> &child = GetState(successor.env_state);
                 if (!child) {
                     child = std::make_shared<State_t>(
                         m_plan_itr_,
@@ -638,13 +616,13 @@ namespace erl::path_planning::amra_star {
             }
         }
 
-        std::shared_ptr<State_t>&
-        GetState(const EnvState& env_state) {
+        std::shared_ptr<State_t> &
+        GetState(const EnvState &env_state) {
             return m_states_hash_map_[m_planning_interface_->StateHashing(env_state)];
         }
 
         void
-        ReinitState(const std::shared_ptr<State_t>& state) const {
+        ReinitState(const std::shared_ptr<State_t> &state) const {
             if (state->plan_itr == m_plan_itr_) { return; }
             state->Reset();
             state->plan_itr = m_plan_itr_;
@@ -657,13 +635,13 @@ namespace erl::path_planning::amra_star {
         }
 
         [[nodiscard]] Dtype
-        GetFvalue(const std::shared_ptr<State_t>& state, const std::size_t heuristic_id) const {
+        GetFvalue(const std::shared_ptr<State_t> &state, const std::size_t heuristic_id) const {
             return state->g_value + m_w1_ * state->h_values[heuristic_id];
         }
 
         void
         InsertOrUpdate(
-            const std::shared_ptr<State_t>& state,
+            const std::shared_ptr<State_t> &state,
             std::size_t heuristic_id,
             Dtype f_value) {
             if (std::size_t level = m_planning_interface_->GetResolutionAssignment(heuristic_id);
@@ -685,10 +663,10 @@ namespace erl::path_planning::amra_star {
 
         void
         RebuildOpenQueue(std::size_t heuristic_id) {
-            auto& open_queue = m_open_queues_[heuristic_id];
+            auto &open_queue = m_open_queues_[heuristic_id];
             PriorityQueue_t new_open_queue;
             new_open_queue.reserve(20000);
-            for (auto& queue_item: open_queue) {
+            for (auto &queue_item: open_queue) {
                 queue_item->f_value = GetFvalue(queue_item->state, heuristic_id);
                 queue_item->state->open_queue_keys[heuristic_id] = new_open_queue.push(queue_item);
             }
@@ -701,7 +679,7 @@ namespace erl::path_planning::amra_star {
          * @param goal_index
          */
         void
-        RecoverPath(const std::shared_ptr<State_t>& goal_state, int goal_index) {
+        RecoverPath(const std::shared_ptr<State_t> &goal_state, int goal_index) {
             m_output_->latest_plan_itr = m_plan_itr_;
             m_output_->w1_solve = m_w1_;
             m_output_->w2_solve = m_w2_;
@@ -710,7 +688,7 @@ namespace erl::path_planning::amra_star {
                 m_output_->plan_records.insert({m_plan_itr_, PlanRecord<Dtype, Dim>()});
             ERL_ASSERTM(inserted, "path already exists for plan iteration {}.", m_plan_itr_);
 
-            auto& plan_record = plan_record_itr->second;
+            auto &plan_record = plan_record_itr->second;
 
             plan_record.cost = goal_state->g_value;
             plan_record.goal_index = goal_index;
@@ -737,7 +715,7 @@ namespace erl::path_planning::amra_star {
                 m_total_expand_itr_,
                 m_plan_itr_);
 
-            auto& actions_coords = plan_record.env_action_indices;
+            auto &actions_coords = plan_record.env_action_indices;
             actions_coords.clear();
             while (node->parent != nullptr) {
                 actions_coords.emplace_back(node->env_level, node->action_idx);
@@ -748,7 +726,7 @@ namespace erl::path_planning::amra_star {
             path_segments.reserve(actions_coords.size());
             long num_path_states = 0;
             auto state = m_start_state_->env_state;
-            for (auto& [env_level, action_idx]: actions_coords) {
+            for (auto &[env_level, action_idx]: actions_coords) {
                 std::vector<EnvState> path_segment =
                     m_planning_interface_->GetPath(state, env_level, action_idx);
                 if (path_segment.empty()) { continue; }
@@ -757,11 +735,11 @@ namespace erl::path_planning::amra_star {
                 state = path_segment.back();
             }
 
-            Eigen::Matrix<Dtype, Dim, Eigen::Dynamic>& path = plan_record.path;
+            Eigen::Matrix<Dtype, Dim, Eigen::Dynamic> &path = plan_record.path;
             path.resize(Eigen::NoChange, num_path_states + 1);
             path.col(0) = m_planning_interface_->GetStartState().metric;
             long index = 1;
-            for (auto& path_segment: path_segments) {
+            for (auto &path_segment: path_segments) {
                 const auto num_states = static_cast<long>(path_segment.size());
                 for (long i = 0; i < num_states; ++i) {
                     path.col(index++) = path_segment[i].metric;
@@ -775,7 +753,7 @@ namespace erl::path_planning::amra_star {
          * @param goal_index
          */
         void
-        SaveOutput(const std::shared_ptr<State_t>& goal_state, int goal_index) {
+        SaveOutput(const std::shared_ptr<State_t> &goal_state, int goal_index) {
             if (goal_state != nullptr) { RecoverPath(goal_state, goal_index); }
             m_output_->num_heuristics = m_planning_interface_->GetNumHeuristics();
             m_output_->num_resolution_levels = m_planning_interface_->GetNumResolutionLevels();
@@ -790,11 +768,3 @@ namespace erl::path_planning::amra_star {
     extern template class AmraStar<double, 3>;
 
 }  // namespace erl::path_planning::amra_star
-
-template<>
-struct YAML::convert<erl::path_planning::amra_star::AmraStarSetting<float>>
-    : public erl::path_planning::amra_star::AmraStarSetting<float>::YamlConvertImpl {};
-
-template<>
-struct YAML::convert<erl::path_planning::amra_star::AmraStarSetting<double>>
-    : public erl::path_planning::amra_star::AmraStarSetting<double>::YamlConvertImpl {};

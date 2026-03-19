@@ -22,7 +22,7 @@ struct Options : public erl::common::Yamlable<Options<Dtype>> {
     int init_grid_z = -1;
     Dtype robot_radius = 0.0;
     Dtype object_reach_radius = 0.6;
-    erl::env::scene_graph::Node::Type max_level = erl::env::scene_graph::Node::Type::kFloor;
+    erl::env::scene_graph::NodeType max_level = erl::env::scene_graph::NodeType::kFloor;
     std::string ltl_heuristic_layout = {};
     std::string llm_heuristic_layout = {};
     int repeat = 1;
@@ -51,53 +51,25 @@ struct Options : public erl::common::Yamlable<Options<Dtype>> {
         hold_for_visualization = options.hold_for_visualization;
     }
 
-    struct YamlConvertImpl {
-        static YAML::Node
-        encode(const Options &options) {
-            YAML::Node node;
-            ERL_YAML_SAVE_ATTR(node, options, output_dir);
-            ERL_YAML_SAVE_ATTR(node, options, scene_graph_file);
-            ERL_YAML_SAVE_ATTR(node, options, map_data_dir);
-            ERL_YAML_SAVE_ATTR(node, options, automaton_file);
-            ERL_YAML_SAVE_ATTR(node, options, ap_file);
-            ERL_YAML_SAVE_ATTR(node, options, llm_heuristic_file);
-            ERL_YAML_SAVE_ATTR(node, options, init_grid_x);
-            ERL_YAML_SAVE_ATTR(node, options, init_grid_y);
-            ERL_YAML_SAVE_ATTR(node, options, init_grid_z);
-            ERL_YAML_SAVE_ATTR(node, options, robot_radius);
-            ERL_YAML_SAVE_ATTR(node, options, object_reach_radius);
-            ERL_YAML_SAVE_ATTR(node, options, max_level);
-            ERL_YAML_SAVE_ATTR(node, options, ltl_heuristic_layout);
-            ERL_YAML_SAVE_ATTR(node, options, llm_heuristic_layout);
-            ERL_YAML_SAVE_ATTR(node, options, repeat);
-            ERL_YAML_SAVE_ATTR(node, options, save_amra_log);
-            ERL_YAML_SAVE_ATTR(node, options, hold_for_visualization);
-            return node;
-        }
-
-        static bool
-        decode(const YAML::Node &node, Options &options) {
-            if (!node.IsMap()) { return false; }
-            ERL_YAML_LOAD_ATTR(node, options, output_dir);
-            ERL_YAML_LOAD_ATTR(node, options, scene_graph_file);
-            ERL_YAML_LOAD_ATTR(node, options, map_data_dir);
-            ERL_YAML_LOAD_ATTR(node, options, automaton_file);
-            ERL_YAML_LOAD_ATTR(node, options, ap_file);
-            ERL_YAML_LOAD_ATTR(node, options, llm_heuristic_file);
-            ERL_YAML_LOAD_ATTR(node, options, init_grid_x);
-            ERL_YAML_LOAD_ATTR(node, options, init_grid_y);
-            ERL_YAML_LOAD_ATTR(node, options, init_grid_z);
-            ERL_YAML_LOAD_ATTR(node, options, robot_radius);
-            ERL_YAML_LOAD_ATTR(node, options, object_reach_radius);
-            ERL_YAML_LOAD_ATTR(node, options, max_level);
-            ERL_YAML_LOAD_ATTR(node, options, ltl_heuristic_layout);
-            ERL_YAML_LOAD_ATTR(node, options, llm_heuristic_layout);
-            ERL_YAML_LOAD_ATTR(node, options, repeat);
-            ERL_YAML_LOAD_ATTR(node, options, save_amra_log);
-            ERL_YAML_LOAD_ATTR(node, options, hold_for_visualization);
-            return true;
-        }
-    };
+    ERL_REFLECT_SCHEMA(
+        Options,
+        ERL_REFLECT_MEMBER(Options, output_dir),
+        ERL_REFLECT_MEMBER(Options, scene_graph_file),
+        ERL_REFLECT_MEMBER(Options, map_data_dir),
+        ERL_REFLECT_MEMBER(Options, automaton_file),
+        ERL_REFLECT_MEMBER(Options, ap_file),
+        ERL_REFLECT_MEMBER(Options, llm_heuristic_file),
+        ERL_REFLECT_MEMBER(Options, init_grid_x),
+        ERL_REFLECT_MEMBER(Options, init_grid_y),
+        ERL_REFLECT_MEMBER(Options, init_grid_z),
+        ERL_REFLECT_MEMBER(Options, robot_radius),
+        ERL_REFLECT_MEMBER(Options, object_reach_radius),
+        ERL_REFLECT_MEMBER(Options, max_level),
+        ERL_REFLECT_MEMBER(Options, ltl_heuristic_layout),
+        ERL_REFLECT_MEMBER(Options, llm_heuristic_layout),
+        ERL_REFLECT_MEMBER(Options, repeat),
+        ERL_REFLECT_MEMBER(Options, save_amra_log),
+        ERL_REFLECT_MEMBER(Options, hold_for_visualization));
 };
 
 inline static const char *g_hierarchy_layout = R"(Hierarchical Planning Domain Layout:
@@ -416,13 +388,13 @@ main(int argc, char *argv[]) {
             return 1;
         }
         if (max_level_str == "kOcc") {
-            loaded.max_level = erl::env::scene_graph::Node::Type::kOcc;
+            loaded.max_level = erl::env::scene_graph::NodeType::kOcc;
         } else if (max_level_str == "kFloor") {
-            loaded.max_level = erl::env::scene_graph::Node::Type::kFloor;
+            loaded.max_level = erl::env::scene_graph::NodeType::kFloor;
         } else if (max_level_str == "kRoom") {
-            loaded.max_level = erl::env::scene_graph::Node::Type::kRoom;
+            loaded.max_level = erl::env::scene_graph::NodeType::kRoom;
         } else if (max_level_str == "kObject") {
-            loaded.max_level = erl::env::scene_graph::Node::Type::kObject;
+            loaded.max_level = erl::env::scene_graph::NodeType::kObject;
         } else {
             std::cerr << "max_level is not valid." << std::endl;
             return 1;
@@ -523,61 +495,3 @@ main(int argc, char *argv[]) {
         run<float>(loaded_float);
     }
 }
-
-template<>
-struct YAML::convert<Options<double>> : public Options<double>::YamlConvertImpl {};
-
-template<>
-struct YAML::convert<Options<float>> : public Options<float>::YamlConvertImpl {};
-
-// // ReSharper disable CppInconsistentNaming
-// template<>
-// struct YAML::convert<Options> {
-//     static Node
-//     encode(const Options &rhs) {
-//         Node node;
-//         node["output_dir"] = rhs.output_dir;
-//         node["scene_graph_file"] = rhs.scene_graph_file;
-//         node["map_data_dir"] = rhs.map_data_dir;
-//         node["automaton_file"] = rhs.automaton_file;
-//         node["ap_file"] = rhs.ap_file;
-//         node["llm_heuristic_file"] = rhs.llm_heuristic_file;
-//         node["init_grid_x"] = rhs.init_grid_x;
-//         node["init_grid_y"] = rhs.init_grid_y;
-//         node["init_grid_z"] = rhs.init_grid_z;
-//         node["robot_radius"] = rhs.robot_radius;
-//         node["object_reach_radius"] = rhs.object_reach_radius;
-//         node["max_level"] = rhs.max_level;
-//         node["ltl_heuristic_layout"] = rhs.ltl_heuristic_layout;
-//         node["llm_heuristic_layout"] = rhs.llm_heuristic_layout;
-//         node["repeat"] = rhs.repeat;
-//         node["save_amra_log"] = rhs.save_amra_log;
-//         node["hold_for_visualization"] = rhs.hold_for_visualization;
-//         return node;
-//     }
-//
-//     static bool
-//     decode(const Node &node, Options &rhs) {
-//         if (!node.IsMap()) { return false; }
-//         rhs.output_dir = node["output_dir"].as<std::string>();
-//         rhs.scene_graph_file = node["scene_graph_file"].as<std::string>();
-//         rhs.map_data_dir = node["map_data_dir"].as<std::string>();
-//         rhs.automaton_file = node["automaton_file"].as<std::string>();
-//         rhs.ap_file = node["ap_file"].as<std::string>();
-//         rhs.llm_heuristic_file = node["llm_heuristic_file"].as<std::string>();
-//         rhs.init_grid_x = node["init_grid_x"].as<int>();
-//         rhs.init_grid_y = node["init_grid_y"].as<int>();
-//         rhs.init_grid_z = node["init_grid_z"].as<int>();
-//         rhs.robot_radius = node["robot_radius"].as<double>();
-//         rhs.object_reach_radius = node["object_reach_radius"].as<double>();
-//         rhs.max_level = node["max_level"].as<erl::env::scene_graph::Node::Type>();
-//         rhs.ltl_heuristic_layout = node["ltl_heuristic_layout"].as<std::string>();
-//         rhs.llm_heuristic_layout = node["llm_heuristic_layout"].as<std::string>();
-//         rhs.repeat = node["repeat"].as<int>();
-//         rhs.save_amra_log = node["save_amra_log"].as<bool>();
-//         rhs.hold_for_visualization = node["hold_for_visualization"].as<bool>();
-//         return true;
-//     }
-// };  // namespace YAML
-//
-// // ReSharper restore CppInconsistentNaming

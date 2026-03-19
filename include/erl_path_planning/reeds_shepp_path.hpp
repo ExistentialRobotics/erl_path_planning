@@ -8,9 +8,15 @@ namespace erl::path_planning {
     class ReedsSheppPath {
 
     public:
-        enum ReedsSheppPathSegmentType { kReedsSheppNop = 0, kReedsSheppLeft = 1, kReedsSheppStraight = 2, kReedsSheppRight = 3 };
+        enum ReedsSheppPathSegmentType {
+            kReedsSheppNop = 0,
+            kReedsSheppLeft = 1,
+            kReedsSheppStraight = 2,
+            kReedsSheppRight = 3
+        };
 
         inline static const ReedsSheppPathSegmentType sk_ReedsSheppPathType_[18][5] = {
+            // clang-format off
             {kReedsSheppLeft, kReedsSheppRight, kReedsSheppLeft, kReedsSheppNop, kReedsSheppNop},         // 0: LRLNN
             {kReedsSheppRight, kReedsSheppLeft, kReedsSheppRight, kReedsSheppNop, kReedsSheppNop},        // 1: RLRNN
             {kReedsSheppLeft, kReedsSheppRight, kReedsSheppLeft, kReedsSheppRight, kReedsSheppNop},       // 2: LRLRN
@@ -29,16 +35,28 @@ namespace erl::path_planning {
             {kReedsSheppRight, kReedsSheppStraight, kReedsSheppRight, kReedsSheppNop, kReedsSheppNop},    // 15: RSRNN
             {kReedsSheppLeft, kReedsSheppRight, kReedsSheppStraight, kReedsSheppLeft, kReedsSheppRight},  // 16: LRSLR
             {kReedsSheppRight, kReedsSheppLeft, kReedsSheppStraight, kReedsSheppRight, kReedsSheppLeft}   // 17: RLSRL
+            // clang-format on
         };
 
         static std::shared_ptr<ReedsSheppPath>
-        Create(double x0, double y0, double phi0, double x1, double y1, double phi1, double turning_radius = 1.0);
+        Create(
+            double x0,
+            double y0,
+            double phi0,
+            double x1,
+            double y1,
+            double phi1,
+            double turning_radius = 1.0);
 
         void
         Interpolate(double t, double &x, double &y, double &phi) const;
 
         void
-        InterpolateNPoints(std::size_t n, std::vector<double> &xs, std::vector<double> &ys, std::vector<double> &phis) const;
+        InterpolateNPoints(
+            std::size_t n,
+            std::vector<double> &xs,
+            std::vector<double> &ys,
+            std::vector<double> &phis) const;
 
         [[nodiscard]] double
         GetLength() const {

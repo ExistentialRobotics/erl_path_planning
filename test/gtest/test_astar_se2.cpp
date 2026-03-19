@@ -78,7 +78,7 @@ RunTest(
     auto env_setting = std::make_shared<typename EnvironmentSe2::Setting>();
     env_setting->time_step = kCollisionCheckDt;
     env_setting->motion_primitives =
-        erl::common::LoadSequenceFromFile<erl::env::DdcMotionPrimitive<Dtype>>(
+        erl::common::LoadYamlSequenceFromFile<erl::env::DdcMotionPrimitive<Dtype>>(
             gtest_src_dir / "ddc_motion_primitives.yaml",
             true);
     env_setting->num_orientations = num_thetas;

@@ -316,7 +316,7 @@ TEST(AMRAStarSceneGraph, SingleLayer) {
     env_setting->LoadAtomicPropositions(gtest_src_dir / "ap_desc.yaml");
 
     // create the environment
-    env_setting->max_level = erl::env::scene_graph::Node::Type::kOcc;
+    env_setting->max_level = erl::env::scene_graph::NodeType::kOcc;
     auto environment_ltl_scene_graph =
         std::make_shared<EnvironmentLTLSceneGraph>(building, env_setting);
 

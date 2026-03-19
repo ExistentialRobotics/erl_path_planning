@@ -18,63 +18,22 @@ namespace erl::path_planning {
         using MetricState = typename Env::MetricState;
         using AtomicProposition = typename Env::AtomicProposition;
 
-        struct LlmWaypoint {
-            using Type = typename AtomicProposition::Type;
-            Type type;
+        struct LlmWaypoint : public common::Yamlable<LlmWaypoint> {
+            std::string type;
             int uuid1;
             int uuid2;
 
-            struct YamlConvertImpl {
-                static YAML::Node
-                encode(const LlmWaypoint &waypoint) {
-                    YAML::Node node;
-                    ERL_YAML_SAVE_ENUM_ATTR(
-                        node,
-                        waypoint,
-                        type,
-                        {"kNA", Type::kNA},
-                        {"kEnterRoom", Type::kEnterRoom},
-                        {"kReachObject", Type::kReachObject});
-                    ERL_YAML_SAVE_ATTR(node, waypoint, uuid1);
-                    ERL_YAML_SAVE_ATTR(node, waypoint, uuid2);
-                    return node;
-                }
-
-                static bool
-                decode(const YAML::Node &node, LlmWaypoint &waypoint) {
-                    if (!node.IsMap()) { return false; }
-                    ERL_YAML_LOAD_ENUM_ATTR(
-                        node,
-                        waypoint,
-                        type,
-                        {"kNA", Type::kNA},
-                        {"kEnterRoom", Type::kEnterRoom},
-                        {"kReachObject", Type::kReachObject});
-                    ERL_YAML_LOAD_ATTR(node, waypoint, uuid1);
-                    ERL_YAML_LOAD_ATTR(node, waypoint, uuid2);
-                    return true;
-                }
-            };
+            ERL_REFLECT_SCHEMA(
+                LlmWaypoint,
+                ERL_REFLECT_MEMBER(LlmWaypoint, type),
+                ERL_REFLECT_MEMBER(LlmWaypoint, uuid1),
+                ERL_REFLECT_MEMBER(LlmWaypoint, uuid2));
         };
 
         struct Setting : public common::Yamlable<Setting> {
             std::map<int, std::map<uint32_t, std::vector<LlmWaypoint>>> llm_paths;
 
-            struct YamlConvertImpl {
-                static YAML::Node
-                encode(const Setting &setting) {
-                    YAML::Node node;
-                    ERL_YAML_SAVE_ATTR(node, setting, llm_paths);
-                    return node;
-                }
-
-                static bool
-                decode(const YAML::Node &node, Setting &setting) {
-                    if (!node.IsMap()) { return false; }
-                    ERL_YAML_LOAD_ATTR(node, setting, llm_paths);
-                    return true;
-                }
-            };
+            ERL_REFLECT_SCHEMA(Setting, ERL_REFLECT_MEMBER(Setting, llm_paths));
         };
 
     private:
@@ -117,21 +76,16 @@ namespace erl::path_planning {
                     for (std::size_t i = 1; i < n; ++i) {
                         auto &waypoint = llm_path[i];
                         using namespace env::scene_graph;
-                        switch (waypoint.type) {
-                            case AtomicProposition::Type::kEnterRoom: {
-                                auto room1 = scene_graph->template GetNode<Room>(waypoint.uuid1);
-                                auto room2 = scene_graph->template GetNode<Room>(waypoint.uuid2);
-                                h += (room1->location - room2->location).norm();
-                                break;
-                            }
-                            case AtomicProposition::Type::kReachObject: {
-                                auto room = scene_graph->template GetNode<Room>(waypoint.uuid1);
-                                auto object = scene_graph->template GetNode<Object>(waypoint.uuid2);
-                                h += (room->location - object->location).norm();
-                                break;
-                            }
-                            default:
-                                throw std::runtime_error("Unknown LlmWaypoint type.");
+                        if (waypoint.type == "kEnterRoom") {
+                            auto room1 = scene_graph->template GetNode<Room>(waypoint.uuid1);
+                            auto room2 = scene_graph->template GetNode<Room>(waypoint.uuid2);
+                            h += (room1->location - room2->location).norm();
+                        } else if (waypoint.type == "kReachObject") {
+                            auto room = scene_graph->template GetNode<Room>(waypoint.uuid1);
+                            auto object = scene_graph->template GetNode<Object>(waypoint.uuid2);
+                            h += (room->location - object->location).norm();
+                        } else {
+                            throw std::runtime_error("Unknown LlmWaypoint type.");
                         }
                     }
                     heuristic_cache_for_room[fsa_state] = h;
@@ -165,25 +119,20 @@ namespace erl::path_planning {
             Dtype h = m_heuristic_cache_.at(room_uuid)[q];
             int next_uuid = llm_path[0].uuid2;
             using namespace env::scene_graph;
-            switch (llm_path[0].type) {
-                case AtomicProposition::Type::kEnterRoom: {
-                    const auto &room = scene_graph->template GetNode<Room>(next_uuid);
-                    Dtype dx = room->location[0] - env_state.metric[0];
-                    Dtype dy = room->location[1] - env_state.metric[1];
-                    Dtype dz = room->location[2] - env_state.metric[2];
-                    h += std::sqrt(dx * dx + dy * dy + dz * dz);
-                    break;
-                }
-                case AtomicProposition::Type::kReachObject: {
-                    const auto &object = scene_graph->template GetNode<Object>(next_uuid);
-                    Dtype dx = object->location[0] - env_state.metric[0];
-                    Dtype dy = object->location[1] - env_state.metric[1];
-                    Dtype dz = object->location[2] - env_state.metric[2];
-                    h += std::sqrt(dx * dx + dy * dy + dz * dz);
-                    break;
-                }
-                default:
-                    throw std::runtime_error("Unknown LlmWaypoint type.");
+            if (llm_path[0].type == "kEnterRoom") {
+                const auto &room = scene_graph->template GetNode<Room>(next_uuid);
+                Dtype dx = room->location[0] - env_state.metric[0];
+                Dtype dy = room->location[1] - env_state.metric[1];
+                Dtype dz = room->location[2] - env_state.metric[2];
+                h += std::sqrt(dx * dx + dy * dy + dz * dz);
+            } else if (llm_path[0].type == "kReachObject") {
+                const auto &object = scene_graph->template GetNode<Object>(next_uuid);
+                Dtype dx = object->location[0] - env_state.metric[0];
+                Dtype dy = object->location[1] - env_state.metric[1];
+                Dtype dz = object->location[2] - env_state.metric[2];
+                h += std::sqrt(dx * dx + dy * dy + dz * dz);
+            } else {
+                throw std::runtime_error("Unknown LlmWaypoint type.");
             }
 
             return h;
@@ -194,19 +143,3 @@ namespace erl::path_planning {
     extern template class LlmSceneGraphHeuristic<double>;
 
 }  // namespace erl::path_planning
-
-template<>
-struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<float>::LlmWaypoint>
-    : public erl::path_planning::LlmSceneGraphHeuristic<float>::LlmWaypoint::YamlConvertImpl {};
-
-template<>
-struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<float>::Setting>
-    : public erl::path_planning::LlmSceneGraphHeuristic<float>::Setting::YamlConvertImpl {};
-
-template<>
-struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<double>::LlmWaypoint>
-    : public erl::path_planning::LlmSceneGraphHeuristic<double>::LlmWaypoint::YamlConvertImpl {};
-
-template<>
-struct YAML::convert<erl::path_planning::LlmSceneGraphHeuristic<double>::Setting>
-    : public erl::path_planning::LlmSceneGraphHeuristic<double>::Setting::YamlConvertImpl {};

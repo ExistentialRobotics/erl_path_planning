@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.16)
 
 link_libraries(${PROJECT_NAME}::${PROJECT_NAME} GTest::gtest_main)
 
