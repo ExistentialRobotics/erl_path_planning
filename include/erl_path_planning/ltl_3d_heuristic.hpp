@@ -169,7 +169,7 @@ namespace erl::path_planning {
                     SpaceCoords &&state1 = label1_kdtree->GetPoint(i);
                     long index = -1;
                     Dtype min_d2 = std::numeric_limits<Dtype>::infinity();
-                    label2_kdtree->Nearest(state1, index, min_d2);
+                    if (!label2_kdtree->Nearest(state1, index, min_d2)) { continue; }
                     if (min_d2 < min_d) { min_d = min_d2; }
                 }
                 return std::sqrt(min_d);
